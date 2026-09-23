@@ -2,11 +2,8 @@ aws_region  = "us-east-1"
 aws_profile = "beepbite-dev"
 environment = "dev"
 
-# t4g.small is the initial low-cost ARM64 size for Go + PostgreSQL.
-instance_type       = "t4g.small"
-root_volume_size_gb = 30
-
 # Replace with the exact frontend origin before enabling browser uploads.
 upload_cors_origins = ["https://app.example.com"]
 
-backup_retention_days = 30
+archive_retention_days = 30
+log_retention_days     = 14

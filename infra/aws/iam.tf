@@ -1,87 +1,83 @@
-resource "aws_iam_role" "app" {
-  name = "${local.name}-instance"
+resource "aws_iam_role" "lambda" {
+  name = "${local.name}-lambda"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect = "Allow"
-      Principal = {
-        Service = "ec2.amazonaws.com"
-      }
-      Action = "sts:AssumeRole"
+      Effect    = "Allow"
+      Principal = { Service = "lambda.amazonaws.com" }
+      Action    = "sts:AssumeRole"
     }]
   })
 }
 
-resource "aws_iam_role_policy_attachment" "ssm" {
-  role       = aws_iam_role.app.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+resource "aws_iam_role_policy_attachment" "lambda_logs" {
+  role       = aws_iam_role.lambda.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
-resource "aws_iam_role_policy" "app" {
-  name = "${local.name}-runtime"
-  role = aws_iam_role.app.id
+resource "aws_iam_role_policy" "lambda" {
+  name = "${local.name}-serverless-runtime"
+  role = aws_iam_role.lambda.id
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "UploadObjects"
+        Sid    = "CoreData"
         Effect = "Allow"
         Action = [
-          "s3:AbortMultipartUpload",
-          "s3:DeleteObject",
-          "s3:GetObject",
-          "s3:ListBucket",
-          "s3:PutObject"
+          "dynamodb:BatchGetItem", "dynamodb:BatchWriteItem", "dynamodb:ConditionCheckItem",
+          "dynamodb:DeleteItem", "dynamodb:DescribeTable", "dynamodb:GetItem", "dynamodb:PutItem",
+          "dynamodb:Query", "dynamodb:Scan", "dynamodb:TransactGetItems",
+          "dynamodb:TransactWriteItems", "dynamodb:UpdateItem"
         ]
         Resource = [
-          aws_s3_bucket.uploads.arn,
-          "${aws_s3_bucket.uploads.arn}/*"
+          aws_dynamodb_table.core.arn,
+          "${aws_dynamodb_table.core.arn}/index/*",
+          aws_dynamodb_table.connections.arn,
+          "${aws_dynamodb_table.connections.arn}/index/*"
         ]
       },
       {
-        Sid    = "DatabaseBackups"
+        Sid    = "CoreDataStream"
         Effect = "Allow"
         Action = [
-          "s3:GetObject",
-          "s3:ListBucket",
-          "s3:PutObject"
+          "dynamodb:DescribeStream", "dynamodb:GetRecords",
+          "dynamodb:GetShardIterator", "dynamodb:ListStreams"
         ]
-        Resource = [
-          aws_s3_bucket.backups.arn,
-          "${aws_s3_bucket.backups.arn}/*"
-        ]
+        Resource = "${aws_dynamodb_table.core.arn}/stream/*"
       },
       {
-        Sid    = "PullApplicationImage"
+        Sid    = "Jobs"
         Effect = "Allow"
         Action = [
-          "ecr:GetAuthorizationToken"
+          "sqs:ChangeMessageVisibility", "sqs:DeleteMessage", "sqs:GetQueueAttributes",
+          "sqs:ReceiveMessage", "sqs:SendMessage"
         ]
-        Resource = "*"
+        Resource = aws_sqs_queue.jobs.arn
       },
       {
-        Sid    = "PullRepositoryLayers"
+        Sid    = "Uploads"
         Effect = "Allow"
         Action = [
-          "ecr:BatchCheckLayerAvailability",
-          "ecr:BatchGetImage",
-          "ecr:GetDownloadUrlForLayer"
+          "s3:AbortMultipartUpload", "s3:DeleteObject", "s3:GetObject",
+          "s3:ListBucket", "s3:PutObject"
         ]
-        Resource = aws_ecr_repository.api.arn
+        Resource = [aws_s3_bucket.uploads.arn, "${aws_s3_bucket.uploads.arn}/*"]
       },
       {
-        Sid      = "ReadRuntimeSecret"
+        Sid      = "RuntimeSecret"
         Effect   = "Allow"
         Action   = ["secretsmanager:GetSecretValue"]
         Resource = aws_secretsmanager_secret.runtime.arn
+      },
+      {
+        Sid      = "WebSocketConnections"
+        Effect   = "Allow"
+        Action   = ["execute-api:ManageConnections"]
+        Resource = "${aws_apigatewayv2_api.realtime.execution_arn}/*"
       }
     ]
   })
-}
-
-resource "aws_iam_instance_profile" "app" {
-  name = "${local.name}-instance"
-  role = aws_iam_role.app.name
 }

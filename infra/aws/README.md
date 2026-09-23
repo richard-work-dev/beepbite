@@ -65,3 +65,14 @@ the local validation workflow. Before applying:
 
 Terraform creates only the secret container. Secret values therefore do not
 appear in source control, plans, or Terraform state.
+
+## Application runtime
+
+`runtime/deploy.sh` builds and starts four local containers on the EC2 host:
+PostgreSQL 16, schema migrations, the Go API, and the React frontend behind
+nginx. It retrieves runtime values directly from Secrets Manager and writes a
+root-readable environment file under `/opt/beepbite/config`; secret values do
+not pass through GitHub Actions or Systems Manager command parameters.
+
+The initial environment is served over HTTP on the Elastic IP. Add the real
+domain and TLS termination before treating it as production traffic.

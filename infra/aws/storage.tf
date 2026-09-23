@@ -65,11 +65,11 @@ resource "aws_s3_bucket_lifecycle_configuration" "backups" {
   bucket = aws_s3_bucket.backups.id
 
   rule {
-    id     = "expire-old-database-backups"
+    id     = "expire-old-exports"
     status = "Enabled"
 
     expiration {
-      days = var.backup_retention_days
+      days = var.archive_retention_days
     }
   }
 }

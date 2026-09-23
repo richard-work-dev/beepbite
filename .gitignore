@@ -49,6 +49,7 @@ backend/go.work.sum
 *.tfvars
 !*.tfvars.example
 backend.hcl
+infra/aws/artifacts/
 crash.log
 crash.*.log
 

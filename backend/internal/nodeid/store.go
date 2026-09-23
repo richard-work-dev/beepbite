@@ -170,20 +170,6 @@ func create(path string) (*Identity, error) {
 	return &Identity{Public: nid, private: priv}, nil
 }
 
-// checkPrivateMode refuses to use a key file that is readable or writable
-// by anyone other than its owner. It is checked both before loading an
-// existing file and right after writing a new one — a leaked private key is
-// the whole game, and failing loudly beats running with one.
-func checkPrivateMode(path string, mode fs.FileMode) error {
-	if mode.Perm()&0o077 != 0 {
-		return fmt.Errorf(
-			"nodeid: refusing to use %s: mode %04o is readable or writable by group/other, want 0600 or stricter",
-			path, mode.Perm(),
-		)
-	}
-	return nil
-}
-
 // writeFileAtomic writes data to path such that no partial or
 // wrong-permission file is ever visible at that path: it writes to a temp
 // file in the same directory (so the final rename stays on one filesystem

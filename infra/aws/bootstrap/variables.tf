@@ -27,3 +27,13 @@ variable "github_repository_id" {
   type    = string
   default = "1383642392"
 }
+
+variable "development_hosted_zone_id" {
+  type    = string
+  default = "Z05141911C11MWQMPGATK"
+}
+
+variable "development_certificate_arn" {
+  type    = string
+  default = "arn:aws:acm:us-east-1:010438497251:certificate/8a3acfb4-6099-4c4d-95ef-920588a2e02d"
+}

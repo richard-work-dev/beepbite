@@ -7,6 +7,12 @@ locals {
 resource "aws_iam_openid_connect_provider" "github" {
   url            = "https://token.actions.githubusercontent.com"
   client_id_list = ["sts.amazonaws.com"]
+
+  # The provider is account-wide and may be shared with other repositories.
+  # Keep its existing ownership tags when importing it into this state.
+  lifecycle {
+    ignore_changes = [tags, tags_all]
+  }
 }
 
 resource "aws_iam_role" "github_development" {
@@ -175,6 +181,34 @@ resource "aws_iam_role_policy" "github_application" {
         Effect   = "Allow"
         Action   = "cloudfront:*"
         Resource = "*"
+      },
+      {
+        Sid    = "Route53Development"
+        Effect = "Allow"
+        Action = [
+          "route53:ChangeResourceRecordSets",
+          "route53:GetHostedZone",
+          "route53:ListResourceRecordSets",
+          "route53:ListTagsForResource"
+        ]
+        Resource = "arn:aws:route53:::hostedzone/${var.development_hosted_zone_id}"
+      },
+      {
+        Sid      = "Route53ChangeStatus"
+        Effect   = "Allow"
+        Action   = "route53:GetChange"
+        Resource = "arn:aws:route53:::change/*"
+      },
+      {
+        Sid    = "CertificateManagerDevelopment"
+        Effect = "Allow"
+        Action = [
+          "acm:AddTagsToCertificate",
+          "acm:DescribeCertificate",
+          "acm:ListTagsForCertificate",
+          "acm:RemoveTagsFromCertificate"
+        ]
+        Resource = var.development_certificate_arn
       },
       {
         Sid    = "ReadAccountMetadata"

@@ -26,12 +26,12 @@ resource "aws_s3_object" "frontend_index" {
   bucket       = aws_s3_bucket.frontend.id
   key          = "index.html"
   content_type = "text/html; charset=utf-8"
-  content      = <<-HTML
-    <!doctype html>
-    <html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>BeepBite</title><style>body{font-family:system-ui;margin:4rem auto;max-width:42rem;padding:0 1rem;color:#182018}h1{color:#236b3d}</style>
-    <h1>BeepBite</h1><p>El ambiente está activo.</p></html>
-  HTML
+  content = join("\n", [
+    "<!doctype html>",
+    "<html lang=\"es\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">",
+    "<title>BeepBite</title><style>body{font-family:system-ui;margin:4rem auto;max-width:42rem;padding:0 1rem;color:#182018}h1{color:#236b3d}</style>",
+    "<h1>BeepBite</h1><p>El ambiente está activo.</p></html>"
+  ])
 }
 
 resource "aws_cloudfront_origin_access_control" "frontend" {

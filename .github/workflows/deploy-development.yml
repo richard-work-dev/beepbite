@@ -1,0 +1,123 @@
+name: Deploy development
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: beepbite-development
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy AWS development
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: development
+    env:
+      TF_IN_AUTOMATION: "true"
+      TF_INPUT: "false"
+      TF_VAR_aws_profile: ""
+      TF_VAR_aws_region: ${{ vars.AWS_REGION }}
+      TF_VAR_environment: dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: "1.16.2"
+          terraform_wrapper: false
+      - name: Authenticate to AWS with GitHub OIDC
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
+          role-session-name: beepbite-development-${{ github.run_id }}
+      - name: Build ARM64 Lambda archives
+        run: bash infra/aws/scripts/build-lambdas.sh
+      - name: Initialize Terraform
+        working-directory: infra/aws
+        run: >-
+          terraform init -input=false
+          -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+          -backend-config="key=${{ vars.TF_STATE_KEY }}"
+          -backend-config="region=${{ vars.AWS_REGION }}"
+          -backend-config="encrypt=true"
+          -backend-config="use_lockfile=true"
+      - name: Check and validate Terraform
+        working-directory: infra/aws
+        run: |
+          terraform fmt -check -recursive
+          terraform validate
+      - name: Plan development infrastructure
+        working-directory: infra/aws
+        run: terraform plan -out=development.tfplan
+      - name: Apply development infrastructure
+        working-directory: infra/aws
+        run: terraform apply -auto-approve development.tfplan
+      - name: Read deployment outputs
+        id: infrastructure
+        working-directory: infra/aws
+        shell: bash
+        run: |
+          echo "api_url=$(terraform output -raw api_url)" >> "$GITHUB_OUTPUT"
+          echo "frontend_url=$(terraform output -raw frontend_url)" >> "$GITHUB_OUTPUT"
+          echo "frontend_bucket=$(terraform output -raw frontend_bucket)" >> "$GITHUB_OUTPUT"
+          echo "distribution_id=$(terraform output -raw frontend_distribution_id)" >> "$GITHUB_OUTPUT"
+      - name: Build frontend
+        working-directory: web
+        env:
+          VITE_API_URL: ${{ steps.infrastructure.outputs.api_url }}
+        run: |
+          npm ci
+          npm run build:dev
+      - name: Publish frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          bucket="s3://${{ steps.infrastructure.outputs.frontend_bucket }}"
+          aws s3 sync web/dist "$bucket" --delete --exclude index.html \
+            --cache-control "public,max-age=31536000,immutable"
+          aws s3 cp web/dist/index.html "$bucket/index.html" \
+            --content-type "text/html; charset=utf-8" \
+            --cache-control "no-cache, no-store, must-revalidate"
+      - name: Invalidate CloudFront
+        shell: bash
+        run: |
+          set -euo pipefail
+          invalidation_id="$(aws cloudfront create-invalidation \
+            --distribution-id "${{ steps.infrastructure.outputs.distribution_id }}" \
+            --paths "/*" --query 'Invalidation.Id' --output text)"
+          aws cloudfront wait invalidation-completed \
+            --distribution-id "${{ steps.infrastructure.outputs.distribution_id }}" \
+            --id "$invalidation_id"
+      - name: Smoke test API and frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 8 --retry-delay 5 \
+            "${{ steps.infrastructure.outputs.api_url }}/api/health" >/dev/null
+          curl --fail --silent --show-error --retry 12 --retry-delay 10 \
+            "${{ steps.infrastructure.outputs.frontend_url }}/" >/dev/null
+      - name: Deployment summary
+        run: |
+          {
+            echo "### Development deployed"
+            echo "- Frontend: ${{ steps.infrastructure.outputs.frontend_url }}"
+            echo "- API: ${{ steps.infrastructure.outputs.api_url }}"
+            echo "- Commit: \`${{ github.sha }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

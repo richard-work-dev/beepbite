@@ -8,6 +8,7 @@ This Terraform root deploys the BeepBite development environment in
 - DynamoDB on-demand tables, streams, encryption, TTL and point-in-time recovery;
 - SQS jobs queue and dead-letter queue;
 - private S3 buckets and CloudFront for the web app and uploads;
+- Route 53 and ACM for the `rikopollo.dpdns.org` development hostnames;
 - Secrets Manager for runtime values and CloudWatch log retention.
 
 The old EC2, VPC and local PostgreSQL runtime is removed by this configuration.
@@ -53,3 +54,33 @@ authenticated WebSocket connections are accepted.
 The serverless foundation is deployable independently of the legacy Go API.
 Business routes are migrated to DynamoDB domain by domain; routes that have not
 been migrated return HTTP 404.
+
+## Automated development deployments
+
+Pull requests into `develop` or `main` build the Lambda archives and validate
+Terraform without AWS credentials. Every push to `develop` assumes the scoped
+`beepbite-github-development` role through GitHub OIDC, plans and applies the
+development state, builds the frontend with the deployed API URL, synchronizes
+it to S3, invalidates CloudFront and runs HTTP smoke checks.
+
+The OIDC provider and deployment role live in the separate `bootstrap/` root so
+the deployment role cannot change its own trust policy. GitHub stores only role,
+region and state coordinates as environment variables; no AWS access keys are
+stored in the repository.
+
+## Development domain
+
+Terraform owns the public Route 53 zone for `rikopollo.dpdns.org` and requests
+an ACM wildcard certificate. Delegate the domain in DigitalPlat to all four
+name servers printed by `terraform output domain_name_servers`.
+
+The first deployment keeps `enable_custom_domains = false`, so the existing AWS
+URLs continue working while DNS propagates. After delegation is visible, set the
+variable to `true` to activate:
+
+- `https://dev.rikopollo.dpdns.org`
+- `https://api-dev.rikopollo.dpdns.org`
+- `wss://ws-dev.rikopollo.dpdns.org`
+
+ACM validation records live in Route 53, allowing AWS to renew the certificate
+without manually sharing certificate files or private keys.

@@ -32,6 +32,10 @@ resource "aws_s3_object" "frontend_index" {
     "<title>BeepBite</title><style>body{font-family:system-ui;margin:4rem auto;max-width:42rem;padding:0 1rem;color:#182018}h1{color:#236b3d}</style>",
     "<h1>BeepBite</h1><p>El ambiente está activo.</p></html>"
   ])
+
+  lifecycle {
+    ignore_changes = [content, content_type]
+  }
 }
 
 resource "aws_cloudfront_origin_access_control" "frontend" {
@@ -47,6 +51,7 @@ resource "aws_cloudfront_distribution" "frontend" {
   default_root_object = "index.html"
   price_class         = "PriceClass_100"
   comment             = "${local.name} web application"
+  aliases             = var.enable_custom_domains ? [local.frontend_domain] : []
 
   origin {
     domain_name              = aws_s3_bucket.frontend.bucket_regional_domain_name
@@ -94,7 +99,10 @@ resource "aws_cloudfront_distribution" "frontend" {
   }
 
   viewer_certificate {
-    cloudfront_default_certificate = true
+    cloudfront_default_certificate = !var.enable_custom_domains
+    acm_certificate_arn            = var.enable_custom_domains ? aws_acm_certificate_validation.application[0].certificate_arn : null
+    ssl_support_method             = var.enable_custom_domains ? "sni-only" : null
+    minimum_protocol_version       = var.enable_custom_domains ? "TLSv1.2_2021" : "TLSv1"
   }
 }
 

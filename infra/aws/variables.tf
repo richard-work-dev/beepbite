@@ -49,3 +49,15 @@ variable "log_retention_days" {
   type        = number
   default     = 14
 }
+
+variable "domain_name" {
+  description = "Public DNS zone delegated to Route 53."
+  type        = string
+  default     = "rikopollo.dpdns.org"
+}
+
+variable "enable_custom_domains" {
+  description = "Activates CloudFront and API Gateway aliases after the Route 53 delegation has propagated."
+  type        = bool
+  default     = false
+}

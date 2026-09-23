@@ -1,16 +1,36 @@
 output "api_url" {
   description = "Public HTTP API endpoint."
-  value       = aws_apigatewayv2_api.http.api_endpoint
+  value       = var.enable_custom_domains ? "https://${local.api_domain}" : aws_apigatewayv2_api.http.api_endpoint
 }
 
 output "websocket_url" {
   description = "Authenticated realtime WebSocket endpoint."
-  value       = "${aws_apigatewayv2_api.realtime.api_endpoint}/${aws_apigatewayv2_stage.realtime.name}"
+  value       = var.enable_custom_domains ? "wss://${local.websocket_domain}" : "${aws_apigatewayv2_api.realtime.api_endpoint}/${aws_apigatewayv2_stage.realtime.name}"
 }
 
 output "frontend_url" {
   description = "CloudFront URL for the web application."
-  value       = "https://${aws_cloudfront_distribution.frontend.domain_name}"
+  value       = var.enable_custom_domains ? "https://${local.frontend_domain}" : "https://${aws_cloudfront_distribution.frontend.domain_name}"
+}
+
+output "domain_name_servers" {
+  description = "Name servers to configure for the domain in DigitalPlat."
+  value       = aws_route53_zone.application.name_servers
+}
+
+output "certificate_status" {
+  description = "ACM certificate status; it becomes ISSUED after DNS delegation propagates."
+  value       = aws_acm_certificate.application.status
+}
+
+output "frontend_bucket" {
+  description = "Private bucket populated by the frontend deployment job."
+  value       = aws_s3_bucket.frontend.id
+}
+
+output "frontend_distribution_id" {
+  description = "CloudFront distribution invalidated after frontend deployments."
+  value       = aws_cloudfront_distribution.frontend.id
 }
 
 output "core_table" {

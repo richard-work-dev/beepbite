@@ -1,3 +1,8 @@
+param(
+    [ValidateSet('api', 'realtime', 'stream', 'worker')]
+    [string[]]$Functions = @('api', 'realtime', 'stream', 'worker')
+)
+
 $ErrorActionPreference = 'Stop'
 
 $backend = Resolve-Path (Join-Path $PSScriptRoot '..\..\..\backend')
@@ -28,7 +33,7 @@ try {
     $env:GOARCH = 'arm64'
     $env:CGO_ENABLED = '0'
 
-    foreach ($name in @('api', 'realtime', 'stream', 'worker')) {
+    foreach ($name in $Functions) {
         $staging = Join-Path $artifacts $name
         Remove-Item -Recurse -Force -ErrorAction SilentlyContinue -Path $staging
         New-Item -ItemType Directory -Force -Path $staging | Out-Null

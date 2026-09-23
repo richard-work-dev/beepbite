@@ -130,6 +130,9 @@ resource "aws_iam_role_policy" "github_application" {
           "lambda:DeleteEventSourceMapping",
           "lambda:GetEventSourceMapping",
           "lambda:ListEventSourceMappings",
+          "lambda:ListTags",
+          "lambda:TagResource",
+          "lambda:UntagResource",
           "lambda:UpdateEventSourceMapping"
         ]
         Resource = "*"

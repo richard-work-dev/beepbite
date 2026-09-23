@@ -17,9 +17,8 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Application = var.project_name
-      Environment = var.environment
-      ManagedBy   = "terraform"
+      Application = "beepbite"
+      ManagedBy   = "terraform-bootstrap"
     }
   }
 }

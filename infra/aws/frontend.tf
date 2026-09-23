@@ -32,6 +32,10 @@ resource "aws_s3_object" "frontend_index" {
     "<title>BeepBite</title><style>body{font-family:system-ui;margin:4rem auto;max-width:42rem;padding:0 1rem;color:#182018}h1{color:#236b3d}</style>",
     "<h1>BeepBite</h1><p>El ambiente está activo.</p></html>"
   ])
+
+  lifecycle {
+    ignore_changes = [content, content_type]
+  }
 }
 
 resource "aws_cloudfront_origin_access_control" "frontend" {

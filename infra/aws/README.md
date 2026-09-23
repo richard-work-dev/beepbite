@@ -53,3 +53,16 @@ authenticated WebSocket connections are accepted.
 The serverless foundation is deployable independently of the legacy Go API.
 Business routes are migrated to DynamoDB domain by domain; routes that have not
 been migrated return HTTP 404.
+
+## Automated development deployments
+
+Pull requests into `develop` or `main` build the Lambda archives and validate
+Terraform without AWS credentials. Every push to `develop` assumes the scoped
+`beepbite-github-development` role through GitHub OIDC, plans and applies the
+development state, builds the frontend with the deployed API URL, synchronizes
+it to S3, invalidates CloudFront and runs HTTP smoke checks.
+
+The OIDC provider and deployment role live in the separate `bootstrap/` root so
+the deployment role cannot change its own trust policy. GitHub stores only role,
+region and state coordinates as environment variables; no AWS access keys are
+stored in the repository.

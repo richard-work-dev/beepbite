@@ -1,0 +1,6 @@
+bucket       = "beepbite-terraform-state-ACCOUNT_ID-us-east-1"
+key          = "beepbite/bootstrap/terraform.tfstate"
+region       = "us-east-1"
+profile      = "beepbite-dev"
+encrypt      = true
+use_lockfile = true

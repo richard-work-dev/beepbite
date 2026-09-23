@@ -13,6 +13,16 @@ output "frontend_url" {
   value       = "https://${aws_cloudfront_distribution.frontend.domain_name}"
 }
 
+output "frontend_bucket" {
+  description = "Private bucket populated by the frontend deployment job."
+  value       = aws_s3_bucket.frontend.id
+}
+
+output "frontend_distribution_id" {
+  description = "CloudFront distribution invalidated after frontend deployments."
+  value       = aws_cloudfront_distribution.frontend.id
+}
+
 output "core_table" {
   description = "Single-table DynamoDB data store."
   value       = aws_dynamodb_table.core.name

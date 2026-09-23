@@ -23,13 +23,12 @@ import (
 )
 
 var (
-	clientsOnce   sync.Once
-	clientsErr    error
-	dynamo        *dynamodb.Client
-	secrets       *secretsmanager.Client
-	jwtSecretOnce sync.Once
-	jwtSecret     string
-	jwtSecretErr  error
+	clientsOnce sync.Once
+	clientsErr  error
+	dynamo      *dynamodb.Client
+	secrets     *secretsmanager.Client
+	jwtSecretMu sync.Mutex
+	jwtSecret   string
 )
 
 func loadClients(ctx context.Context) error {
@@ -46,37 +45,36 @@ func loadClients(ctx context.Context) error {
 }
 
 func loadJWTSecret(ctx context.Context) (string, error) {
-	jwtSecretOnce.Do(func() {
-		if err := loadClients(ctx); err != nil {
-			jwtSecretErr = err
-			return
-		}
-		secretID := os.Getenv("RUNTIME_SECRET_ID")
-		if secretID == "" {
-			jwtSecretErr = errors.New("RUNTIME_SECRET_ID is required")
-			return
-		}
-		out, err := secrets.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{SecretId: aws.String(secretID)})
-		if err != nil {
-			jwtSecretErr = err
-			return
-		}
-		if out.SecretString == nil {
-			jwtSecretErr = errors.New("runtime secret is not a string")
-			return
-		}
-		payload := bytes.TrimPrefix([]byte(*out.SecretString), []byte{0xef, 0xbb, 0xbf})
-		var values map[string]string
-		if err := json.Unmarshal(payload, &values); err != nil {
-			jwtSecretErr = fmt.Errorf("decode runtime secret: %w", err)
-			return
-		}
-		jwtSecret = values["JWT_SECRET"]
-		if jwtSecret == "" {
-			jwtSecretErr = errors.New("JWT_SECRET is missing")
-		}
-	})
-	return jwtSecret, jwtSecretErr
+	jwtSecretMu.Lock()
+	defer jwtSecretMu.Unlock()
+
+	if jwtSecret != "" {
+		return jwtSecret, nil
+	}
+	if err := loadClients(ctx); err != nil {
+		return "", err
+	}
+	secretID := os.Getenv("RUNTIME_SECRET_ID")
+	if secretID == "" {
+		return "", errors.New("RUNTIME_SECRET_ID is required")
+	}
+	out, err := secrets.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{SecretId: aws.String(secretID)})
+	if err != nil {
+		return "", err
+	}
+	if out.SecretString == nil {
+		return "", errors.New("runtime secret is not a string")
+	}
+	payload := bytes.TrimPrefix([]byte(*out.SecretString), []byte{0xef, 0xbb, 0xbf})
+	var values map[string]string
+	if err := json.Unmarshal(payload, &values); err != nil {
+		return "", fmt.Errorf("decode runtime secret: %w", err)
+	}
+	jwtSecret = values["JWT_SECRET"]
+	if jwtSecret == "" {
+		return "", errors.New("JWT_SECRET is missing")
+	}
+	return jwtSecret, nil
 }
 
 func handler(ctx context.Context, request events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error) {

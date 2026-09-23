@@ -1,0 +1,47 @@
+name: Terraform
+
+on:
+  pull_request:
+    branches: [develop, main]
+    paths:
+      - ".github/workflows/deploy-development.yml"
+      - ".github/workflows/terraform.yml"
+      - "backend/cmd/serverless/**"
+      - "backend/go.mod"
+      - "backend/go.sum"
+      - "infra/aws/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Serverless build and Terraform validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: "1.16.2"
+          terraform_wrapper: false
+      - name: Build ARM64 Lambda archives
+        run: bash infra/aws/scripts/build-lambdas.sh
+      - name: Check formatting
+        working-directory: infra/aws
+        run: terraform fmt -check -recursive
+      - name: Initialize providers without the remote backend
+        working-directory: infra/aws
+        run: terraform init -backend=false -input=false
+      - name: Validate Terraform
+        working-directory: infra/aws
+        run: terraform validate
+      - name: Validate deployment bootstrap
+        working-directory: infra/aws/bootstrap
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate

@@ -40,6 +40,17 @@ backend/go.work.sum
 
 .vscode
 
+# Terraform local state and provider cache. State can contain infrastructure
+# metadata and must live in the configured remote backend, never in Git.
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+!*.tfvars.example
+crash.log
+crash.*.log
+
 playwright-report
 # Playwright test artifacts
 test-results/

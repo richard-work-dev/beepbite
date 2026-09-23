@@ -153,6 +153,12 @@ resource "aws_iam_role_policy" "github_application" {
         Resource = "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/beepbite-dev-*"
       },
       {
+        Sid      = "DiscoverApplicationLogGroups"
+        Effect   = "Allow"
+        Action   = "logs:DescribeLogGroups"
+        Resource = "*"
+      },
+      {
         Sid      = "ApplicationRepositories"
         Effect   = "Allow"
         Action   = "ecr:*"

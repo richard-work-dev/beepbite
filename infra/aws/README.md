@@ -24,11 +24,25 @@ availability requirements justify the additional fixed cost.
 - AWS CLI profile `beepbite-dev`
 - credentials must belong to the dedicated IAM user, never the root account
 
+## Remote state
+
+The root module declares an S3 backend without embedding account-specific
+values. Copy `backend.hcl.example` to `backend.hcl`, replace `ACCOUNT_ID`, and
+initialize with:
+
+```powershell
+terraform init -backend-config=backend.hcl
+```
+
+The backend bucket must already exist with public access blocked, encryption
+and versioning enabled. `backend.hcl` is ignored because it identifies the
+operator's account and local profile.
+
 ## Validate without creating resources
 
 ```powershell
 cd infra/aws
-terraform init -backend=false
+terraform init -backend-config=backend.hcl
 terraform fmt -check -recursive
 terraform validate
 terraform plan -refresh=false

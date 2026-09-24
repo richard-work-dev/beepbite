@@ -210,7 +210,7 @@ func haversineKM(lat1, lng1, lat2, lng2 float64) float64 {
 }
 
 func (a *application) marketplaceRating(ctx context.Context, orgID, locationID string) (any, int, error) {
-	reviews, err := a.queryDataRows(ctx, orgID, "reviews")
+	reviews, err := a.queryDataRows(ctx, orgID, "marketplace_reviews")
 	if err != nil {
 		return nil, 0, err
 	}
@@ -220,7 +220,7 @@ func (a *application) marketplaceRating(ctx context.Context, orgID, locationID s
 		if displayString(review["location_id"]) != locationID || (displayString(review["status"]) != "" && displayString(review["status"]) != "visible") {
 			continue
 		}
-		stars, ok := numericValue(valueOr(review, "stars", review["rating"]))
+		stars, ok := numericValue(review["stars"])
 		if ok {
 			total += stars
 			count++
@@ -456,6 +456,10 @@ func (a *application) createMarketplaceOrder(ctx context.Context, slug, body str
 	if tip > subtotal*3 {
 		return errorResponse(400, "tip amount is not valid for this order")
 	}
+	pickupAt, pickupErr := validatePickupAt(input["pickup_at"], fulfillment)
+	if pickupErr != nil {
+		return errorResponse(400, pickupErr.Error())
+	}
 	taxRate, taxInclusive, taxErr := a.marketplaceTaxConfig(ctx, orgID, locationID, location.row)
 	if taxErr != nil {
 		return dataAccessError(taxErr)
@@ -478,6 +482,8 @@ func (a *application) createMarketplaceOrder(ctx context.Context, slug, body str
 		"subtotal_cents": subtotal, "tax_cents": taxCents, "total_cents": total, "tax_rate": taxRate,
 		"tax_inclusive": taxInclusive, "currency_code": valueOr(location.row, "currency_code", nil),
 		"delivery_address": nullableString(input["delivery_address"]), "estimated_prep_time": integerOr(location.row, "estimated_prep_time", 30),
+		"delivery_latitude": valueOr(input, "delivery_latitude", nil), "delivery_longitude": valueOr(input, "delivery_longitude", nil),
+		"estimated_delivery_time": valueOr(input, "estimated_delivery_time", nil), "pickup_at": pickupAt,
 		"gratuity_cents": tip, "business_date": time.Now().UTC().Format("2006-01-02"), "payment_method": paymentMethod,
 	})
 	if err != nil {
@@ -520,9 +526,32 @@ func (a *application) createMarketplaceOrder(ctx context.Context, slug, body str
 			return dataAccessError(err)
 		}
 	}
+	trackingToken, err := randomID()
+	if err != nil {
+		for _, snapshot := range itemSnapshots {
+			_ = a.putDataRow(ctx, orgID, "items", snapshot, false)
+		}
+		for _, createdItem := range createdItems {
+			_ = a.deleteStoredRow(ctx, orgID, "order_items", displayString(createdItem["id"]))
+		}
+		_ = a.deleteStoredRow(ctx, orgID, "orders", displayString(order["id"]))
+		return dataAccessError(err)
+	}
+	tracking, err := a.createStoredRow(ctx, orgID, "order_tracking_tokens", marketplaceTrackingTokenRow(trackingToken, displayString(order["id"])))
+	if err != nil {
+		for _, snapshot := range itemSnapshots {
+			_ = a.putDataRow(ctx, orgID, "items", snapshot, false)
+		}
+		for _, createdItem := range createdItems {
+			_ = a.deleteStoredRow(ctx, orgID, "order_items", displayString(createdItem["id"]))
+		}
+		_ = a.deleteStoredRow(ctx, orgID, "orders", displayString(order["id"]))
+		return dataAccessError(err)
+	}
 	return mustJSONResponse(201, map[string]any{
 		"order_id": order["id"], "order_number": orderNumber, "status": status,
 		"payment_method": paymentMethod, "total": float64(total) / float64(currencyScale(displayString(valueOr(location.row, "currency_code", location.row["default_currency_code"])))),
+		"tracking_token": tracking["token"], "tracking_url": "/track/" + url.PathEscape(displayString(tracking["token"])),
 	})
 }
 

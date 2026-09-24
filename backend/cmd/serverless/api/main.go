@@ -126,6 +126,9 @@ func handler(ctx context.Context, request events.APIGatewayV2HTTPRequest) (event
 		if response, handled, marketplaceErr := application.handleMarketplaceAPI(ctx, request); handled {
 			return response, marketplaceErr
 		}
+		if response, handled, engagementErr := application.handleMarketplaceEngagementAPI(ctx, request); handled {
+			return response, engagementErr
+		}
 		if table, ok := dataTableFromPath(request.RawPath); ok {
 			return application.handleData(ctx, request, table)
 		}

@@ -19,6 +19,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/beepbite/backend/internal/auth"
 	"golang.org/x/crypto/bcrypt"
@@ -30,12 +31,15 @@ const (
 )
 
 type application struct {
-	table     string
-	dynamo    *dynamodb.Client
-	secrets   *secretsmanager.Client
-	secretID  string
-	secretMu  sync.Mutex
-	jwtSecret string
+	table          string
+	dynamo         *dynamodb.Client
+	secrets        *secretsmanager.Client
+	s3             *s3.Client
+	secretID       string
+	uploadsBucket  string
+	uploadsBaseURL string
+	secretMu       sync.Mutex
+	jwtSecret      string
 }
 
 type credentialsRequest struct {
@@ -77,10 +81,13 @@ func loadApplication(ctx context.Context) (*application, error) {
 			return
 		}
 		app = &application{
-			table:    os.Getenv("CORE_TABLE"),
-			dynamo:   dynamodb.NewFromConfig(cfg),
-			secrets:  secretsmanager.NewFromConfig(cfg),
-			secretID: os.Getenv("RUNTIME_SECRET_ID"),
+			table:          os.Getenv("CORE_TABLE"),
+			dynamo:         dynamodb.NewFromConfig(cfg),
+			secrets:        secretsmanager.NewFromConfig(cfg),
+			s3:             s3.NewFromConfig(cfg),
+			secretID:       os.Getenv("RUNTIME_SECRET_ID"),
+			uploadsBucket:  os.Getenv("UPLOADS_BUCKET"),
+			uploadsBaseURL: strings.TrimRight(os.Getenv("UPLOADS_BASE_URL"), "/"),
 		}
 		if app.table == "" || app.secretID == "" {
 			appErr = errors.New("runtime is not configured")
@@ -131,6 +138,15 @@ func handler(ctx context.Context, request events.APIGatewayV2HTTPRequest) (event
 		}
 		if response, handled, driverErr := application.handleDriverAPI(ctx, request); handled {
 			return response, driverErr
+		}
+		if response, handled, memberErr := application.handleMemberAPI(ctx, request); handled {
+			return response, memberErr
+		}
+		if response, handled, securityErr := application.handleSecurityAPI(ctx, request); handled {
+			return response, securityErr
+		}
+		if response, handled, platformErr := application.handlePlatformAPI(ctx, request); handled {
+			return response, platformErr
 		}
 		if table, ok := dataTableFromPath(request.RawPath); ok {
 			return application.handleData(ctx, request, table)
@@ -214,6 +230,7 @@ func (a *application) signUp(ctx context.Context, request events.APIGatewayV2HTT
 	}
 	// Invite acceptance is best-effort so a transient lookup cannot block signup.
 	_ = a.acceptMatchingDriverInvites(ctx, userID, email)
+	_ = a.acceptMatchingMemberInvites(ctx, userID, email)
 	return jsonResponse(201, session)
 }
 

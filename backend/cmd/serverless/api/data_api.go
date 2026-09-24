@@ -126,7 +126,7 @@ func (a *application) insertData(ctx context.Context, request events.APIGatewayV
 
 	if table == "organizations" {
 		if a.singleStore.Enabled {
-			return errorResponse(403, "this deployment is configured for one store"), nil
+			return errorResponse(403, "este sistema está configurado para una sola tienda"), nil
 		}
 		if len(rows) != 1 {
 			return errorResponse(400, "create one organization at a time"), nil

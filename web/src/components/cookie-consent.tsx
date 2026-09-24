@@ -141,7 +141,7 @@ const CookieConsent = () => {
         ref={bannerRef}
         role="dialog"
         aria-modal={expanded ? 'true' : undefined}
-        aria-label="Cookie preferences"
+        aria-label="Preferencias de cookies"
         style={{
           position: 'fixed',
           bottom: 0,
@@ -161,6 +161,7 @@ const CookieConsent = () => {
             boxShadow: '0 -4px 24px rgba(0,0,0,0.12)',
             maxWidth: '680px',
             width: '100%',
+            boxSizing: 'border-box',
             padding: '1.25rem 1.5rem',
             pointerEvents: 'auto',
             animation: 'cc-slide-up 0.3s cubic-bezier(0.16,1,0.3,1)',
@@ -172,18 +173,18 @@ const CookieConsent = () => {
             <span aria-hidden="true" style={{ fontSize: '1.5rem', lineHeight: 1 }}>&#127850;</span>
             <div style={{ flex: 1 }}>
               <p style={{ margin: '0 0 0.4rem', fontWeight: 700, fontSize: '0.95rem', color: '#1a1a2e' }}>
-                We use cookies &amp; local storage
+                Usamos cookies y almacenamiento local
               </p>
               <p style={{ margin: 0, fontSize: '0.82rem', color: '#555', lineHeight: 1.5 }}>
-                We use local storage to remember your session and preferences.
-                Analytics helps us improve. Marketing is optional.{' '}
+                Usamos almacenamiento local para recordar tu sesión y preferencias.
+                Las estadísticas nos ayudan a mejorar y el marketing es opcional.{' '}
                 <a
                   href="/legal/privacy"
                   style={{ color: '#e67e22', textDecoration: 'underline' }}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  Privacy Policy
+                  Política de privacidad
                 </a>
               </p>
             </div>
@@ -202,14 +203,14 @@ const CookieConsent = () => {
                 <legend
                   style={{ fontSize: '0.82rem', fontWeight: 600, color: '#333', marginBottom: '0.75rem' }}
                 >
-                  Manage cookie preferences
+                  Administrar preferencias de cookies
                 </legend>
 
                 {/* Necessary — always on, disabled */}
                 <ConsentRow
                   id="cc-necessary"
-                  label="Necessary"
-                  description="Session management, authentication, cart and consent storage. Cannot be disabled."
+                  label="Necesarias"
+                  description="Administran la sesión, autenticación, carrito y consentimiento. No pueden desactivarse."
                   checked={true}
                   disabled
                 />
@@ -217,8 +218,8 @@ const CookieConsent = () => {
                 {/* Analytics */}
                 <ConsentRow
                   id="cc-analytics"
-                  label="Analytics"
-                  description="Helps us understand how users interact with the app so we can improve it. No personal data is sold."
+                  label="Estadísticas"
+                  description="Nos ayudan a entender el uso de la aplicación para mejorarla. No vendemos datos personales."
                   checked={prefs.analytics}
                   onChange={() => togglePref('analytics')}
                 />
@@ -227,7 +228,7 @@ const CookieConsent = () => {
                 <ConsentRow
                   id="cc-marketing"
                   label="Marketing"
-                  description="Allows us to personalise promotions and relevant product suggestions."
+                  description="Permite personalizar promociones y sugerencias de productos."
                   checked={prefs.marketing}
                   onChange={() => togglePref('marketing')}
                 />
@@ -249,12 +250,12 @@ const CookieConsent = () => {
               onClick={acceptAll}
               style={btnStyle('primary')}
             >
-              Accept all
+              Aceptar todas
             </button>
 
             {expanded ? (
               <button onClick={savePreferences} style={btnStyle('secondary')}>
-                Save preferences
+                Guardar preferencias
               </button>
             ) : (
               <button
@@ -262,7 +263,7 @@ const CookieConsent = () => {
                 aria-expanded={expanded}
                 style={btnStyle('secondary')}
               >
-                Manage preferences
+                Configurar
               </button>
             )}
 
@@ -270,7 +271,7 @@ const CookieConsent = () => {
               onClick={acceptNecessary}
               style={btnStyle('ghost')}
             >
-              Necessary only
+              Solo necesarias
             </button>
           </div>
         </div>

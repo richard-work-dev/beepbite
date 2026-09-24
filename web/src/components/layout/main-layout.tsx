@@ -15,8 +15,8 @@ const MainLayout = () => {
     const unsub = onMissingCapability((capability) => {
       toast({
         variant: 'destructive',
-        title: 'Permission required',
-        description: `You need the ${capability} permission. Ask a manager.`,
+        title: 'Permiso requerido',
+        description: `Necesitás el permiso ${capability}. Consultá con un encargado.`,
       });
     });
     return () => { unsub(); };

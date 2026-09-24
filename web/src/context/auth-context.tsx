@@ -441,7 +441,7 @@ export function AuthProvider({ children, onNavigate, pathname }: {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError || !session) {
-        throw new Error('No valid authentication session found. Please sign in again.');
+        throw new Error('No hay una sesión válida. Ingresá nuevamente.');
       }
 
       const { data, error } = await supabase.auth.updateUser({
@@ -485,7 +485,7 @@ export function AuthProvider({ children, onNavigate, pathname }: {
       // Get the organization_id from the pending invite
       const currentInvite = pendingInvites.find(invite => invite.invite_id === inviteId);
       if (!currentInvite) {
-        throw new Error('Invite not found');
+        throw new Error('No se encontró la invitación');
       }
 
       const { data, error } = await supabase.rpc<RespondInvitationResult>('respond_invitation', {
@@ -497,7 +497,7 @@ export function AuthProvider({ children, onNavigate, pathname }: {
       if (error) throw error;
 
       if (!data?.success) {
-        throw new Error(data?.error || 'Failed to accept invitation');
+        throw new Error(data?.error || 'No se pudo aceptar la invitación');
       }
 
       // Refresh invites and organizations after accepting
@@ -515,7 +515,7 @@ export function AuthProvider({ children, onNavigate, pathname }: {
       // Get the organization_id from the pending invite
       const currentInvite = pendingInvites.find(invite => invite.invite_id === inviteId);
       if (!currentInvite) {
-        throw new Error('Invite not found');
+        throw new Error('No se encontró la invitación');
       }
 
       const { data, error } = await supabase.rpc<RespondInvitationResult>('respond_invitation', {
@@ -527,7 +527,7 @@ export function AuthProvider({ children, onNavigate, pathname }: {
       if (error) throw error;
 
       if (!data?.success) {
-        throw new Error(data?.error || 'Failed to reject invitation');
+        throw new Error(data?.error || 'No se pudo rechazar la invitación');
       }
 
       // Refresh invites after rejecting

@@ -191,11 +191,11 @@ func (a *application) ready(ctx context.Context) (events.APIGatewayV2HTTPRespons
 func (a *application) signUp(ctx context.Context, request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
 	var input credentialsRequest
 	if err := decodeBody(request.Body, &input); err != nil {
-		return errorResponse(400, "invalid request"), nil
+		return errorResponse(400, "solicitud inválida"), nil
 	}
 	email, err := normalizeEmail(input.Email)
 	if err != nil || len(input.Password) < 8 {
-		return errorResponse(400, "valid email and password of at least 8 characters required"), nil
+		return errorResponse(400, "se requiere un correo válido y una contraseña de al menos 8 caracteres"), nil
 	}
 	if a.singleStore.Enabled && !strings.EqualFold(email, a.singleStore.OwnerEmail) {
 		invited, inviteErr := a.hasPendingStoreInvite(ctx, email)
@@ -203,7 +203,7 @@ func (a *application) signUp(ctx context.Context, request events.APIGatewayV2HTT
 			return events.APIGatewayV2HTTPResponse{}, inviteErr
 		}
 		if !invited {
-			return errorResponse(403, "registration requires an invitation"), nil
+			return errorResponse(403, "el registro requiere una invitación"), nil
 		}
 	}
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
@@ -222,7 +222,7 @@ func (a *application) signUp(ctx context.Context, request events.APIGatewayV2HTT
 	}
 	meta, err := json.Marshal(input.Meta)
 	if err != nil {
-		return errorResponse(400, "invalid metadata"), nil
+		return errorResponse(400, "metadatos inválidos"), nil
 	}
 	items := []types.TransactWriteItem{
 		{Put: &types.Put{TableName: aws.String(a.table), ConditionExpression: aws.String("attribute_not_exists(PK)"), Item: userItem(newUser, string(meta), createdAt)}},
@@ -244,7 +244,7 @@ func (a *application) signUp(ctx context.Context, request events.APIGatewayV2HTT
 	if err != nil {
 		var cancelled *types.TransactionCanceledException
 		if errors.As(err, &cancelled) {
-			return errorResponse(409, "user already exists"), nil
+			return errorResponse(409, "el usuario ya existe"), nil
 		}
 		return events.APIGatewayV2HTTPResponse{}, err
 	}
@@ -257,15 +257,15 @@ func (a *application) signUp(ctx context.Context, request events.APIGatewayV2HTT
 func (a *application) signIn(ctx context.Context, request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
 	var input credentialsRequest
 	if err := decodeBody(request.Body, &input); err != nil {
-		return errorResponse(400, "invalid request"), nil
+		return errorResponse(400, "solicitud inválida"), nil
 	}
 	email, err := normalizeEmail(input.Email)
 	if err != nil {
-		return errorResponse(401, "invalid email or password"), nil
+		return errorResponse(401, "correo o contraseña incorrectos"), nil
 	}
 	currentUser, err := a.findUserByEmail(ctx, email)
 	if err != nil || bcrypt.CompareHashAndPassword([]byte(currentUser.PasswordHash), []byte(input.Password)) != nil {
-		return errorResponse(401, "invalid email or password"), nil
+		return errorResponse(401, "correo o contraseña incorrectos"), nil
 	}
 	session, refreshItem, err := a.newSession(ctx, currentUser, request.Headers["user-agent"], time.Now().UTC())
 	if err != nil {

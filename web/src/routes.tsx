@@ -17,33 +17,24 @@ import LandingPage from './pages/landing';
 
 // Loading message mapping
 const getLoadingMessage = (pathname: string) => {
-  if (pathname.includes('/signin')) return 'Loading sign in...';
-  if (pathname.includes('/signup')) return 'Loading sign up...';
-  if (pathname.includes('/home')) return 'Loading home...';
-  if (pathname.includes('/reports')) return 'Loading reports...';
-  if (pathname.includes('/reviews')) return 'Loading reviews...';
-  if (pathname.includes('/menu')) return 'Loading menu...';
-  if (pathname.includes('/categories')) return 'Loading categories...';
-  if (pathname.includes('/settings')) return 'Loading settings...';
-  if (pathname.includes('/account')) return 'Loading account...';
-  if (pathname.includes('/docs/privacy')) return 'Loading privacy policy...';
-  if (pathname.includes('/docs/terms')) return 'Loading terms of service...';
-  if (pathname.includes('/docs/cookies')) return 'Loading cookie policy...';
-  if (pathname.includes('/docs/custom-avatar-url')) return 'Loading avatar guide...';
-  if (pathname.includes('/docs/getting-started')) return 'Loading quick start...';
-  if (pathname.startsWith('/s/')) return 'Loading store login...';
-  if (pathname.startsWith('/q/')) return 'Loading Quick POS...';
-  if (pathname.includes('/pos/workspace')) return 'Loading POS workspace...';
-  if (pathname === '/work') return 'Loading kitchen workspace...';
-  if (pathname.includes('/docs/pos-overview')) return 'Loading POS guide...';
-  if (pathname.includes('/docs/menu-management')) return 'Loading menu guide...';
-  if (pathname.includes('/docs/whatsapp-setup')) return 'Loading WhatsApp guide...';
-  if (pathname.includes('/docs')) return 'Loading documentation...';
-  if (pathname.startsWith('/store/')) return 'Loading store...';
-  if (pathname.includes('/discover')) return 'Loading discover...';
-  if (pathname.includes('/checkout')) return 'Loading checkout...';
-  if (pathname === '/') return 'Loading homepage...';
-  return 'Loading...';
+  if (pathname.includes('/signin')) return 'Cargando acceso...';
+  if (pathname.includes('/signup')) return 'Cargando registro...';
+  if (pathname.includes('/home')) return 'Cargando inicio...';
+  if (pathname.includes('/reports')) return 'Cargando reportes...';
+  if (pathname.includes('/reviews')) return 'Cargando reseñas...';
+  if (pathname.includes('/menu')) return 'Cargando menú...';
+  if (pathname.includes('/categories')) return 'Cargando categorías...';
+  if (pathname.includes('/settings')) return 'Cargando configuración...';
+  if (pathname.includes('/account')) return 'Cargando cuenta...';
+  if (pathname.startsWith('/s/')) return 'Cargando acceso del personal...';
+  if (pathname.startsWith('/q/')) return 'Cargando caja rápida...';
+  if (pathname.includes('/pos/workspace')) return 'Cargando punto de venta...';
+  if (pathname === '/work') return 'Cargando cocina...';
+  if (pathname.startsWith('/store/')) return 'Cargando tienda...';
+  if (pathname.includes('/discover')) return 'Cargando tiendas...';
+  if (pathname.includes('/checkout')) return 'Cargando pedido...';
+  if (pathname === '/') return 'Cargando RikoPollo...';
+  return 'Cargando...';
 };
 
 // Custom Suspense wrapper with dynamic message
@@ -177,6 +168,7 @@ const AppRoutes = () => {
       <Routes>
         {/* Public routes with blank layout */}
         <Route element={<BlankLayout />}>
+          <Route path="/" element={<LandingPage />} />
           <Route path="/signin" element={<SignIn />} />
           <Route path="/signup" element={<SignUp />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -197,7 +189,6 @@ const AppRoutes = () => {
 
         {/* Public routes with main layout */}
         <Route element={<MainLayout />}>
-          <Route path="/" element={<LandingPage />} />
           <Route path="/docs" element={<DocsIndex />} />
           <Route path="/docs/privacy" element={<DocsPrivacyPolicy />} />
           <Route path="/docs/terms" element={<DocsTermsOfService />} />

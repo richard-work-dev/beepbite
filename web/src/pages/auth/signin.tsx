@@ -36,10 +36,10 @@ const SignInPage = () => {
     const newErrors: FormErrors = {};
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
+      newErrors.email = 'Ingresá un correo electrónico válido';
     }
     if (!formData.password) {
-      newErrors.password = 'Password is required';
+      newErrors.password = 'La contraseña es obligatoria';
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -72,10 +72,10 @@ const SignInPage = () => {
       <Card variant="elevated" className="w-full">
         <CardHeader className="pb-2 pt-7 px-7 text-center space-y-1">
           <CardTitle className="text-2xl font-display font-semibold text-foreground">
-            Welcome back
+            Acceso al personal
           </CardTitle>
           <CardDescription className="text-sm text-muted-foreground">
-            Sign in to manage your restaurant
+            Ingresá para gestionar RikoPollo
           </CardDescription>
         </CardHeader>
 
@@ -103,7 +103,7 @@ const SignInPage = () => {
                   name="email"
                   type="email"
                   autoComplete="email"
-                  placeholder="you@restaurant.com"
+                  placeholder="tu@correo.com"
                   value={formData.email}
                   onChange={handleInputChange}
                   disabled={isLoading}
@@ -144,7 +144,7 @@ const SignInPage = () => {
                   name="password"
                   type="password"
                   autoComplete="current-password"
-                  placeholder="Enter your password"
+                  placeholder="Ingresá tu contraseña"
                   value={formData.password}
                   onChange={handleInputChange}
                   disabled={isLoading}
@@ -172,12 +172,12 @@ const SignInPage = () => {
               {isLoading ? (
                 <span className="flex items-center gap-2">
                   <span className="w-4 h-4 border-2 border-primary-foreground/40 border-t-primary-foreground rounded-full animate-spin" aria-hidden="true" />
-                  Signing in…
+                  Ingresando…
                 </span>
               ) : (
                 <span className="flex items-center gap-2">
                   <Utensils className="w-4 h-4" aria-hidden="true" />
-                  Sign in to Dashboard
+                  Ingresar al sistema
                 </span>
               )}
             </Button>
@@ -192,7 +192,7 @@ const SignInPage = () => {
               onClick={() => navigate('/signup')}
               disabled={isLoading}
             >
-              Create one free
+              Crear cuenta con invitación
             </button>
           </p>
         </CardContent>

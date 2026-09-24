@@ -75,13 +75,14 @@ i18n
   .use(initReactI18next)   // binds i18n instance into React context
   .init({
     resources,
-    fallbackLng: 'en',
+    lng: 'es',
+    fallbackLng: 'es',
     supportedLngs: ['en', 'af', 'zu', 'xh', 'pt', 'fr', 'es', 'ar', 'hi'],
 
     // LanguageDetector order: honour explicit localStorage choice first,
     // then browser navigator, then fall through to fallbackLng.
     detection: {
-      order: ['localStorage', 'navigator', 'htmlTag'],
+      order: ['localStorage'],
       caches: ['localStorage'],
       lookupLocalStorage: 'beepbite_language',
     },

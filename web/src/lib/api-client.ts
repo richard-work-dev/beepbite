@@ -78,6 +78,19 @@ function writeAuth(v: AuthSession | null) {
   else localStorage.removeItem(STORAGE_KEY);
 }
 
+function readStoredID(key: string): string | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const value: unknown = JSON.parse(raw);
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const id = (value as Record<string, unknown>).id;
+    return typeof id === 'string' && id ? id : null;
+  } catch {
+    return null;
+  }
+}
+
 const listeners = new Set<AuthListener>();
 function emitAuth(event: AuthEvent, session: AuthSession | null) {
   for (const cb of listeners) {
@@ -129,6 +142,11 @@ async function raw(method: string, path: string, { body, headers = {}, auth = tr
     if (actorRef?.current?._token && actorRef.current._expiresAt > Date.now()) {
       h['X-Actor-Token'] = actorRef.current._token;
     }
+
+    const organizationId = readStoredID('activeOrganization');
+    const locationId = readStoredID('activeLocation');
+    if (organizationId) h['X-Organization-ID'] = organizationId;
+    if (locationId) h['X-Location-ID'] = locationId;
   }
   const res = await fetch(`${API_URL}${path}`, {
     method,

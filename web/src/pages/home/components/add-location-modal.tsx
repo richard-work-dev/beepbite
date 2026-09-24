@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, type FormEvent } from 'react';
+import { useState, useMemo, type FormEvent } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -23,14 +23,6 @@ import { MapPin, Loader2 } from 'lucide-react';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import { countryOptions } from '@/lib/locale-data';
 
-// Mirrors backend/migrations/001_baseline.sql `regions` table (subset).
-interface LocationRegion {
-  id: string;
-  name: string;
-  code?: string;
-  currency: string;
-}
-
 interface AddLocationModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -54,44 +46,13 @@ const AddLocationModal = ({ open, onOpenChange, onSuccess }: AddLocationModalPro
   // free-text field holding "South Africa", which migration 056 would now reject
   // outright — locations.country carries a CHECK of ^[A-Z]{2}$.
   const [country, setCountry] = useState('');
-  const [regionId, setRegionId] = useState('');
-  const [regions, setRegions] = useState<LocationRegion[]>([]);
-  const [loadingRegions, setLoadingRegions] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-
-  // Fetch regions when modal opens
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    setLoadingRegions(true);
-    (async () => {
-      try {
-        const { data, error } = await supabase
-          .from('regions')
-          .select('id,name,code,currency')
-          .eq('is_active', true)
-          .order('name', { ascending: true });
-        if (cancelled) return;
-        if (error) throw error;
-        setRegions(data || []);
-        // Deliberately no auto-selected region. The region carries the currency
-        // (it is rendered as "Name (CUR)"), so preselecting one silently
-        // denominates the new location — the operator picks it.
-      } catch (err) {
-        console.error('Failed to load regions:', err);
-      } finally {
-        if (!cancelled) setLoadingRegions(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [open]);
 
   const reset = () => {
     setName('');
     setAddress('');
     setCity('');
     setCountry('');
-    setRegionId('');
     setSubmitting(false);
   };
 
@@ -100,7 +61,7 @@ const AddLocationModal = ({ open, onOpenChange, onSuccess }: AddLocationModalPro
     onOpenChange(v);
   };
 
-  const isValid = name.trim().length >= 2 && regionId;
+  const isValid = name.trim().length >= 2 && country;
 
   const countries = useMemo(() => countryOptions(), []);
 
@@ -113,7 +74,6 @@ const AddLocationModal = ({ open, onOpenChange, onSuccess }: AddLocationModalPro
       const payload = {
         organization_id: activeOrganization.id,
         name: name.trim(),
-        region_id: regionId,
         ...(address.trim() && { address: address.trim() }),
         ...(city.trim() && { city: city.trim() }),
         ...(country && { country }),
@@ -188,36 +148,6 @@ const AddLocationModal = ({ open, onOpenChange, onSuccess }: AddLocationModalPro
             />
           </div>
 
-          {/* Region */}
-          <div className="space-y-1.5">
-            <Label htmlFor="loc-region">
-              Region <span className="text-destructive">*</span>
-            </Label>
-            {loadingRegions ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground h-10 px-3 border rounded-md">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Loading regions…
-              </div>
-            ) : (
-              <Select
-                value={regionId}
-                onValueChange={setRegionId}
-                disabled={submitting}
-              >
-                <SelectTrigger id="loc-region">
-                  <SelectValue placeholder="Select a region" />
-                </SelectTrigger>
-                <SelectContent>
-                  {regions.map((r) => (
-                    <SelectItem key={r.id} value={r.id}>
-                      {r.name} ({r.currency})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
-
           {/* Address */}
           <div className="space-y-1.5">
             <Label htmlFor="loc-address">Street address</Label>
@@ -251,7 +181,9 @@ const AddLocationModal = ({ open, onOpenChange, onSuccess }: AddLocationModalPro
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="loc-country">Country</Label>
+              <Label htmlFor="loc-country">
+                Country <span className="text-destructive">*</span>
+              </Label>
               <Select
                 value={country || undefined}
                 onValueChange={setCountry}

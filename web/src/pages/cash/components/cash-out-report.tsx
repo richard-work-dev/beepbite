@@ -152,7 +152,7 @@ export function CashOutReport({ sessionId }: CashOutReportProps) {
       if (apiErr) {
         setError(apiErr.message ?? 'Failed to load cash-out report');
       } else {
-        setReport(data as unknown as CashOutReportData | null);
+        setReport(data);
       }
       setLoading(false);
     }).catch((err: unknown) => {

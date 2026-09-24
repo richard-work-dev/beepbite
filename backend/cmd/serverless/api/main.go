@@ -40,6 +40,7 @@ type application struct {
 	uploadsBaseURL string
 	secretMu       sync.Mutex
 	jwtSecret      string
+	singleStore    singleStoreConfig
 }
 
 type credentialsRequest struct {
@@ -88,8 +89,9 @@ func loadApplication(ctx context.Context) (*application, error) {
 			secretID:       os.Getenv("RUNTIME_SECRET_ID"),
 			uploadsBucket:  os.Getenv("UPLOADS_BUCKET"),
 			uploadsBaseURL: strings.TrimRight(os.Getenv("UPLOADS_BASE_URL"), "/"),
+			singleStore:    loadSingleStoreConfig(),
 		}
-		if app.table == "" || app.secretID == "" {
+		if app.table == "" || app.secretID == "" || app.singleStore.validate() != nil {
 			appErr = errors.New("runtime is not configured")
 		}
 	})
@@ -195,6 +197,15 @@ func (a *application) signUp(ctx context.Context, request events.APIGatewayV2HTT
 	if err != nil || len(input.Password) < 8 {
 		return errorResponse(400, "valid email and password of at least 8 characters required"), nil
 	}
+	if a.singleStore.Enabled && !strings.EqualFold(email, a.singleStore.OwnerEmail) {
+		invited, inviteErr := a.hasPendingStoreInvite(ctx, email)
+		if inviteErr != nil {
+			return events.APIGatewayV2HTTPResponse{}, inviteErr
+		}
+		if !invited {
+			return errorResponse(403, "registration requires an invitation"), nil
+		}
+	}
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return events.APIGatewayV2HTTPResponse{}, err
@@ -213,14 +224,23 @@ func (a *application) signUp(ctx context.Context, request events.APIGatewayV2HTT
 	if err != nil {
 		return errorResponse(400, "invalid metadata"), nil
 	}
-	_, err = a.dynamo.TransactWriteItems(ctx, &dynamodb.TransactWriteItemsInput{TransactItems: []types.TransactWriteItem{
+	items := []types.TransactWriteItem{
 		{Put: &types.Put{TableName: aws.String(a.table), ConditionExpression: aws.String("attribute_not_exists(PK)"), Item: userItem(newUser, string(meta), createdAt)}},
 		{Put: &types.Put{TableName: aws.String(a.table), ConditionExpression: aws.String("attribute_not_exists(PK)"), Item: map[string]types.AttributeValue{
 			"PK": &types.AttributeValueMemberS{Value: "EMAIL#" + email}, "SK": &types.AttributeValueMemberS{Value: "LOOKUP"},
 			"user_id": &types.AttributeValueMemberS{Value: userID}, "entity_type": &types.AttributeValueMemberS{Value: "email_lookup"},
 		}}},
 		{Put: &types.Put{TableName: aws.String(a.table), Item: refreshItem}},
-	}})
+	}
+	storeItems, err := a.singleStore.signupItems(userID, email, createdAt)
+	if err != nil {
+		return events.APIGatewayV2HTTPResponse{}, err
+	}
+	if err := a.bindSingleStoreTable(storeItems); err != nil {
+		return events.APIGatewayV2HTTPResponse{}, err
+	}
+	items = append(items, storeItems...)
+	_, err = a.dynamo.TransactWriteItems(ctx, &dynamodb.TransactWriteItemsInput{TransactItems: items})
 	if err != nil {
 		var cancelled *types.TransactionCanceledException
 		if errors.As(err, &cancelled) {

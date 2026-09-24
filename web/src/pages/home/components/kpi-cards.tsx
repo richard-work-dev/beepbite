@@ -29,25 +29,25 @@ export default function KpiCards({ kpis, previous, currency = 'USD', loading }: 
   const cards: KpiCard[] = [
     {
       icon: DollarSign,
-      label: 'Gross Sales',
+      label: 'Ventas brutas',
       value: fmt(kpis?.gross_sales_cents),
       delta: pctDelta(kpis?.gross_sales_cents ?? 0, previous?.gross_sales_cents ?? 0),
     },
     {
       icon: ShoppingBag,
-      label: 'Orders',
+      label: 'Pedidos',
       value: (kpis?.order_count ?? 0).toLocaleString(),
       delta: pctDelta(kpis?.order_count ?? 0, previous?.order_count ?? 0),
     },
     {
       icon: BarChart2,
-      label: 'Avg Order Value',
+      label: 'Valor promedio',
       value: fmt(kpis?.avg_order_value_cents),
       delta: pctDelta(kpis?.avg_order_value_cents ?? 0, previous?.avg_order_value_cents ?? 0),
     },
     {
       icon: Users,
-      label: 'New Customers',
+      label: 'Clientes nuevos',
       value: (kpis?.new_customers ?? 0).toLocaleString(),
       delta: pctDelta(kpis?.new_customers ?? 0, previous?.new_customers ?? 0),
     },
@@ -56,7 +56,7 @@ export default function KpiCards({ kpis, previous, currency = 'USD', loading }: 
   return (
     <Stagger
       className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4"
-      aria-label="Performance summary"
+      aria-label="Resumen de rendimiento"
     >
       {cards.map((card) => (
         <StaggerItem key={card.label}>

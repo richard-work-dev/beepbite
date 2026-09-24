@@ -6,7 +6,7 @@
 // ---- Customers (joined onto orders) ----------------------------------------
 
 // Mirrors backend/migrations/001_baseline.sql `customers` table (subset
-// selected by the `orders` queries in this page).
+// selected by the `pedidos` queries in this page).
 export interface HomeOrderCustomer {
   id?: string;
   first_name?: string | null;
@@ -17,8 +17,8 @@ export interface HomeOrderCustomer {
 
 // ---- Orders ------------------------------------------------------------------
 
-// Mirrors backend/migrations/001_baseline.sql `orders` table (subset read via
-// `supabase.from('orders').select('*, customers(...)')` across this page).
+// Mirrors backend/migrations/001_baseline.sql `pedidos` table (subset read via
+// `supabase.from('pedidos').select('*, customers(...)')` across this page).
 export interface HomeOrder {
   id: string;
   order_number: string;

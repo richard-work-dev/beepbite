@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { Flame } from 'lucide-react';
 import type { HeatmapCell } from '@/services/stats';
 
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DAYS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
 const HOURS = Array.from({ length: 24 }, (_, h) => {
   if (h === 0) return '12a';
@@ -28,7 +28,7 @@ function cellText(norm: number): string {
 
 function HeatmapSkeleton() {
   return (
-    <div className="space-y-2" aria-label="Loading heatmap" aria-busy="true">
+    <div className="space-y-2" aria-label="Cargando mapa de actividad" aria-busy="true">
       {Array.from({ length: 7 }).map((_, i) => (
         <div key={i} className="flex items-center gap-1.5">
           <Skeleton className="w-8 h-4 flex-shrink-0" />
@@ -81,9 +81,9 @@ export default function BusyHeatmap({ cells = [], currency = 'USD', loading }: B
           <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
             <Flame className="h-4 w-4" aria-hidden="true" />
           </span>
-          <span>Busy Days &amp; Hours</span>
+          <span>Días y horarios con más actividad</span>
           <span className="text-xs font-normal text-muted-foreground ml-1 hidden sm:inline">
-            — trailing 12 weeks
+            — últimas 12 semanas
           </span>
         </CardTitle>
       </CardHeader>
@@ -94,14 +94,14 @@ export default function BusyHeatmap({ cells = [], currency = 'USD', loading }: B
           <div
             className="flex flex-col items-center justify-center h-36 gap-3"
             role="status"
-            aria-label="No activity data"
+            aria-label="Sin datos de actividad"
           >
             <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center">
               <Flame className="w-6 h-6 text-muted-foreground/40" aria-hidden="true" />
             </div>
             <div className="text-center">
-              <p className="text-sm font-medium text-muted-foreground">No activity data yet</p>
-              <p className="text-xs text-muted-foreground/60 mt-0.5">Data appears after your first orders</p>
+              <p className="text-sm font-medium text-muted-foreground">Todavía no hay datos de actividad</p>
+              <p className="text-xs text-muted-foreground/60 mt-0.5">Los datos aparecerán después de los primeros pedidos</p>
             </div>
           </div>
         ) : (
@@ -110,7 +110,7 @@ export default function BusyHeatmap({ cells = [], currency = 'USD', loading }: B
               <div
                 className="min-w-[420px]"
                 role="img"
-                aria-label="Order activity heatmap by day and hour"
+                aria-label="Mapa de actividad de pedidos por día y hora"
               >
                 {/* Hour axis header */}
                 <div className="flex items-center mb-1.5" aria-hidden="true">
@@ -145,8 +145,8 @@ export default function BusyHeatmap({ cells = [], currency = 'USD', loading }: B
                           role="gridcell"
                           aria-label={
                             hasActivity
-                              ? `${DAYS[dow]} ${HOURS[hour]}: ${cell.order_count} orders`
-                              : `${DAYS[dow]} ${HOURS[hour]}: no activity`
+                              ? `${DAYS[dow]} ${HOURS[hour]}: ${cell.order_count} pedidos`
+                              : `${DAYS[dow]} ${HOURS[hour]}: sin actividad`
                           }
                           className={cn(
                             'flex-1 rounded-sm cursor-default transition-all duration-100',
@@ -185,7 +185,7 @@ export default function BusyHeatmap({ cells = [], currency = 'USD', loading }: B
 
                 {/* Legend */}
                 <div className="flex items-center gap-1.5 mt-3 justify-end" aria-hidden="true">
-                  <span className="text-[10px] text-muted-foreground">Less</span>
+                  <span className="text-[10px] text-muted-foreground">Menos</span>
                   {[0, 0.2, 0.4, 0.6, 0.8, 1].map((v) => (
                     <div
                       key={v}
@@ -193,7 +193,7 @@ export default function BusyHeatmap({ cells = [], currency = 'USD', loading }: B
                       style={{ width: 14, height: 14, backgroundColor: cellBg(v) }}
                     />
                   ))}
-                  <span className="text-[10px] text-muted-foreground">More</span>
+                  <span className="text-[10px] text-muted-foreground">Más</span>
                 </div>
               </div>
             </div>
@@ -217,7 +217,7 @@ export default function BusyHeatmap({ cells = [], currency = 'USD', loading }: B
                     {DAYS[tooltip.dow]} {HOURS[tooltip.hour]}
                   </span>
                   <span className="text-primary font-bold">
-                    {tooltip.count.toLocaleString()} orders
+                    {tooltip.count.toLocaleString()} pedidos
                   </span>
                   <span className="text-muted-foreground">
                     {formatPrice(tooltip.sales, currency)}

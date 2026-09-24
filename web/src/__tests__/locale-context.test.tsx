@@ -33,10 +33,10 @@ describe('useLocale — neutral baseline with no provider value', () => {
     expect(result.current.country).toBe('');
   });
 
-  it('defaults timezone to UTC and taxLabel to "Tax"', () => {
+  it('defaults timezone to UTC and taxLabel to Spanish', () => {
     const { result } = renderHook(() => useLocale());
     expect(result.current.timezone).toBe('UTC');
-    expect(result.current.taxLabel).toBe('Tax');
+    expect(result.current.taxLabel).toBe('Impuesto');
   });
 });
 
@@ -143,7 +143,7 @@ describe('LocaleProvider — an explicit `value` override wins over `location`',
       wrapper: wrapperFor({ value: { currency: 'EUR' } }),
     });
     expect(result.current.timezone).toBe('UTC');
-    expect(result.current.taxLabel).toBe('Tax');
+    expect(result.current.taxLabel).toBe('Impuesto');
   });
 });
 

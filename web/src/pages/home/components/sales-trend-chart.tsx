@@ -67,14 +67,14 @@ function CustomTooltip({ active, payload, label, currency }: CustomTooltipProps)
     >
       <p className="font-semibold text-muted-foreground mb-2 text-xs uppercase tracking-wide">{label}</p>
       <p className="text-primary font-bold text-lg tabular-nums">{formatPrice(sales_cents ?? 0, currency)}</p>
-      <p className="text-muted-foreground text-xs mt-0.5">{(order_count ?? 0).toLocaleString()} orders</p>
+      <p className="text-muted-foreground text-xs mt-0.5">{(order_count ?? 0).toLocaleString()} pedidos</p>
     </div>
   );
 }
 
 function ChartSkeleton() {
   return (
-    <div className="px-2 space-y-3" aria-label="Loading chart" aria-busy="true">
+    <div className="px-2 space-y-3" aria-label="Cargando gráfico" aria-busy="true">
       <div className="flex items-end gap-1.5 h-52">
         {[40, 65, 45, 80, 55, 90, 70].map((h, i) => (
           <div
@@ -120,7 +120,7 @@ export default function SalesTrendChart({ series = [], period = 'week', currency
           <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
             <TrendingUp className="h-4 w-4" aria-hidden="true" />
           </span>
-          Sales Trend
+          Tendencia de ventas
         </CardTitle>
       </CardHeader>
       <CardContent className="px-3 pb-6 pt-3">
@@ -130,14 +130,14 @@ export default function SalesTrendChart({ series = [], period = 'week', currency
           <div
             className="flex flex-col items-center justify-center h-52 gap-3"
             role="status"
-            aria-label="No sales data"
+            aria-label="Sin datos de ventas"
           >
             <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center">
               <TrendingUp className="w-6 h-6 text-muted-foreground/40" aria-hidden="true" />
             </div>
             <div className="text-center">
-              <p className="text-sm font-medium text-muted-foreground">No sales data</p>
-              <p className="text-xs text-muted-foreground/60 mt-0.5">for this period</p>
+              <p className="text-sm font-medium text-muted-foreground">Sin datos de ventas</p>
+              <p className="text-xs text-muted-foreground/60 mt-0.5">para este período</p>
             </div>
           </div>
         ) : (

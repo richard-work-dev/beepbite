@@ -98,9 +98,9 @@ const CartSection = ({
     <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-primary/15 bg-success/10">
       <div className="flex items-center gap-2 text-xs font-medium text-success">
         <Unlock className="w-3.5 h-3.5" />
-        Register open
+        Caja abierta
         {registerOpenedAt && (
-          <span className="text-success/80">· since {fmtOpenedTime(registerOpenedAt)}</span>
+          <span className="text-success/80">· desde {fmtOpenedTime(registerOpenedAt)}</span>
         )}
       </div>
       {onProcessReturn && (
@@ -110,7 +110,7 @@ const CartSection = ({
           onClick={onProcessReturn}
           className="h-auto p-0 text-xs font-medium text-primary hover:text-primary/80"
         >
-          Process Return
+          Procesar devolución
         </Button>
       )}
     </div>
@@ -123,12 +123,12 @@ const CartSection = ({
         <div className="flex-1 flex items-center justify-center p-8">
           <div className="text-center">
             <ShoppingCart className="w-16 h-16 text-muted-foreground/40 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-foreground mb-2">Cart is empty</h3>
-            <p className="text-muted-foreground">Add items from the menu to get started.</p>
+            <h3 className="text-lg font-medium text-foreground mb-2">El carrito está vacío</h3>
+            <p className="text-muted-foreground">Agregá productos del menú para comenzar.</p>
             {lastPlacedOrderNumber && (
               <div className="mt-6 inline-flex items-center gap-2 px-3 py-2 rounded-full bg-success/10 text-success border border-success/30 text-sm font-medium animate-in fade-in slide-in-from-bottom-2 duration-300">
                 <CheckCircle2 className="w-4 h-4" />
-                Order #{lastPlacedOrderNumber} sent to kitchen
+                Pedido n.º{lastPlacedOrderNumber} enviado a cocina
               </div>
             )}
           </div>
@@ -185,7 +185,7 @@ const CartSection = ({
                 {/* Expandable Variation Edit Section */}
                 {isExpanded && originalItem?.item_variations && (
                   <div className="mb-4 p-3 bg-primary/5 rounded-lg border border-primary/20">
-                    <h5 className="text-sm font-medium text-foreground mb-3">Edit Options:</h5>
+                    <h5 className="text-sm font-medium text-foreground mb-3">Editar opciones:</h5>
                     <div className="space-y-3">
                       {originalItem.item_variations.map((variation) => (
                         <div key={variation.id} className="space-y-2">
@@ -229,14 +229,14 @@ const CartSection = ({
                           onClick={() => toggleCartItemExpanded(item.cartItemKey)}
                           className="flex-1 h-7 text-xs"
                         >
-                          Cancel
+                          Cancelar
                         </Button>
                         <Button
                           size="sm"
                           onClick={() => saveInlineVariationEdit(item.cartItemKey)}
                           className="flex-1 h-7 text-xs"
                         >
-                          Save
+                          Guardar
                         </Button>
                       </div>
                     </div>
@@ -285,7 +285,7 @@ const CartSection = ({
                       {format(Math.round(Number(item.price) * item.quantity * scale))}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {format(Math.round(parseFloat(String(item.price)) * scale))} each
+                      {format(Math.round(parseFloat(String(item.price)) * scale))} cada uno
                     </div>
                   </div>
                 </div>
@@ -327,7 +327,7 @@ const CartSection = ({
                 className="flex-1 border-primary/30 text-primary hover:bg-primary/10"
               >
                 <RotateCcw className="w-4 h-4 mr-2" />
-                Clear
+                Vaciar
               </Button>
               <Button
                 onClick={onPlaceOrder}
@@ -337,10 +337,10 @@ const CartSection = ({
                 {placingOrder ? (
                   <>
                     <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Placing…
+                    Creando…
                   </>
                 ) : (
-                  'Place Order'
+                  'Confirmar pedido'
                 )}
               </Button>
             </div>
@@ -352,7 +352,7 @@ const CartSection = ({
                 className="w-full border-border text-muted-foreground hover:bg-muted"
               >
                 <RotateCcw className="w-4 h-4 mr-2" />
-                Process Return
+                Procesar devolución
               </Button>
             )}
           </>
@@ -371,13 +371,13 @@ const CartSection = ({
                 className="flex-1 border-primary/30 text-primary hover:bg-primary/10"
               >
                 <RotateCcw className="w-4 h-4 mr-2" />
-                Clear
+                Vaciar
               </Button>
               <Button
                 onClick={() => setIsCreateOrderOpen(true)}
                 className="flex-2 h-12 text-lg font-semibold"
               >
-                Create Order
+                Crear pedido
               </Button>
             </div>
           </>

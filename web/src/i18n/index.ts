@@ -23,7 +23,6 @@
 
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import LanguageDetector from 'i18next-browser-languagedetector';
 
 // --- locale resources (static import so no network round-trip needed) ---
 import en from './locales/en.json';
@@ -71,21 +70,12 @@ function applyDocumentDir(lng: string) {
 // promise, so this is caught (not void-marked) defensively in case a
 // future change introduces async resource loading.
 i18n
-  .use(LanguageDetector)   // auto-detect from navigator / localStorage / cookie
   .use(initReactI18next)   // binds i18n instance into React context
   .init({
     resources,
     lng: 'es',
     fallbackLng: 'es',
     supportedLngs: ['en', 'af', 'zu', 'xh', 'pt', 'fr', 'es', 'ar', 'hi'],
-
-    // LanguageDetector order: honour explicit localStorage choice first,
-    // then browser navigator, then fall through to fallbackLng.
-    detection: {
-      order: ['localStorage'],
-      caches: ['localStorage'],
-      lookupLocalStorage: 'beepbite_language',
-    },
 
     interpolation: {
       escapeValue: false, // React already escapes output

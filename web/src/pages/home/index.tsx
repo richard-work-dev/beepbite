@@ -97,13 +97,13 @@ const Home = () => {
     try {
       const { data, error } = await fetchStatsSummary(locationId, period);
       if (error) {
-        setSummaryError(error.message || 'Failed to load stats');
+        setSummaryError(error.message || 'No se pudieron cargar las estadísticas');
       } else {
         setSummary(data);
       }
     } catch (err) {
       console.error('Error loading stats summary:', err);
-      setSummaryError('Failed to load stats');
+      setSummaryError('No se pudieron cargar las estadísticas');
     } finally {
       setSummaryLoading(false);
     }
@@ -147,7 +147,7 @@ const Home = () => {
       }
 
       let query = supabase
-        .from('orders')
+        .from('pedidos')
         .select(`
           *,
           customers (
@@ -204,7 +204,7 @@ const Home = () => {
     );
     try {
       const { error } = await supabase
-        .from('orders')
+        .from('pedidos')
         .update({ status: newStatus, updated_at: new Date().toISOString() })
         .eq('id', orderId);
       if (error) throw error;
@@ -220,8 +220,8 @@ const Home = () => {
       <GuardScreen
         icon={AlertCircle}
         iconClass="text-primary"
-        title="No Organization Selected"
-        subtitle="Please select an organization to view your dashboard."
+        title="No hay una organización seleccionada"
+        subtitle="Seleccioná una organización para ver el panel."
       />
     );
   }
@@ -232,7 +232,7 @@ const Home = () => {
       <GuardScreen
         icon={RefreshCw}
         iconClass="text-primary animate-spin"
-        subtitle="Loading your dashboard…"
+        subtitle="Cargando el panel…"
       />
     );
   }
@@ -261,14 +261,14 @@ const Home = () => {
       <Reveal delay={0}>
         <PageHeader
           icon={LayoutDashboard}
-          title="Dashboard"
+          title="Panel de control"
           description={
             resolvedLocation?.name
               ? <>
                   <MapPin className="inline-block w-3.5 h-3.5 mr-1 text-primary/70" aria-hidden="true" />
                   {resolvedLocation.name}
                 </>
-              : 'All locations'
+              : 'Todas las ubicaciones'
           }
           actions={
             <div className="flex items-center gap-2">
@@ -277,7 +277,7 @@ const Home = () => {
                 variant="ghost"
                 size="icon"
                 onClick={handleRefresh}
-                aria-label="Refresh dashboard"
+                aria-label="Actualizar panel"
                 className="h-9 w-9 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-primary/40"
               >
                 <RefreshCw className="w-4 h-4" aria-hidden="true" />
@@ -296,7 +296,7 @@ const Home = () => {
           >
             <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-warning" aria-hidden="true" />
             <div>
-              <p className="font-medium">Analytics unavailable</p>
+              <p className="font-medium">Estadísticas no disponibles</p>
               <p className="text-warning/80 text-xs mt-0.5">{summaryError}</p>
             </div>
             <Button
@@ -305,14 +305,14 @@ const Home = () => {
               onClick={loadSummary}
               className="ml-auto h-7 px-2 text-xs text-warning hover:bg-warning/10 flex-shrink-0"
             >
-              Retry
+              Reintentar
             </Button>
           </div>
         </Reveal>
       )}
 
       {/* KPI row */}
-      <section aria-label="Key performance indicators">
+      <section aria-label="Indicadores principales">
         <KpiCards
           kpis={kpis}
           previous={previous}
@@ -325,7 +325,7 @@ const Home = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-6">
         {/* Left column: trend + heatmap */}
         <section
-          aria-label="Sales analytics charts"
+          aria-label="Gráficos de ventas"
           className="lg:col-span-2 space-y-5 sm:space-y-6"
         >
           <Reveal delay={0.1}>
@@ -347,7 +347,7 @@ const Home = () => {
 
         {/* Right column: live orders */}
         <section
-          aria-label="Live orders"
+          aria-label="Pedidos en curso"
           className="lg:col-span-1"
         >
           <Reveal delay={0.12}>

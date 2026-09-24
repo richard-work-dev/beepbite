@@ -101,10 +101,13 @@ jobs:
         run: |
           set -euo pipefail
           bucket="s3://${{ steps.infrastructure.outputs.frontend_bucket }}"
-          aws s3 sync web/dist "$bucket" --delete --exclude index.html \
+          aws s3 sync web/dist "$bucket" --delete --exclude index.html --exclude sw.js \
             --cache-control "public,max-age=31536000,immutable"
           aws s3 cp web/dist/index.html "$bucket/index.html" \
             --content-type "text/html; charset=utf-8" \
+            --cache-control "no-cache, no-store, must-revalidate"
+          aws s3 cp web/dist/sw.js "$bucket/sw.js" \
+            --content-type "application/javascript; charset=utf-8" \
             --cache-control "no-cache, no-store, must-revalidate"
       - name: Invalidate CloudFront
         shell: bash

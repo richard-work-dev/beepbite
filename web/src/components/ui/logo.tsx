@@ -13,12 +13,12 @@ const Logo = ({ className = "", variant = "default" }: LogoProps) => {
   if (variant === "minimal") {
     return (
       <div className={`flex items-center ${className}`}>
-        <div className="flex h-10 w-10 items-center justify-center rounded-md border-2 border-border bg-card shadow-card">
-          <img src="/icon.svg" alt="" className="h-6 w-6" />
+        <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border-2 border-primary/30 bg-card shadow-card">
+          <img src="/rikopollo/logo.jpeg" alt="" className="h-full w-full object-cover" />
         </div>
         <span className="font-display ml-3 text-2xl leading-none">
-          <span className="text-foreground">Beep</span>
-          <span className="text-primary">Bite</span>
+          <span className="text-foreground">Riko</span>
+          <span className="text-primary">Pollo</span>
         </span>
       </div>
     );
@@ -27,18 +27,18 @@ const Logo = ({ className = "", variant = "default" }: LogoProps) => {
   return (
     <div className={`text-center ${className}`}>
       <div className="mb-4 flex items-center justify-center">
-        <div className="flex h-20 w-20 items-center justify-center rounded-lg border-2 border-background bg-primary shadow-elevated">
-          <img src="/icon.svg" alt="BeepBite" className="h-11 w-11 brightness-0 invert" />
+        <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-2 border-primary/30 bg-card shadow-elevated">
+          <img src="/rikopollo/logo.jpeg" alt="RikoPollo" className="h-full w-full object-cover" />
         </div>
       </div>
 
       <div className="space-y-2">
         <h1 className="font-display text-4xl leading-none sm:text-5xl">
-          <span className="text-primary">Beep</span>
-          <span className="text-foreground">Bite</span>
+          <span className="text-foreground">Riko</span>
+          <span className="text-primary">Pollo</span>
         </h1>
         <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground sm:text-base">
-          Restaurant point-of-sale
+          Sabor que da gusto
         </p>
       </div>
     </div>

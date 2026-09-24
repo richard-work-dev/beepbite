@@ -123,7 +123,7 @@ export default function OpenRegisterModal({ open, onOpenChange, locationId, onOp
       })
       .catch((err) => {
         if (cancelled) return;
-        setDrawersError(err.message || 'Failed to load drawers');
+        setDrawersError(err.message || 'No se pudieron cargar las cajas');
       })
       .finally(() => !cancelled && setDrawersLoading(false));
     return () => { cancelled = true; };
@@ -148,7 +148,7 @@ export default function OpenRegisterModal({ open, onOpenChange, locationId, onOp
   const handleSubmit = async () => {
     setSubmitError('');
     if (!drawerId) {
-      setSubmitError('Please select a drawer first');
+      setSubmitError('Primero seleccioná una caja');
       return;
     }
     setSubmitting(true);
@@ -169,7 +169,7 @@ export default function OpenRegisterModal({ open, onOpenChange, locationId, onOp
       onOpened?.({ session, drawerId });
       onOpenChange(false);
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : 'Failed to open register');
+      setSubmitError(err instanceof Error ? err.message : 'No se pudo abrir la caja');
     } finally {
       setSubmitting(false);
     }
@@ -181,20 +181,20 @@ export default function OpenRegisterModal({ open, onOpenChange, locationId, onOp
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <Unlock className="w-5 h-5 text-primary" />
-            Open Register
+            Abrir caja
           </DialogTitle>
           <DialogDescription>
-            Count the opening float in your cash drawer to start your shift.
+            Contá el fondo inicial de la caja para comenzar el turno.
           </DialogDescription>
         </DialogHeader>
 
         {/* Drawer selector */}
         <div className="space-y-1.5">
-          <Label htmlFor="reg-drawer">Drawer</Label>
+          <Label htmlFor="reg-drawer">Caja</Label>
           {drawersLoading ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Loading drawers…
+              Cargando cajas…
             </div>
           ) : drawersError ? (
             <Alert variant="destructive">
@@ -203,7 +203,7 @@ export default function OpenRegisterModal({ open, onOpenChange, locationId, onOp
             </Alert>
           ) : drawers.length === 0 ? (
             <p className="text-sm text-muted-foreground py-2">
-              No active drawers for this location. Please ask an admin to configure one.
+              No hay cajas activas para esta ubicación. Pedile a un administrador que configure una.
             </p>
           ) : (
             <select
@@ -221,7 +221,7 @@ export default function OpenRegisterModal({ open, onOpenChange, locationId, onOp
 
         {/* Denominations */}
         <div className="space-y-2">
-          <Label className="text-sm font-medium text-foreground">Denominations</Label>
+          <Label className="text-sm font-medium text-foreground">Denominaciones</Label>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {denoms.map((d) => (
               <DenomRow
@@ -236,10 +236,10 @@ export default function OpenRegisterModal({ open, onOpenChange, locationId, onOp
 
         {/* Optional note */}
         <div className="space-y-1.5">
-          <Label htmlFor="reg-note">Opening note (optional)</Label>
+          <Label htmlFor="reg-note">Nota de apertura (opcional)</Label>
           <Input
             id="reg-note"
-            placeholder="Anything noteworthy about the float?"
+            placeholder="¿Hay algo para registrar sobre el fondo inicial?"
             value={openingNote}
             onChange={(e) => setOpeningNote(e.target.value)}
           />
@@ -254,7 +254,7 @@ export default function OpenRegisterModal({ open, onOpenChange, locationId, onOp
         >
           <div className="flex items-center gap-2 text-sm font-medium text-foreground">
             <Wallet className="w-4 h-4 text-primary" />
-            Opening Float Total
+            Total del fondo inicial
           </div>
           <span className="text-xl font-bold text-primary tabular-nums">
             {format(totalCents)}
@@ -275,7 +275,7 @@ export default function OpenRegisterModal({ open, onOpenChange, locationId, onOp
             onClick={() => onOpenChange(false)}
             disabled={submitting}
           >
-            Cancel
+            Cancelar
           </Button>
           <Button
             type="button"
@@ -286,12 +286,12 @@ export default function OpenRegisterModal({ open, onOpenChange, locationId, onOp
             {submitting ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Opening…
+                Abriendo…
               </>
             ) : (
               <>
                 <Unlock className="w-4 h-4 mr-2" />
-                Open Register
+                Abrir caja
               </>
             )}
           </Button>

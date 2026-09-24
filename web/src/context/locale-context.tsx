@@ -56,12 +56,12 @@ export interface LocaleContextValue {
  */
 const NEUTRAL: LocaleContextValue = {
   currency: '',
-  locale: '',
+  locale: 'es-AR',
   timezone: 'UTC',
   country: '',
   taxRate: 0,
   taxInclusive: true,
-  taxLabel: 'Tax',
+  taxLabel: 'Impuesto',
   phoneCountryCode: '',
 };
 
@@ -126,14 +126,14 @@ export function LocaleProvider({ location, value, children }: {
       // An empty locale means "use the reader's own", which Intl handles
       // natively. That is the right default: the operator's number formatting
       // preference is expressed by their browser unless they overrode it.
-      locale: location.locale || '',
+      locale: location.locale || 'es-AR',
       timezone: location.timezone || 'UTC',
       country: (location.country || '').toUpperCase(),
       taxRate: Number(location.tax_rate ?? 0) || 0,
       // Defaults to true only because that is the backend's own default for
       // existing rows; it is always read from the record when present.
       taxInclusive: location.tax_inclusive ?? true,
-      taxLabel: location.tax_label || 'Tax',
+      taxLabel: location.tax_label || 'Impuesto',
       phoneCountryCode: String(location.phone_country_code || '').replace(/^\+/, ''),
     };
   }, [location, value]);

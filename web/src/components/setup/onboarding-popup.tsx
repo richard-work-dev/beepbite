@@ -37,7 +37,7 @@ const OnboardingPopup = () => {
         .single();
 
       if (orgError) throw orgError;
-      if (!org?.id) throw new Error('Failed to create organization');
+      if (!org?.id) throw new Error('No se pudo crear la organización');
 
       const { error: memberError } = await supabase
         .from('organization_members')
@@ -49,8 +49,8 @@ const OnboardingPopup = () => {
       await fetchOrganizations();
 
       toast({
-        title: 'Welcome!',
-        description: `${trimmedName} created. Add a location from Settings when you're ready.`,
+        title: '¡Bienvenido!',
+        description: `${trimmedName} fue creado. Podés agregar un local desde Configuración.`,
       });
     } catch (err: unknown) {
       const errObj = err && typeof err === 'object' ? (err as Record<string, unknown>) : null;
@@ -69,7 +69,7 @@ const OnboardingPopup = () => {
         : '';
       console.error('Onboarding error:', err);
       toast({
-        title: 'Setup failed',
+        title: 'No se pudo completar la configuración',
         description: `${detail}${status}`,
         variant: 'destructive',
       });
@@ -86,19 +86,19 @@ const OnboardingPopup = () => {
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>Set up your organisation</DialogTitle>
+          <DialogTitle>Configurá tu negocio</DialogTitle>
           <DialogDescription>
-            One quick step before you start. You can add locations and other
-            details from Settings.
+            Solo falta un paso antes de comenzar. Después podrás agregar locales y
+            otros datos desde Configuración.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
           <div className="space-y-1">
-            <Label htmlFor="onboarding-name">Business name</Label>
+            <Label htmlFor="onboarding-name">Nombre del negocio</Label>
             <Input
               id="onboarding-name"
-              placeholder="e.g. Mario's Pizza"
+              placeholder="Ej.: RikoPollo"
               value={name}
               onChange={(e) => setName(e.target.value)}
               disabled={loading}
@@ -113,7 +113,7 @@ const OnboardingPopup = () => {
             className="w-full"
             disabled={loading || !isValid}
           >
-            {loading ? 'Setting up…' : 'Get started'}
+            {loading ? 'Configurando…' : 'Comenzar'}
           </Button>
         </form>
       </DialogContent>

@@ -61,15 +61,15 @@ export default function LiveOrdersPanel({
 
   const getStatusLabel = (status: string): string => {
     const labels: Record<string, string> = {
-      pending:            'Pending',
-      confirmed:          'Confirmed',
-      preparing:          'Preparing',
-      ready:              'Ready',
-      out_for_delivery:   'Out for Delivery',
-      delivered:          'Delivered',
-      completed:          'Completed',
-      cancelled:          'Cancelled',
-      pending_on_delivery:'Awaiting Payment',
+      pending:            'Pendiente',
+      confirmed:          'Confirmado',
+      preparing:          'En preparación',
+      ready:              'Listo',
+      out_for_delivery:   'En reparto',
+      delivered:          'Entregado',
+      completed:          'Completado',
+      cancelled:          'Cancelado',
+      pending_on_delivery:'Pago pendiente',
     };
     return labels[status] || status;
   };
@@ -90,10 +90,10 @@ export default function LiveOrdersPanel({
           <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
             <Radio className="h-4 w-4" aria-hidden="true" />
           </span>
-          Live Orders
+          Pedidos en curso
           {activeCount > 0 && (
             <span
-              aria-label={`${activeCount} active orders`}
+              aria-label={`${activeCount} pedidos activos`}
               className="ml-auto text-xs font-bold bg-primary text-primary-foreground rounded-full px-2.5 py-0.5 tabular-nums"
             >
               {activeCount}

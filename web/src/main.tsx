@@ -18,9 +18,11 @@ import CookieConsent from '@/components/cookie-consent'; // Wave 42 cookie conse
 // Wave 13 — offline Tier 1: register the service worker (app-shell + menu cache).
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch((err) => {
-      console.warn('[sw] registration failed', err);
-    });
+    navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
+      .then((registration) => registration.update())
+      .catch((err) => {
+        console.warn('[sw] registration failed', err);
+      });
   });
 }
 

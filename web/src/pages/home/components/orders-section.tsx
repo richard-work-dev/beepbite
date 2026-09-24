@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { markPaidOnDelivery } from '@/services/payments';
 import { hasCapability } from '@/services/pos';
 import { useMoney } from '@/context/locale-context';
@@ -36,14 +37,14 @@ import type { HomeOrder, HomeOrderDetails, HomeOrderEditFormData } from '../type
 // Shorter label for CTA buttons
 function getStatusLabelShort(status: string): string {
   const labels: Record<string, string> = {
-    pending:          'Pending',
-    confirmed:        'Confirmed',
-    preparing:        'Preparing',
-    ready:            'Ready',
-    out_for_delivery: 'Out for Del.',
-    delivered:        'Delivered',
-    completed:        'Complete',
-    cancelled:        'Cancelled',
+    pending:          'Pendiente',
+    confirmed:        'Confirmado',
+    preparing:        'En preparación',
+    ready:            'Listo',
+    out_for_delivery: 'En reparto',
+    delivered:        'Entregado',
+    completed:        'Completado',
+    cancelled:        'Cancelado',
   };
   return labels[status] || status;
 }
@@ -104,7 +105,7 @@ function PanelHeader({ onBack, title, orderNumber, statusBadge }: PanelHeaderPro
         variant="ghost"
         size="icon"
         onClick={onBack}
-        aria-label="Back to orders list"
+        aria-label="Volver a la lista de pedidos"
         className="h-8 w-8 rounded-full text-muted-foreground hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary flex-shrink-0"
       >
         <ArrowLeft className="w-4 h-4" aria-hidden="true" />
@@ -154,11 +155,11 @@ function OrderDetailsView({
     <div className="absolute inset-0 flex flex-col">
       <PanelHeader
         onBack={onBack}
-        title="Order Details"
+        title="Detalles del pedido"
         orderNumber={order.order_number}
         statusBadge={
           <Badge className={cn('text-xs font-medium px-2 py-0.5', getStatusColor(order.status))}>
-            {order.status === 'out_for_delivery' ? 'Out for Del.' : getStatusLabel(order.status)}
+            {getStatusLabel(order.status)}
           </Badge>
         }
       />
@@ -173,10 +174,10 @@ function OrderDetailsView({
         ) : selectedOrderDetails ? (
           <div className="p-4 space-y-4 pb-6">
             {/* Order Items */}
-            <section aria-label="Order items">
+            <section aria-label="Productos del pedido">
               <div className="flex items-center gap-1.5 mb-2">
                 <Utensils className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Items</h3>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Productos</h3>
               </div>
               <div className="rounded-xl border border-border bg-card overflow-hidden divide-y divide-border">
                 {selectedOrderDetails.order_items && selectedOrderDetails.order_items.length > 0 ? (
@@ -185,7 +186,7 @@ function OrderDetailsView({
                       <div key={index} className="flex justify-between items-start p-3 gap-3">
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-sm text-foreground truncate">
-                            {item.items?.name || item.name || 'Unknown Item'}
+                            {item.items?.name || item.name || 'Producto desconocido'}
                           </p>
                           {item.items?.description && (
                             <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{item.items.description}</p>
@@ -224,63 +225,69 @@ function OrderDetailsView({
                 ) : (
                   <div className="flex flex-col items-center justify-center py-8 gap-2">
                     <Utensils className="w-8 h-8 text-muted-foreground" aria-hidden="true" />
-                    <p className="text-sm text-muted-foreground">No items found</p>
+                    <p className="text-sm text-muted-foreground">No se encontraron productos</p>
                   </div>
                 )}
               </div>
             </section>
 
             {/* Customer */}
-            <section aria-label="Customer information">
+            <section aria-label="Información del cliente">
               <div className="flex items-center gap-1.5 mb-2">
                 <User className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Customer</h3>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Cliente</h3>
               </div>
               <div className="rounded-xl border border-border bg-card px-3 py-1">
-                <InfoRow label="Name">
+                <InfoRow label="Nombre">
                   {selectedOrderDetails.customers?.first_name} {selectedOrderDetails.customers?.last_name || 'N/A'}
                 </InfoRow>
-                <InfoRow label="Phone">
+                <InfoRow label="Teléfono">
                   <span className="inline-flex items-center gap-1 bg-primary/10 text-primary px-2 py-0.5 rounded-full text-xs font-medium">
                     <PhoneCall className="w-3 h-3" aria-hidden="true" />
-                    {selectedOrderDetails.customers?.whatsapp_number || 'No phone'}
+                    {selectedOrderDetails.customers?.whatsapp_number || 'Sin teléfono'}
                   </span>
                 </InfoRow>
                 {selectedOrderDetails.customers?.email && (
-                  <InfoRow label="Email">{selectedOrderDetails.customers.email}</InfoRow>
+                  <InfoRow label="Correo">{selectedOrderDetails.customers.email}</InfoRow>
                 )}
               </div>
             </section>
 
             {/* Order Info */}
-            <section aria-label="Order information">
+            <section aria-label="Información del pedido">
               <div className="flex items-center gap-1.5 mb-2">
                 <ShoppingBag className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Order Info</h3>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Datos del pedido</h3>
               </div>
               <div className="rounded-xl border border-border bg-card px-3 py-1">
-                <InfoRow label="Type">
+                <InfoRow label="Tipo">
                   <span className="capitalize bg-muted text-muted-foreground px-2 py-0.5 rounded text-xs">
-                    {selectedOrderDetails.order_type || 'delivery'}
+                    {selectedOrderDetails.order_type === 'delivery'
+                      ? 'Entrega a domicilio'
+                      : selectedOrderDetails.order_type === 'pickup'
+                        ? 'Retiro'
+                        : selectedOrderDetails.order_type === 'dine_in'
+                          ? 'Consumo en el local'
+                          : selectedOrderDetails.order_type || 'Entrega a domicilio'}
                   </span>
                 </InfoRow>
-                <InfoRow label="Created">
+                <InfoRow label="Creado">
                   <span className="inline-flex items-center gap-1 text-muted-foreground text-xs">
                     <Calendar className="w-3 h-3" aria-hidden="true" />
-                    {formatDistanceToNow(new Date(selectedOrderDetails.created_at), { addSuffix: true })}
+                    {formatDistanceToNow(new Date(selectedOrderDetails.created_at), { addSuffix: true, locale: es })}
                   </span>
                 </InfoRow>
                 {selectedOrderDetails.estimated_prep_time && (
-                  <InfoRow label="Prep Time">
+                  <InfoRow label="Tiempo de preparación">
                     <span className="inline-flex items-center gap-1 bg-primary/10 text-primary px-2 py-0.5 rounded text-xs">
                       <Timer className="w-3 h-3" aria-hidden="true" />
                       {selectedOrderDetails.estimated_prep_time} min
                     </span>
                   </InfoRow>
                 )}
-                <InfoRow label="Status">
+                <InfoRow label="Estado">
                   <Badge className={cn('text-xs px-2 py-0.5', getStatusColor(selectedOrderDetails.status))}>
-                    {selectedOrderDetails.status === 'out_for_delivery' ? 'Out for Del.' : getStatusLabel(selectedOrderDetails.status)}
+                    {getStatusLabel(selectedOrderDetails.status)}
                   </Badge>
                 </InfoRow>
               </div>
@@ -288,15 +295,15 @@ function OrderDetailsView({
 
             {/* Delivery */}
             {selectedOrderDetails.delivery_address && (
-              <section aria-label="Delivery information">
+              <section aria-label="Información de entrega">
                 <div className="flex items-center gap-1.5 mb-2">
                   <MapPin className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
-                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Delivery</h3>
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Entrega</h3>
                 </div>
                 <div className="rounded-xl border border-border bg-card px-3 py-1">
-                  <InfoRow label="Address">{selectedOrderDetails.delivery_address}</InfoRow>
+                  <InfoRow label="Dirección">{selectedOrderDetails.delivery_address}</InfoRow>
                   {selectedOrderDetails.delivery_instructions && (
-                    <InfoRow label="Instructions">
+                    <InfoRow label="Instrucciones">
                       <span className="bg-warning/10 text-warning px-2 py-0.5 rounded text-xs">
                         {selectedOrderDetails.delivery_instructions}
                       </span>
@@ -308,10 +315,10 @@ function OrderDetailsView({
 
             {/* Notes */}
             {(selectedOrderDetails.notes || selectedOrderDetails.kitchen_notes) && (
-              <section aria-label="Order notes">
+              <section aria-label="Notas del pedido">
                 <div className="flex items-center gap-1.5 mb-2">
                   <FileText className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
-                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Notes</h3>
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Notas</h3>
                 </div>
                 <div className="rounded-xl border border-border bg-card px-3 py-1">
                   {selectedOrderDetails.notes && (
@@ -322,7 +329,7 @@ function OrderDetailsView({
                     </InfoRow>
                   )}
                   {selectedOrderDetails.kitchen_notes && (
-                    <InfoRow label="Kitchen">
+                    <InfoRow label="Cocina">
                       <span className="bg-primary/10 text-primary px-2 py-0.5 rounded text-xs">
                         {selectedOrderDetails.kitchen_notes}
                       </span>
@@ -351,16 +358,16 @@ function OrderDetailsView({
                 onClick={() => onEdit(order)}
                 className="h-11 px-4 rounded-xl border-border hover:bg-muted text-sm"
               >
-                Edit
+                Editar
               </Button>
             </div>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full gap-3 p-6">
             <AlertCircle className="w-12 h-12 text-muted-foreground" aria-hidden="true" />
-            <p className="text-sm text-muted-foreground">Failed to load order details</p>
+            <p className="text-sm text-muted-foreground">No se pudieron cargar los detalles del pedido</p>
             <Button variant="outline" size="sm" onClick={onBack} className="rounded-lg">
-              Go back
+              Volver
             </Button>
           </div>
         )}
@@ -394,11 +401,11 @@ function OrderEditView({
     <div className="absolute inset-0 flex flex-col">
       <PanelHeader
         onBack={onBack}
-        title="Edit Order"
+        title="Editar pedido"
         orderNumber={order.order_number}
         statusBadge={
           <Badge className={cn('text-xs font-medium px-2 py-0.5', getStatusColor(order.status))}>
-            {order.status === 'out_for_delivery' ? 'Out for Del.' : getStatusLabel(order.status)}
+            {getStatusLabel(order.status)}
           </Badge>
         }
       />
@@ -406,34 +413,34 @@ function OrderEditView({
       <div className="flex-1 overflow-y-auto">
         <div className="p-4 space-y-4 pb-6">
           {/* Delivery Information */}
-          <section aria-label="Delivery information">
+          <section aria-label="Información de entrega">
             <div className="flex items-center gap-1.5 mb-2">
               <MapPin className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Delivery</h3>
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Entrega</h3>
             </div>
             <div className="rounded-xl border border-border bg-card p-3 space-y-3">
               <div>
                 <label htmlFor="edit-delivery-address" className="block text-xs font-medium text-muted-foreground mb-1.5">
-                  Delivery Address
+                  Dirección de entrega
                 </label>
                 <Textarea
                   id="edit-delivery-address"
                   value={editFormData.delivery_address || ''}
                   onChange={(e) => onInputChange('delivery_address', e.target.value)}
-                  placeholder="Enter delivery address…"
+                  placeholder="Ingresá la dirección de entrega…"
                   rows={2}
                   className="w-full text-sm rounded-lg border-border focus:border-primary focus:ring-primary/20"
                 />
               </div>
               <div>
                 <label htmlFor="edit-delivery-instructions" className="block text-xs font-medium text-muted-foreground mb-1.5">
-                  Delivery Instructions
+                  Instrucciones de entrega
                 </label>
                 <Textarea
                   id="edit-delivery-instructions"
                   value={editFormData.delivery_instructions || ''}
                   onChange={(e) => onInputChange('delivery_instructions', e.target.value)}
-                  placeholder="Special delivery instructions…"
+                  placeholder="Instrucciones especiales de entrega…"
                   rows={2}
                   className="w-full text-sm rounded-lg border-border focus:border-primary focus:ring-primary/20"
                 />
@@ -442,14 +449,14 @@ function OrderEditView({
           </section>
 
           {/* Order Settings */}
-          <section aria-label="Order settings">
+          <section aria-label="Configuración del pedido">
             <div className="flex items-center gap-1.5 mb-2">
               <Timer className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Settings</h3>
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Configuración</h3>
             </div>
             <div className="rounded-xl border border-border bg-card p-3">
               <label htmlFor="edit-prep-time" className="block text-xs font-medium text-muted-foreground mb-1.5">
-                Estimated Prep Time (minutes)
+                Tiempo estimado de preparación (minutos)
               </label>
               <Input
                 id="edit-prep-time"
@@ -464,34 +471,34 @@ function OrderEditView({
           </section>
 
           {/* Notes */}
-          <section aria-label="Order notes">
+          <section aria-label="Notas del pedido">
             <div className="flex items-center gap-1.5 mb-2">
               <FileText className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Notes</h3>
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Notas</h3>
             </div>
             <div className="rounded-xl border border-border bg-card p-3 space-y-3">
               <div>
                 <label htmlFor="edit-notes" className="block text-xs font-medium text-muted-foreground mb-1.5">
-                  General Notes
+                  Notas generales
                 </label>
                 <Textarea
                   id="edit-notes"
                   value={editFormData.notes || ''}
                   onChange={(e) => onInputChange('notes', e.target.value)}
-                  placeholder="General order notes…"
+                  placeholder="Notas generales del pedido…"
                   rows={2}
                   className="w-full text-sm rounded-lg border-border focus:border-primary focus:ring-primary/20"
                 />
               </div>
               <div>
                 <label htmlFor="edit-kitchen-notes" className="block text-xs font-medium text-muted-foreground mb-1.5">
-                  Kitchen Notes
+                  Notas de cocina
                 </label>
                 <Textarea
                   id="edit-kitchen-notes"
                   value={editFormData.kitchen_notes || ''}
                   onChange={(e) => onInputChange('kitchen_notes', e.target.value)}
-                  placeholder="Special instructions for kitchen…"
+                  placeholder="Instrucciones especiales para cocina…"
                   rows={2}
                   className="w-full text-sm rounded-lg border-border focus:border-primary focus:ring-primary/20"
                 />
@@ -505,14 +512,14 @@ function OrderEditView({
               onClick={onSave}
               className="flex-1 h-11 rounded-xl text-sm font-semibold"
             >
-              Save Changes
+              Guardar cambios
             </Button>
             <Button
               variant="outline"
               onClick={onBack}
               className="h-11 px-4 rounded-xl border-border hover:bg-muted text-sm"
             >
-              Cancel
+              Cancelar
             </Button>
           </div>
         </div>
@@ -554,7 +561,7 @@ function OrderCard({
 
   return (
     <article
-      aria-label={`Order #${order.order_number}`}
+      aria-label={`Pedido #${order.order_number}`}
       className="rounded-xl border border-border bg-card hover:border-primary/20 hover:shadow-sm transition-all duration-150 overflow-hidden"
     >
       <div className="p-3.5">
@@ -564,7 +571,7 @@ function OrderCard({
           <Badge
             className={cn('text-xs font-medium px-2 py-0.5 flex-shrink-0', getStatusColor(order.status))}
           >
-            {order.status === 'out_for_delivery' ? 'Out for Del.' : getStatusLabel(order.status)}
+            {getStatusLabel(order.status)}
           </Badge>
         </div>
 
@@ -577,11 +584,11 @@ function OrderCard({
           )}
           <p className="text-xs text-muted-foreground flex items-center gap-1 truncate">
             <PhoneCall className="w-3 h-3 flex-shrink-0 text-muted-foreground" aria-hidden="true" />
-            <span className="truncate">{order.customers?.whatsapp_number || 'No phone'}</span>
+            <span className="truncate">{order.customers?.whatsapp_number || 'Sin teléfono'}</span>
           </p>
           <p className="text-xs text-muted-foreground flex items-center gap-1">
             <Timer className="w-3 h-3 flex-shrink-0" aria-hidden="true" />
-            <span>{formatDistanceToNow(new Date(order.created_at), { addSuffix: true })}</span>
+            <span>{formatDistanceToNow(new Date(order.created_at), { addSuffix: true, locale: es })}</span>
           </p>
         </div>
 
@@ -591,7 +598,7 @@ function OrderCard({
             <Button
               size="sm"
               onClick={() => updateOrderStatus(order.id, nextStatus)}
-              aria-label={`Advance order #${order.order_number} to ${getStatusLabel(nextStatus)}`}
+              aria-label={`Avanzar pedido #${order.order_number} a ${getStatusLabel(nextStatus)}`}
               className="flex-1 h-9 rounded-lg text-xs font-semibold truncate"
             >
               {getStatusLabelShort(nextStatus)}
@@ -601,7 +608,7 @@ function OrderCard({
             size="sm"
             variant="outline"
             onClick={() => onEditOrder(order)}
-            aria-label={`Edit order #${order.order_number}`}
+            aria-label={`Editar pedido #${order.order_number}`}
             className="h-9 w-9 p-0 flex-shrink-0 rounded-lg border-border hover:bg-primary/10 hover:border-primary/20 focus-visible:ring-2 focus-visible:ring-primary"
           >
             <Edit className="w-3.5 h-3.5" aria-hidden="true" />
@@ -610,7 +617,7 @@ function OrderCard({
             size="sm"
             variant="outline"
             onClick={() => onViewDetails(order)}
-            aria-label={`View details for order #${order.order_number}`}
+            aria-label={`Ver detalles del pedido #${order.order_number}`}
             className="h-9 w-9 p-0 flex-shrink-0 rounded-lg border-border hover:bg-primary/10 hover:border-primary/20 focus-visible:ring-2 focus-visible:ring-primary"
           >
             <Eye className="w-3.5 h-3.5" aria-hidden="true" />
@@ -625,7 +632,7 @@ function OrderCard({
               variant="outline"
               disabled={!!markingPaid[order.id]}
               onClick={() => onMarkPaid(order.id, 'cash')}
-              aria-label="Mark as paid with cash"
+              aria-label="Marcar como pagado en efectivo"
               className="flex-1 border-success/30 text-success hover:bg-success/10 h-9 rounded-lg text-xs gap-1 font-medium"
             >
               {markingPaid[order.id] === 'cash' ? (
@@ -634,12 +641,12 @@ function OrderCard({
                     className="inline-block h-3 w-3 border-2 border-success border-t-transparent rounded-full animate-spin"
                     aria-hidden="true"
                   />
-                  Marking…
+                  Marcando…
                 </>
               ) : (
                 <>
                   <Banknote className="w-3.5 h-3.5" aria-hidden="true" />
-                  Cash
+                  Efectivo
                 </>
               )}
             </Button>
@@ -648,7 +655,7 @@ function OrderCard({
               variant="outline"
               disabled={!!markingPaid[order.id]}
               onClick={() => onMarkPaid(order.id, 'card_machine')}
-              aria-label="Mark as paid with card"
+              aria-label="Marcar como pagado con tarjeta"
               className="flex-1 border-success/30 text-success hover:bg-success/10 h-9 rounded-lg text-xs gap-1 font-medium"
             >
               {markingPaid[order.id] === 'card_machine' ? (
@@ -657,12 +664,12 @@ function OrderCard({
                     className="inline-block h-3 w-3 border-2 border-success border-t-transparent rounded-full animate-spin"
                     aria-hidden="true"
                   />
-                  Marking…
+                  Marcando…
                 </>
               ) : (
                 <>
                   <CreditCard className="w-3.5 h-3.5" aria-hidden="true" />
-                  Card
+                  Tarjeta
                 </>
               )}
             </Button>
@@ -727,7 +734,7 @@ const OrdersSection = ({
 
   const handleMarkPaid = async (orderId: string, method: MarkPaidMethod) => {
     if (!canSettle) {
-      setMarkPaidError("You need the 'Mark paid' permission. Ask a manager.");
+      setMarkPaidError("Necesitás permiso para marcar como pagado. Consultá con un encargado.");
       return;
     }
     setMarkingPaid((prev) => ({ ...prev, [orderId]: method }));
@@ -735,9 +742,9 @@ const OrdersSection = ({
       const { error } = await markPaidOnDelivery(orderId, method);
       if (error) {
         if (error.status === 403) {
-          setMarkPaidError("You need the 'Mark paid' permission. Ask a manager.");
+          setMarkPaidError("Necesitás permiso para marcar como pagado. Consultá con un encargado.");
         } else {
-          setMarkPaidError(error.message || 'Failed to mark as paid.');
+          setMarkPaidError(error.message || 'No se pudo marcar como pagado.');
         }
         return;
       }
@@ -758,7 +765,7 @@ const OrdersSection = ({
     try {
       const { supabase } = await import('@/services/supabase-client');
       const { data: orderDetails, error: orderError } = await supabase
-        .from('orders')
+        .from('pedidos')
         .select(`
           *,
           customers (
@@ -795,7 +802,7 @@ const OrdersSection = ({
       setSelectedOrderDetails({ ...orderDetails, order_items: orderItems || [] });
     } catch (error) {
       console.error('Error fetching order details:', error);
-      alert('Failed to load order details');
+      alert('No se pudieron cargar los detalles del pedido');
       handleBackToList();
     } finally {
       setLoadingOrderDetails(false);
@@ -882,7 +889,7 @@ const OrdersSection = ({
             <div className="flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" aria-hidden="true" />
               <div>
-                <p id="perm-error-title" className="font-semibold text-foreground text-sm">Permission required</p>
+                <p id="perm-error-title" className="font-semibold text-foreground text-sm">Permiso requerido</p>
                 <p className="text-sm text-muted-foreground mt-1">{markPaidError}</p>
               </div>
             </div>
@@ -909,10 +916,10 @@ const OrdersSection = ({
               aria-hidden="true"
             />
             <Input
-              placeholder="Search orders…"
+              placeholder="Buscar pedidos…"
               value={orderSearchTerm}
               onChange={(e) => setOrderSearchTerm(e.target.value)}
-              aria-label="Search orders"
+              aria-label="Buscar pedidos"
               className="pl-8 h-9 text-sm border-border focus:border-primary focus:ring-primary/20 rounded-lg pr-8"
             />
             {orderSearchTerm && (
@@ -921,7 +928,7 @@ const OrdersSection = ({
                 variant="ghost"
                 size="icon"
                 onClick={() => setOrderSearchTerm('')}
-                aria-label="Clear search"
+                aria-label="Limpiar búsqueda"
                 className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <X className="w-3.5 h-3.5" aria-hidden="true" />
@@ -932,7 +939,7 @@ const OrdersSection = ({
           {/* Status filter */}
           <div
             role="group"
-            aria-label="Order status filter"
+            aria-label="Filtro de estado del pedido"
             className="flex gap-1 flex-shrink-0"
           >
             {['active', 'all'].map((f) => (
@@ -948,7 +955,7 @@ const OrdersSection = ({
                   orderStatusFilter !== f && 'hover:bg-primary/10 hover:border-primary/20'
                 )}
               >
-                {f === 'active' ? 'Active' : 'All'}
+                {f === 'active' ? 'Activos' : 'Todos'}
               </Button>
             ))}
           </div>
@@ -956,7 +963,7 @@ const OrdersSection = ({
       </div>
 
       {/* Orders list */}
-      <div className="flex-1 overflow-y-auto p-3" role="feed" aria-label="Orders list" aria-busy={loadingOrders}>
+      <div className="flex-1 overflow-y-auto p-3" role="feed" aria-label="Lista de pedidos" aria-busy={loadingOrders}>
         {loadingOrders ? (
           <div className="space-y-2.5">
             {[...Array(4)].map((_, i) => (
@@ -970,12 +977,14 @@ const OrdersSection = ({
             </div>
             <div className="text-center">
               <p className="text-sm font-medium text-muted-foreground">
-                {orderSearchTerm ? 'No orders found' : 'No orders'}
+                {orderSearchTerm ? 'No se encontraron pedidos' : 'No hay pedidos'}
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {orderSearchTerm
-                  ? 'Try a different search term or filter'
-                  : `No ${orderStatusFilter === 'all' ? '' : orderStatusFilter + ' '}orders right now`}
+                  ? 'Probá con otra búsqueda o filtro'
+                  : orderStatusFilter === 'all'
+                    ? 'No hay pedidos en este momento'
+                    : 'No hay pedidos con este estado en este momento'}
               </p>
             </div>
             {orderSearchTerm && (
@@ -986,7 +995,7 @@ const OrdersSection = ({
                 onClick={() => setOrderSearchTerm('')}
                 className="h-auto p-0 text-xs text-primary hover:text-primary/80 focus-visible:ring-2 focus-visible:ring-primary"
               >
-                Clear search
+                Limpiar búsqueda
               </Button>
             )}
           </div>

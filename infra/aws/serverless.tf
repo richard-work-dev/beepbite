@@ -169,6 +169,8 @@ locals {
     CONNECTIONS_TABLE = aws_dynamodb_table.connections.name
     JOBS_QUEUE_URL    = aws_sqs_queue.jobs.id
     RUNTIME_SECRET_ID = aws_secretsmanager_secret.runtime.name
+    UPLOADS_BUCKET    = aws_s3_bucket.uploads.id
+    UPLOADS_BASE_URL  = "https://${aws_cloudfront_distribution.uploads.domain_name}"
   }
 
   application_origins = distinct(concat(

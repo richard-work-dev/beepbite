@@ -26,6 +26,16 @@ jobs:
       TF_VAR_aws_region: ${{ vars.AWS_REGION }}
       TF_VAR_environment: dev
       TF_VAR_enable_custom_domains: "true"
+      TF_VAR_single_store_enabled: ${{ vars.SINGLE_STORE_ENABLED }}
+      TF_VAR_single_store_owner_email: ${{ vars.SINGLE_STORE_OWNER_EMAIL }}
+      TF_VAR_single_store_name: ${{ vars.SINGLE_STORE_NAME }}
+      TF_VAR_single_store_country: ${{ vars.SINGLE_STORE_COUNTRY }}
+      TF_VAR_single_store_city: ${{ vars.SINGLE_STORE_CITY }}
+      TF_VAR_single_store_address: ${{ vars.SINGLE_STORE_ADDRESS }}
+      TF_VAR_single_store_time_zone: ${{ vars.SINGLE_STORE_TIME_ZONE }}
+      TF_VAR_single_store_currency: ${{ vars.SINGLE_STORE_CURRENCY }}
+      TF_VAR_single_store_tax_rate: ${{ vars.SINGLE_STORE_TAX_RATE }}
+      TF_VAR_single_store_tax_inclusive: ${{ vars.SINGLE_STORE_TAX_INCLUSIVE }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5

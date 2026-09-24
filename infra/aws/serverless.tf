@@ -165,12 +165,22 @@ locals {
   }
 
   lambda_environment = {
-    CORE_TABLE        = aws_dynamodb_table.core.name
-    CONNECTIONS_TABLE = aws_dynamodb_table.connections.name
-    JOBS_QUEUE_URL    = aws_sqs_queue.jobs.id
-    RUNTIME_SECRET_ID = aws_secretsmanager_secret.runtime.name
-    UPLOADS_BUCKET    = aws_s3_bucket.uploads.id
-    UPLOADS_BASE_URL  = "https://${aws_cloudfront_distribution.uploads.domain_name}"
+    CORE_TABLE                 = aws_dynamodb_table.core.name
+    CONNECTIONS_TABLE          = aws_dynamodb_table.connections.name
+    JOBS_QUEUE_URL             = aws_sqs_queue.jobs.id
+    RUNTIME_SECRET_ID          = aws_secretsmanager_secret.runtime.name
+    UPLOADS_BUCKET             = aws_s3_bucket.uploads.id
+    UPLOADS_BASE_URL           = "https://${aws_cloudfront_distribution.uploads.domain_name}"
+    SINGLE_STORE_ENABLED       = tostring(var.single_store_enabled)
+    SINGLE_STORE_OWNER_EMAIL   = var.single_store_owner_email
+    SINGLE_STORE_NAME          = var.single_store_name
+    SINGLE_STORE_COUNTRY       = var.single_store_country
+    SINGLE_STORE_CITY          = var.single_store_city
+    SINGLE_STORE_ADDRESS       = var.single_store_address
+    SINGLE_STORE_TIME_ZONE     = var.single_store_time_zone
+    SINGLE_STORE_CURRENCY      = var.single_store_currency
+    SINGLE_STORE_TAX_RATE      = tostring(var.single_store_tax_rate)
+    SINGLE_STORE_TAX_INCLUSIVE = tostring(var.single_store_tax_inclusive)
   }
 
   application_origins = distinct(concat(

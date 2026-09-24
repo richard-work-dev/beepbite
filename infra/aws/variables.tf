@@ -61,3 +61,73 @@ variable "enable_custom_domains" {
   type        = bool
   default     = false
 }
+
+variable "single_store_enabled" {
+  description = "Restricts registration to one configured store and invited users."
+  type        = bool
+  default     = false
+}
+
+variable "single_store_owner_email" {
+  description = "Email allowed to bootstrap the single store owner account."
+  type        = string
+  default     = ""
+}
+
+variable "single_store_name" {
+  description = "Commercial name of the single store."
+  type        = string
+  default     = ""
+}
+
+variable "single_store_country" {
+  description = "Country stored on the organization and primary location."
+  type        = string
+  default     = ""
+}
+
+variable "single_store_city" {
+  description = "City stored on the primary location."
+  type        = string
+  default     = ""
+}
+
+variable "single_store_address" {
+  description = "Street address stored on the primary location."
+  type        = string
+  default     = ""
+}
+
+variable "single_store_time_zone" {
+  description = "IANA time zone used for trading days and local timestamps."
+  type        = string
+  default     = "UTC"
+}
+
+variable "single_store_currency" {
+  description = "ISO 4217 currency code used by the store."
+  type        = string
+  default     = "USD"
+
+  validation {
+    condition     = can(regex("^[A-Z]{3}$", var.single_store_currency))
+    error_message = "single_store_currency must be a three-letter uppercase ISO 4217 code."
+  }
+}
+
+variable "single_store_tax_rate" {
+  description = "Default store tax percentage."
+  type        = number
+  default     = 0
+
+  validation {
+    condition     = var.single_store_tax_rate >= 0 && var.single_store_tax_rate <= 100
+    error_message = "single_store_tax_rate must be between 0 and 100."
+  }
+}
+
+variable "single_store_tax_inclusive" {
+  description = "Whether catalog prices already include tax."
+  type        = bool
+  default     = false
+}

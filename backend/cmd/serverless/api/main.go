@@ -144,6 +144,9 @@ func handler(ctx context.Context, request events.APIGatewayV2HTTPRequest) (event
 		if response, handled, balanceErr := application.handleCustomerBalanceAPI(ctx, request); handled {
 			return response, balanceErr
 		}
+		if response, handled, houseAccountErr := application.handleHouseAccountAPI(ctx, request); handled {
+			return response, houseAccountErr
+		}
 		return jsonResponse(404, map[string]string{"error": "not_found"})
 	}
 }

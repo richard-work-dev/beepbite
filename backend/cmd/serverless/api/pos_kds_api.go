@@ -67,24 +67,8 @@ func (a *application) handleCommerceAPI(ctx context.Context, request events.APIG
 	if !matched {
 		return events.APIGatewayV2HTTPResponse{}, false, nil
 	}
-	headers := request.Headers
-	if route.name == "kds_station_stream" {
-		values, _ := url.ParseQuery(request.RawQueryString)
-		token := strings.TrimSpace(values.Get("token"))
-		organizationID := strings.TrimSpace(values.Get("organization_id"))
-		if (token != "" && requestHeader(headers, "authorization") == "") || (organizationID != "" && requestHeader(headers, "x-organization-id") == "") {
-			headers = make(map[string]string, len(request.Headers)+1)
-			for key, value := range request.Headers {
-				headers[key] = value
-			}
-			if token != "" {
-				headers["authorization"] = "Bearer " + token
-			}
-			if organizationID != "" {
-				headers["x-organization-id"] = organizationID
-			}
-		}
-	}
+	headers := commerceRequestHeaders(route.name, request)
+	request.Headers = headers
 	claims, err := a.authenticate(ctx, headers)
 	if err != nil {
 		return errorResponse(401, "invalid token"), true, nil
@@ -136,6 +120,28 @@ func (a *application) handleCommerceAPI(ctx context.Context, request events.APIG
 		response = a.editTimeEntry(ctx, claims.UserID, orgID, route.params[0], request.Body)
 	}
 	return response, true, nil
+}
+
+func commerceRequestHeaders(routeName string, request events.APIGatewayV2HTTPRequest) map[string]string {
+	headers := request.Headers
+	if routeName == "kds_station_stream" {
+		values, _ := url.ParseQuery(request.RawQueryString)
+		token := strings.TrimSpace(values.Get("token"))
+		organizationID := strings.TrimSpace(values.Get("organization_id"))
+		if (token != "" && requestHeader(headers, "authorization") == "") || (organizationID != "" && requestHeader(headers, "x-organization-id") == "") {
+			headers = make(map[string]string, len(request.Headers)+1)
+			for key, value := range request.Headers {
+				headers[key] = value
+			}
+			if token != "" {
+				headers["authorization"] = "Bearer " + token
+			}
+			if organizationID != "" {
+				headers["x-organization-id"] = organizationID
+			}
+		}
+	}
+	return headers
 }
 
 func (a *application) createStoredRow(ctx context.Context, orgID, table string, row map[string]any) (map[string]any, error) {

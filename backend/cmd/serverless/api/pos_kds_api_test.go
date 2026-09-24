@@ -1,6 +1,10 @@
 package main
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/aws/aws-lambda-go/events"
+)
 
 func TestMatchCommerceRoute(t *testing.T) {
 	tests := []struct {
@@ -51,5 +55,15 @@ func TestNullableString(t *testing.T) {
 	}
 	if nullableString(" staff-1 ") != "staff-1" {
 		t.Fatal("non-empty strings must be trimmed")
+	}
+}
+
+func TestCommerceRequestHeadersPromotesSSEQueryContext(t *testing.T) {
+	headers := commerceRequestHeaders("kds_station_stream", events.APIGatewayV2HTTPRequest{
+		Headers:        map[string]string{"origin": "https://example.com"},
+		RawQueryString: "token=access-token&organization_id=org-1",
+	})
+	if headers["authorization"] != "Bearer access-token" || headers["x-organization-id"] != "org-1" {
+		t.Fatalf("SSE query context was not promoted: %#v", headers)
 	}
 }

@@ -123,6 +123,9 @@ func handler(ctx context.Context, request events.APIGatewayV2HTTPRequest) (event
 	case "GET /auth/me":
 		return application.me(ctx, request)
 	default:
+		if response, handled, marketplaceErr := application.handleMarketplaceAPI(ctx, request); handled {
+			return response, marketplaceErr
+		}
 		if table, ok := dataTableFromPath(request.RawPath); ok {
 			return application.handleData(ctx, request, table)
 		}

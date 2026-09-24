@@ -132,6 +132,9 @@ func handler(ctx context.Context, request events.APIGatewayV2HTTPRequest) (event
 		if response, handled, commerceErr := application.handleCommerceAPI(ctx, request); handled {
 			return response, commerceErr
 		}
+		if response, handled, completionErr := application.handlePOSCompletionAPI(ctx, request); handled {
+			return response, completionErr
+		}
 		return jsonResponse(404, map[string]string{"error": "not_found"})
 	}
 }

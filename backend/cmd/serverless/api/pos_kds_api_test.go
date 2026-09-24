@@ -67,3 +67,50 @@ func TestCommerceRequestHeadersPromotesSSEQueryContext(t *testing.T) {
 		t.Fatalf("SSE query context was not promoted: %#v", headers)
 	}
 }
+
+func TestMatchPOSCompletionRoute(t *testing.T) {
+	tests := []struct {
+		method string
+		path   string
+		name   string
+		params []string
+	}{
+		{method: "GET", path: "/orders/order-1/receipt", name: "receipt", params: []string{"order-1"}},
+		{method: "GET", path: "/orders/order-1/adjustments", name: "adjustments_list", params: []string{"order-1"}},
+		{method: "POST", path: "/orders/order-1/void", name: "void", params: []string{"order-1"}},
+		{method: "POST", path: "/orders/order-1/refund", name: "refund", params: []string{"order-1"}},
+		{method: "POST", path: "/orders/order-1/mark-paid-on-delivery", name: "mark_paid_on_delivery", params: []string{"order-1"}},
+		{method: "POST", path: "/orders/order-1/items/item-1/comp", name: "item_comp", params: []string{"order-1", "item-1"}},
+		{method: "POST", path: "/orders/order-1/items/item-1/price-override", name: "item_price_override", params: []string{"order-1", "item-1"}},
+		{method: "GET", path: "/cash-out/session-1", name: "cash_out", params: []string{"session-1"}},
+	}
+	for _, test := range tests {
+		route, ok := matchPOSCompletionRoute(test.method, test.path)
+		if !ok || route.name != test.name || len(route.params) != len(test.params) {
+			t.Fatalf("matchPOSCompletionRoute(%q, %q) = %#v, %v", test.method, test.path, route, ok)
+		}
+		for index := range test.params {
+			if route.params[index] != test.params[index] {
+				t.Fatalf("route params = %#v, want %#v", route.params, test.params)
+			}
+		}
+	}
+	if _, ok := matchPOSCompletionRoute("DELETE", "/orders/order-1/receipt"); ok {
+		t.Fatal("unknown completion route was matched")
+	}
+}
+
+func TestReceiptProjectionHelpers(t *testing.T) {
+	modifiers := receiptModifiers([]any{
+		map[string]any{"name": "Extra cheese", "price_cents": int64(125)},
+		map[string]any{"name_snapshot": "Large", "price_cents_snapshot": int64(200)},
+		"invalid",
+	})
+	if len(modifiers) != 2 || modifiers[0]["price_cents_snapshot"] != int64(125) || modifiers[1]["name"] != "Large" {
+		t.Fatalf("unexpected modifier projection: %#v", modifiers)
+	}
+	address := locationAddress(map[string]any{"address": map[string]any{"raw": "ignored"}, "address_line1": "1 Main St", "city": "Bogota"})
+	if address != "1 Main St, Bogota" {
+		t.Fatalf("locationAddress() = %#v", address)
+	}
+}

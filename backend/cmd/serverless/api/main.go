@@ -103,6 +103,8 @@ func handler(ctx context.Context, request events.APIGatewayV2HTTPRequest) (event
 	}
 
 	switch request.RequestContext.HTTP.Method + " " + request.RawPath {
+	case "GET /ready", "GET /api/ready":
+		return application.ready(ctx)
 	case "POST /auth/signup":
 		return application.signUp(ctx, request)
 	case "POST /auth/signin":
@@ -116,6 +118,16 @@ func handler(ctx context.Context, request events.APIGatewayV2HTTPRequest) (event
 	default:
 		return jsonResponse(404, map[string]string{"error": "not_found"})
 	}
+}
+
+func (a *application) ready(ctx context.Context) (events.APIGatewayV2HTTPResponse, error) {
+	if _, err := a.loadJWTSecret(ctx); err != nil {
+		return errorResponse(503, "runtime_not_ready"), nil
+	}
+	if _, err := a.dynamo.DescribeTable(ctx, &dynamodb.DescribeTableInput{TableName: aws.String(a.table)}); err != nil {
+		return errorResponse(503, "runtime_not_ready"), nil
+	}
+	return jsonResponse(200, map[string]string{"service": "beepbite-api", "status": "ready"})
 }
 
 func (a *application) signUp(ctx context.Context, request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {

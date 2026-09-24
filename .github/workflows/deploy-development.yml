@@ -111,6 +111,8 @@ jobs:
           set -euo pipefail
           curl --fail --silent --show-error --retry 8 --retry-delay 5 \
             "${{ steps.infrastructure.outputs.api_url }}/api/health" >/dev/null
+          curl --fail --silent --show-error --retry 8 --retry-delay 5 \
+            "${{ steps.infrastructure.outputs.api_url }}/api/ready" >/dev/null
           curl --fail --silent --show-error --retry 12 --retry-delay 10 \
             "${{ steps.infrastructure.outputs.frontend_url }}/" >/dev/null
       - name: Deployment summary

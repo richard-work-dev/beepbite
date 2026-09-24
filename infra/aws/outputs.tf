@@ -23,6 +23,11 @@ output "certificate_status" {
   value       = aws_acm_certificate.application.status
 }
 
+output "cloudwatch_dashboard" {
+  description = "CloudWatch dashboard for the serverless development environment."
+  value       = aws_cloudwatch_dashboard.serverless.dashboard_name
+}
+
 output "frontend_bucket" {
   description = "Private bucket populated by the frontend deployment job."
   value       = aws_s3_bucket.frontend.id

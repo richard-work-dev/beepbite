@@ -57,9 +57,11 @@ the select, filter, ordering and mutation operations used by the web client,
 including organization onboarding and dual-indexed memberships. Specialized
 routes backed by DynamoDB currently cover onboarding progress/status, user
 workspace preferences, location updates, reservations, waitlist operations,
-customer search, staff lookup, daily specials and category availability.
-Remaining business routes are migrated domain by domain and return HTTP 404
-until their replacement is deployed.
+customer search, staff lookup, daily specials, category availability, POS order
+creation/modification/charging/holding, KDS tickets and expo views, cash drawer
+sessions and movements, and staff time-clock entries. Remaining business routes
+are migrated domain by domain and return HTTP 404 until their replacement is
+deployed.
 
 ## Automated development deployments
 

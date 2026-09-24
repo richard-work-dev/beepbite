@@ -405,7 +405,7 @@ func (a *application) chargePOSOrder(ctx context.Context, orgID, orderID, body s
 		if method == "cash" {
 			sessionID := displayString(order["register_session_id"])
 			if sessionID != "" {
-				_, _ = a.createStoredRow(ctx, orgID, "cash_drawer_session_payments", map[string]any{"cash_drawer_session_id": sessionID, "order_payment_id": payment["id"]})
+				_, _ = a.createStoredRow(ctx, orgID, "cash_drawer_session_payments", map[string]any{"cash_drawer_session_id": sessionID, "order_payment_id": payment["id"], "payment_id": payment["id"]})
 			}
 		}
 	}
@@ -935,8 +935,13 @@ func (a *application) closeCashSession(ctx context.Context, orgID, sessionID, bo
 		if fmt.Sprint(link["cash_drawer_session_id"]) != sessionID {
 			continue
 		}
-		payment := paymentByID[fmt.Sprint(link["order_payment_id"])]
-		if payment != nil && fmt.Sprint(payment["payment_method_code"]) == "cash" {
+		paymentID := displayString(link["order_payment_id"])
+		if paymentID == "" {
+			paymentID = displayString(link["payment_id"])
+		}
+		payment := paymentByID[paymentID]
+		method := fmt.Sprint(payment["payment_method_code"])
+		if payment != nil && (method == "cash" || method == "cash_on_delivery") {
 			amount, _ := integerValue(payment["amount_paid_cents"])
 			change, _ := integerValue(payment["change_given_cents"])
 			expected += amount - change

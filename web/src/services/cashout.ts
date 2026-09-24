@@ -7,12 +7,30 @@
 import { api } from '@/lib/api-client';
 
 export interface CashOutReport {
-  opening_float: number;
-  cash_sales: number;
-  movements: unknown[];
-  expected: number;
-  counted: number;
-  variance: number;
+  session_id: string;
+  cash_drawer_id: string;
+  location_id: string;
+  status: string;
+  opened_at: string;
+  closed_at?: string | null;
+  is_blind_close: boolean;
+  opening_float_cents: number;
+  cash_sales_cents: number;
+  movements_net_cents: number;
+  expected_cash_cents: number;
+  counted_cash_cents?: number | null;
+  variance_cents?: number | null;
+  is_balanced: boolean;
+  declared_closing_cents?: number | null;
+  over_short_cents?: number | null;
+  movements: Array<{
+    id: string;
+    movement_type: string;
+    amount_cents: number;
+    reason?: string | null;
+    performed_by?: string | null;
+    created_at: string;
+  }>;
   [key: string]: unknown;
 }
 

@@ -24,6 +24,19 @@ import { useEffect, useRef, useState } from 'react';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 const AUTH_KEY = 'bb.auth';
 
+function readActiveOrganizationId(): string | null {
+  try {
+    const raw = localStorage.getItem('activeOrganization');
+    if (!raw) return null;
+    const value: unknown = JSON.parse(raw);
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const id = (value as Record<string, unknown>).id;
+    return typeof id === 'string' && id ? id : null;
+  } catch {
+    return null;
+  }
+}
+
 function readToken(): string | null {
   try {
     const raw = localStorage.getItem(AUTH_KEY);
@@ -96,6 +109,12 @@ export function useSSE<T = unknown>(path: string | null, { onMessage, onOpen, on
         }
       } else {
         opts.withCredentials = true;
+      }
+
+      const organizationId = readActiveOrganizationId();
+      if (organizationId) {
+        const sep = url.includes('?') ? '&' : '?';
+        url = `${url}${sep}organization_id=${encodeURIComponent(organizationId)}`;
       }
 
       try {

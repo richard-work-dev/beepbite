@@ -46,3 +46,12 @@ func TestOperationValueConversions(t *testing.T) {
 		t.Fatalf("stringSlice = %#v, %v", values, ok)
 	}
 }
+
+func TestDisplayStringDoesNotExposeNilMarker(t *testing.T) {
+	if got := displayString(nil); got != "" {
+		t.Fatalf("displayString(nil) = %q", got)
+	}
+	if got := displayString("  Ada  "); got != "Ada" {
+		t.Fatalf("displayString trimmed value = %q", got)
+	}
+}

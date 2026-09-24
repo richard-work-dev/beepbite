@@ -525,13 +525,13 @@ func (a *application) searchCustomers(ctx context.Context, orgID, rawQuery strin
 	}
 	results := make([]map[string]any, 0, limit)
 	for _, row := range rows {
-		name := strings.TrimSpace(strings.Join([]string{fmt.Sprint(row["first_name"]), fmt.Sprint(row["last_name"])}, " "))
-		if explicit := strings.TrimSpace(fmt.Sprint(row["name"])); explicit != "" {
+		name := strings.TrimSpace(strings.Join([]string{displayString(row["first_name"]), displayString(row["last_name"])}, " "))
+		if explicit := displayString(row["name"]); explicit != "" {
 			name = explicit
 		}
-		phone := fmt.Sprint(row["whatsapp_number"])
-		if phone == "<nil>" || phone == "" {
-			phone = fmt.Sprint(row["phone"])
+		phone := displayString(row["whatsapp_number"])
+		if phone == "" {
+			phone = displayString(row["phone"])
 		}
 		if !strings.Contains(strings.ToLower(name), term) && !strings.Contains(strings.ToLower(phone), term) {
 			continue
@@ -542,6 +542,13 @@ func (a *application) searchCustomers(ctx context.Context, orgID, rawQuery strin
 		}
 	}
 	return mustJSONResponse(200, map[string]any{"customers": results})
+}
+
+func displayString(value any) string {
+	if value == nil {
+		return ""
+	}
+	return strings.TrimSpace(fmt.Sprint(value))
 }
 
 func (a *application) listStaff(ctx context.Context, orgID, rawQuery string) events.APIGatewayV2HTTPResponse {

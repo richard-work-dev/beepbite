@@ -23,13 +23,12 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "uploads" {
 }
 
 resource "aws_s3_bucket_cors_configuration" "uploads" {
-  count  = length(var.upload_cors_origins) > 0 ? 1 : 0
   bucket = aws_s3_bucket.uploads.id
 
   cors_rule {
     allowed_headers = ["*"]
     allowed_methods = ["PUT"]
-    allowed_origins = var.upload_cors_origins
+    allowed_origins = local.application_origins
     expose_headers  = ["ETag"]
     max_age_seconds = 3600
   }

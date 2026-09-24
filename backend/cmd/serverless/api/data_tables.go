@@ -104,6 +104,7 @@ var serverlessDataTables = map[string]dataOperations{
 	"house_account_invoices":       {Select: true, Insert: true, Update: true},
 	"loyalty_config":               {Select: true, Insert: true, Update: true},
 	"loyalty_transactions":         {Select: true},
+	"customer_loyalty_stamps":      {Select: true, Insert: true, Update: true},
 	"staff_pay_rates":              {Select: true, Insert: true, Update: true, Delete: true},
 	"modifier_groups":              {Select: true, Insert: true, Update: true, Delete: true},
 	"modifiers":                    {Select: true, Insert: true, Update: true, Delete: true},

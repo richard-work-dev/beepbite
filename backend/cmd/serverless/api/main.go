@@ -141,6 +141,9 @@ func handler(ctx context.Context, request events.APIGatewayV2HTTPRequest) (event
 		if response, handled, inventoryErr := application.handleInventoryAPI(ctx, request); handled {
 			return response, inventoryErr
 		}
+		if response, handled, balanceErr := application.handleCustomerBalanceAPI(ctx, request); handled {
+			return response, balanceErr
+		}
 		return jsonResponse(404, map[string]string{"error": "not_found"})
 	}
 }

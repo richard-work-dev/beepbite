@@ -34,7 +34,7 @@ resource "aws_s3_object" "frontend_index" {
   ])
 
   lifecycle {
-    ignore_changes = [content, content_type]
+    ignore_changes = [cache_control, content, content_type]
   }
 }
 

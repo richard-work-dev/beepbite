@@ -170,6 +170,12 @@ locals {
     JOBS_QUEUE_URL    = aws_sqs_queue.jobs.id
     RUNTIME_SECRET_ID = aws_secretsmanager_secret.runtime.name
   }
+
+  application_origins = distinct(concat(
+    ["https://${aws_cloudfront_distribution.frontend.domain_name}"],
+    var.enable_custom_domains ? ["https://${local.frontend_domain}"] : [],
+    var.upload_cors_origins
+  ))
 }
 
 resource "aws_cloudwatch_log_group" "lambda" {
@@ -210,7 +216,7 @@ resource "aws_apigatewayv2_api" "http" {
   cors_configuration {
     allow_headers = ["authorization", "content-type", "idempotency-key"]
     allow_methods = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
-    allow_origins = ["*"]
+    allow_origins = local.application_origins
     max_age       = 3600
   }
 }

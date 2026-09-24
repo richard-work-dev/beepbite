@@ -130,6 +130,9 @@ resource "aws_iam_role_policy" "github_application" {
           "lambda:DeleteEventSourceMapping",
           "lambda:GetEventSourceMapping",
           "lambda:ListEventSourceMappings",
+          "lambda:ListTags",
+          "lambda:TagResource",
+          "lambda:UntagResource",
           "lambda:UpdateEventSourceMapping"
         ]
         Resource = "*"
@@ -187,6 +190,28 @@ resource "aws_iam_role_policy" "github_application" {
         Effect   = "Allow"
         Action   = "cloudfront:*"
         Resource = "*"
+      },
+      {
+        Sid    = "CloudWatchDevelopmentAlarms"
+        Effect = "Allow"
+        Action = [
+          "cloudwatch:DeleteAlarms",
+          "cloudwatch:DescribeAlarms",
+          "cloudwatch:PutMetricAlarm",
+          "cloudwatch:TagResource",
+          "cloudwatch:UntagResource"
+        ]
+        Resource = "arn:aws:cloudwatch:${var.aws_region}:${data.aws_caller_identity.current.account_id}:alarm:beepbite-dev-*"
+      },
+      {
+        Sid    = "CloudWatchDevelopmentDashboard"
+        Effect = "Allow"
+        Action = [
+          "cloudwatch:DeleteDashboards",
+          "cloudwatch:GetDashboard",
+          "cloudwatch:PutDashboard"
+        ]
+        Resource = "arn:aws:cloudwatch::${data.aws_caller_identity.current.account_id}:dashboard/beepbite-dev"
       },
       {
         Sid    = "Route53Development"

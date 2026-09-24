@@ -129,6 +129,9 @@ func handler(ctx context.Context, request events.APIGatewayV2HTTPRequest) (event
 		if response, handled, engagementErr := application.handleMarketplaceEngagementAPI(ctx, request); handled {
 			return response, engagementErr
 		}
+		if response, handled, driverErr := application.handleDriverAPI(ctx, request); handled {
+			return response, driverErr
+		}
 		if table, ok := dataTableFromPath(request.RawPath); ok {
 			return application.handleData(ctx, request, table)
 		}
@@ -209,6 +212,8 @@ func (a *application) signUp(ctx context.Context, request events.APIGatewayV2HTT
 		}
 		return events.APIGatewayV2HTTPResponse{}, err
 	}
+	// Invite acceptance is best-effort so a transient lookup cannot block signup.
+	_ = a.acceptMatchingDriverInvites(ctx, userID, email)
 	return jsonResponse(201, session)
 }
 

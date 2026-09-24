@@ -1,0 +1,30 @@
+name: Git flow
+
+on:
+  pull_request:
+    branches: [develop, main]
+
+permissions:
+  contents: read
+
+jobs:
+  policy:
+    name: Git flow policy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate pull request direction
+        env:
+          BASE_BRANCH: ${{ github.base_ref }}
+          HEAD_BRANCH: ${{ github.head_ref }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$BASE_BRANCH" == "main" && "$HEAD_BRANCH" != "develop" ]]; then
+            echo "::error::main only accepts promotion pull requests from develop"
+            exit 1
+          fi
+          if [[ "$BASE_BRANCH" == "develop" && "$HEAD_BRANCH" == "main" ]]; then
+            echo "::error::develop must not be backfilled from main; create work from develop"
+            exit 1
+          fi
+          echo "Git flow accepted: ${HEAD_BRANCH} -> ${BASE_BRANCH}"

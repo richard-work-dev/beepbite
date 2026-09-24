@@ -122,6 +122,19 @@ describe('api.request — basic response shaping', () => {
     expect(init.headers.Authorization).toBe('Bearer tok-abc');
   });
 
+  it('attaches the active organization and location context', async () => {
+    localStorage.setItem('bb.auth', JSON.stringify({ access_token: 'tok-abc' }));
+    localStorage.setItem('activeOrganization', JSON.stringify({ id: 'org-1', name: 'Cafe' }));
+    localStorage.setItem('activeLocation', JSON.stringify({ id: 'loc-1', name: 'Main' }));
+    fetchMock.mockResolvedValueOnce(jsonResponse([]));
+
+    await api.request('GET', '/data/items');
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.headers['X-Organization-ID']).toBe('org-1');
+    expect(init.headers['X-Location-ID']).toBe('loc-1');
+  });
+
   it('omits Authorization when auth: false is passed', async () => {
     localStorage.setItem('bb.auth', JSON.stringify({ access_token: 'tok-abc' }));
     fetchMock.mockResolvedValueOnce(jsonResponse({}));

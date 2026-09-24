@@ -569,12 +569,13 @@ many are load-bearing. Go code is checked with `gofmt -l` and `go vet` in CI, bo
 
 ## Branch strategy
 
-- `main` — production-ready
-- `hardening/*` — active hardening/feature branches
-- `feature/*` — new features
+- `main` — production-ready; receives only promotion PRs from `develop`
+- `develop` — integration branch and the only branch deployed automatically to AWS development
+- `feature/*`, `fix/*`, `hardening/*` — short-lived branches created from `develop`
 
-PRs target `main`. CI runs the jobs listed under [CI gates](#ci-gates-githubworkflowstestyml) on
-every push.
+Normal work targets `develop`. CI must pass before merging, then the development workflow deploys
+that merge automatically for acceptance testing. Promote a tested `develop` commit to `main` with
+a pull request; do not push application changes directly to either long-lived branch.
 
 ## Further reading
 

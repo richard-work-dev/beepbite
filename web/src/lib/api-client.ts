@@ -152,7 +152,6 @@ async function raw(method: string, path: string, { body, headers = {}, auth = tr
     method,
     headers: h,
     body: body === undefined ? undefined : JSON.stringify(body),
-    credentials: 'include',
   });
   return res;
 }

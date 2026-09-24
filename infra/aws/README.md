@@ -55,8 +55,11 @@ The Lambda API now serves authentication plus the tenant-scoped generic data
 surface at `/data/{table}` and `/api/v1/data/{table}` from DynamoDB. It supports
 the select, filter, ordering and mutation operations used by the web client,
 including organization onboarding and dual-indexed memberships. Specialized
-business routes are migrated domain by domain; routes that have not been
-migrated return HTTP 404.
+routes backed by DynamoDB currently cover onboarding progress/status, user
+workspace preferences, location updates, reservations, waitlist operations,
+customer search, staff lookup, daily specials and category availability.
+Remaining business routes are migrated domain by domain and return HTTP 404
+until their replacement is deployed.
 
 ## Automated development deployments
 

@@ -8,7 +8,7 @@ import (
 func TestSingleStoreValidation(t *testing.T) {
 	valid := singleStoreConfig{
 		Enabled: true, OwnerEmail: "owner@example.com", Name: "RikoPollo",
-		Country: "Argentina", City: "Misiones", Address: "Av. Las Américas 123",
+		Country: "Argentina", City: "Aristóbulo del Valle", Address: "Av. Las Américas 650, N3364 Aristóbulo del Valle, Misiones, Argentina",
 		TimeZone: "America/Argentina/Cordoba", Currency: "ARS", TaxRate: 21, TaxInclusive: true,
 	}
 	if err := valid.validate(); err != nil {
@@ -23,7 +23,7 @@ func TestSingleStoreValidation(t *testing.T) {
 func TestSingleStoreOwnerSignupItems(t *testing.T) {
 	config := singleStoreConfig{
 		Enabled: true, OwnerEmail: "owner@example.com", Name: "RikoPollo",
-		Country: "Argentina", City: "Misiones", Address: "Av. Las Américas 123",
+		Country: "Argentina", City: "Aristóbulo del Valle", Address: "Av. Las Américas 650, N3364 Aristóbulo del Valle, Misiones, Argentina",
 		TimeZone: "America/Argentina/Cordoba", Currency: "ARS", TaxRate: 21, TaxInclusive: true,
 	}
 	items, err := config.signupItems("user-1", "OWNER@example.com", time.Unix(1, 0))

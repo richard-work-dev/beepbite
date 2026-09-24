@@ -106,8 +106,8 @@ const LandingPage = () => (
       <section id="ubicacion" className="scroll-mt-24 bg-[#fff8e9] px-5 py-20 sm:px-8">
         <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-3">
           <div className="rounded-3xl bg-[#1a1511] p-7 text-white lg:col-span-2">
-            <MapPin className="h-9 w-9 text-[#ffb914]" /><h2 className="mt-6 text-4xl font-black">Estamos en Misiones</h2><p className="mt-4 text-lg text-white/70">Av. Las Américas 123, Misiones, Argentina.</p>
-            <a href="https://www.google.com/maps/search/?api=1&query=Av.%20Las%20Am%C3%A9ricas%20123%2C%20Misiones%2C%20Argentina" target="_blank" rel="noreferrer" className="mt-7 inline-flex items-center gap-2 font-black text-[#ffbd20] hover:text-[#ffd777]">Cómo llegar <ArrowRight className="h-4 w-4" /></a>
+            <MapPin className="h-9 w-9 text-[#ffb914]" /><h2 className="mt-6 text-4xl font-black">Estamos en Aristóbulo del Valle</h2><p className="mt-4 text-lg text-white/70">Av. Las Américas 650, N3364 Aristóbulo del Valle, Misiones, Argentina.</p>
+            <a href="https://www.google.com/maps/search/?api=1&query=Av.%20Las%20Am%C3%A9ricas%20650%2C%20N3364%20Arist%C3%B3bulo%20del%20Valle%2C%20Misiones%2C%20Argentina" target="_blank" rel="noreferrer" className="mt-7 inline-flex items-center gap-2 font-black text-[#ffbd20] hover:text-[#ffd777]">Cómo llegar <ArrowRight className="h-4 w-4" /></a>
           </div>
           <div className="rounded-3xl border border-[#704415]/15 bg-[#f7ead3] p-7">
             <Instagram className="h-9 w-9 text-[#ce5f0a]" /><h2 className="mt-6 text-2xl font-black">Seguinos</h2><p className="mt-3 text-[#674832]">Novedades, promos y todo lo que sale de nuestra cocina.</p><a href="https://www.instagram.com/riko.pollo_/" target="_blank" rel="noreferrer" className="mt-6 inline-flex font-black text-[#b34f08] hover:text-[#de790c]">@riko.pollo_</a>

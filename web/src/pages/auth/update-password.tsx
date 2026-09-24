@@ -44,10 +44,10 @@ const UpdatePasswordPage = () => {
     const newErrors: FormErrors = {};
     const passwordRegex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
     if (!passwordRegex.test(formData.password)) {
-      newErrors.password = 'Password must be at least 8 characters with 1 number and 1 uppercase letter';
+      newErrors.password = 'La contraseña debe tener al menos 8 caracteres, una mayúscula y un número';
     }
     if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
+      newErrors.confirmPassword = 'Las contraseñas no coinciden';
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -69,7 +69,7 @@ const UpdatePasswordPage = () => {
     try {
       const token = searchParams.get('token');
       if (!token) {
-        setErrors(prev => ({ ...prev, submit: 'Reset link is missing or invalid. Please request a new one.' }));
+        setErrors(prev => ({ ...prev, submit: 'El enlace no existe o no es válido. Solicitá uno nuevo.' }));
         return;
       }
       const { error } = await api.request('POST', '/auth/password/reset', {
@@ -79,14 +79,14 @@ const UpdatePasswordPage = () => {
       if (error) {
         const msg =
           error.status === 410
-            ? 'This reset link has already been used or has expired. Please request a new one.'
-            : (error.message || 'Failed to update password. Please try again.');
+            ? 'Este enlace ya fue utilizado o venció. Solicitá uno nuevo.'
+            : (error.message || 'No se pudo actualizar la contraseña. Intentá nuevamente.');
         setErrors(prev => ({ ...prev, submit: msg }));
         return;
       }
       setIsUpdated(true);
     } catch (_err) {
-      setErrors(prev => ({ ...prev, submit: 'Failed to update password. Please try again.' }));
+      setErrors(prev => ({ ...prev, submit: 'No se pudo actualizar la contraseña. Intentá nuevamente.' }));
     } finally {
       setIsLoading(false);
     }
@@ -97,10 +97,10 @@ const UpdatePasswordPage = () => {
       <Card variant="elevated" className="w-full">
         <CardHeader className="pb-2 pt-7 px-7 text-center space-y-1">
           <CardTitle className="text-2xl font-display font-semibold text-foreground">
-            Update your password
+            Actualizar contraseña
           </CardTitle>
           <CardDescription className="text-sm text-muted-foreground">
-            Choose a strong new password for your account
+            Elegí una contraseña segura para tu cuenta
           </CardDescription>
         </CardHeader>
 
@@ -121,7 +121,7 @@ const UpdatePasswordPage = () => {
                 {/* New password */}
                 <div className="space-y-1.5">
                   <Label htmlFor="update-password" className="text-sm font-medium text-foreground">
-                    New password
+                    Nueva contraseña
                   </Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" aria-hidden="true" />
@@ -130,7 +130,7 @@ const UpdatePasswordPage = () => {
                       name="password"
                       type={showPassword ? 'text' : 'password'}
                       autoComplete="new-password"
-                      placeholder="Enter new password"
+                      placeholder="Ingresá la nueva contraseña"
                       value={formData.password}
                       onChange={handleInputChange}
                       disabled={isLoading}
@@ -142,18 +142,18 @@ const UpdatePasswordPage = () => {
                       type="button"
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded transition-colors"
                       onClick={() => setShowPassword(!showPassword)}
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
                     </button>
                   </div>
 
                   {/* Live requirement checklist */}
-                  <ul id="update-password-reqs" className="space-y-0.5" aria-label="Password requirements">
+                  <ul id="update-password-reqs" className="space-y-0.5" aria-label="Requisitos de contraseña">
                     {[
-                      { label: 'At least 8 characters', met: pwChecks.length },
-                      { label: '1 uppercase letter', met: pwChecks.upper },
-                      { label: '1 number', met: pwChecks.number },
+                      { label: 'Al menos 8 caracteres', met: pwChecks.length },
+                      { label: 'Una letra mayúscula', met: pwChecks.upper },
+                      { label: 'Un número', met: pwChecks.number },
                     ].map(({ label, met }) => (
                       <li key={label} className={`text-xs flex items-center gap-1.5 transition-colors ${pwStarted ? (met ? 'text-success' : 'text-destructive') : 'text-muted-foreground'}`}>
                         <CheckCircle2 className={`w-3 h-3 shrink-0 ${pwStarted && met ? 'text-success' : 'text-muted-foreground/50'}`} aria-hidden="true" />
@@ -175,7 +175,7 @@ const UpdatePasswordPage = () => {
                 {/* Confirm password */}
                 <div className="space-y-1.5">
                   <Label htmlFor="update-confirm-password" className="text-sm font-medium text-foreground">
-                    Confirm new password
+                    Confirmar nueva contraseña
                   </Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" aria-hidden="true" />
@@ -184,7 +184,7 @@ const UpdatePasswordPage = () => {
                       name="confirmPassword"
                       type={showConfirmPassword ? 'text' : 'password'}
                       autoComplete="new-password"
-                      placeholder="Confirm new password"
+                      placeholder="Repetí la nueva contraseña"
                       value={formData.confirmPassword}
                       onChange={handleInputChange}
                       disabled={isLoading}
@@ -196,7 +196,7 @@ const UpdatePasswordPage = () => {
                       type="button"
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded transition-colors"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                      aria-label={showConfirmPassword ? 'Ocultar confirmación' : 'Mostrar confirmación'}
                     >
                       {showConfirmPassword ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
                     </button>
@@ -210,7 +210,7 @@ const UpdatePasswordPage = () => {
                     ) : confirmStarted && passwordsMatch ? (
                       <p className="text-xs text-success flex items-center gap-1">
                         <CheckCircle2 className="w-3 h-3 shrink-0" aria-hidden="true" />
-                        Passwords match
+                        Las contraseñas coinciden
                       </p>
                     ) : null}
                   </div>
@@ -224,12 +224,12 @@ const UpdatePasswordPage = () => {
                   {isLoading ? (
                     <span className="flex items-center gap-2">
                       <span className="w-4 h-4 border-2 border-primary-foreground/40 border-t-primary-foreground rounded-full animate-spin" aria-hidden="true" />
-                      Updating password…
+                      Actualizando contraseña…
                     </span>
                   ) : (
                     <span className="flex items-center gap-2">
                       <Lock className="w-4 h-4" aria-hidden="true" />
-                      Update Password
+                      Actualizar contraseña
                     </span>
                   )}
                 </Button>
@@ -243,9 +243,9 @@ const UpdatePasswordPage = () => {
                   <CheckCircle2 className="w-8 h-8 text-success" aria-hidden="true" />
                 </div>
                 <div className="text-center space-y-1.5">
-                  <h2 className="font-display font-semibold text-foreground text-lg">Password updated!</h2>
+                  <h2 className="font-display font-semibold text-foreground text-lg">¡Contraseña actualizada!</h2>
                   <p className="text-sm text-muted-foreground">
-                    Your password has been changed. You can now sign in with your new credentials.
+                    Tu contraseña fue cambiada. Ya podés ingresar con tus nuevas credenciales.
                   </p>
                 </div>
               </div>
@@ -256,7 +256,7 @@ const UpdatePasswordPage = () => {
               >
                 <span className="flex items-center gap-2">
                   <Utensils className="w-4 h-4" aria-hidden="true" />
-                  Sign In to Dashboard
+                  Ingresar al sistema
                 </span>
               </Button>
             </div>

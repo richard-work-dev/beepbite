@@ -48,14 +48,14 @@ const SignUpPage = () => {
     const newErrors: FormErrors = {};
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
+      newErrors.email = 'Ingresá un correo electrónico válido';
     }
     const passwordRegex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
     if (!passwordRegex.test(formData.password)) {
-      newErrors.password = 'Password must be at least 8 characters with 1 number and 1 uppercase letter';
+      newErrors.password = 'La contraseña debe tener al menos 8 caracteres, una mayúscula y un número';
     }
     if (!formData.agreeToTerms) {
-      newErrors.agreeToTerms = 'You must accept the terms and conditions';
+      newErrors.agreeToTerms = 'Debés aceptar los términos y condiciones';
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -93,7 +93,7 @@ const SignUpPage = () => {
             {t('auth.signUp.title')}
           </CardTitle>
           <CardDescription className="text-sm text-muted-foreground">
-            Join thousands of restaurants using BeepBite
+            Solo para el propietario y personal invitado de RikoPollo
           </CardDescription>
         </CardHeader>
 
@@ -122,7 +122,7 @@ const SignUpPage = () => {
                   name="email"
                   type="email"
                   autoComplete="email"
-                  placeholder="you@restaurant.com"
+                  placeholder="tu@correo.com"
                   value={formData.email}
                   onChange={handleInputChange}
                   disabled={isLoading}
@@ -154,7 +154,7 @@ const SignUpPage = () => {
                   name="password"
                   type="password"
                   autoComplete="new-password"
-                  placeholder="Create a secure password"
+                  placeholder="Creá una contraseña segura"
                   value={formData.password}
                   onChange={handleInputChange}
                   disabled={isLoading}
@@ -168,9 +168,9 @@ const SignUpPage = () => {
               {/* Live password strength checklist */}
               <ul id="signup-password-reqs" className="space-y-0.5" aria-label="Password requirements">
                 {[
-                  { key: 'length', label: 'At least 8 characters', met: pwChecks.length },
-                  { key: 'upper', label: '1 uppercase letter', met: pwChecks.upper },
-                  { key: 'number', label: '1 number', met: pwChecks.number },
+                  { key: 'length', label: 'Al menos 8 caracteres', met: pwChecks.length },
+                  { key: 'upper', label: 'Una letra mayúscula', met: pwChecks.upper },
+                  { key: 'number', label: 'Un número', met: pwChecks.number },
                 ].map(({ key, label, met }) => (
                   <li key={key} className={`text-xs flex items-center gap-1.5 transition-colors ${pwStarted ? (met ? 'text-success' : 'text-destructive') : 'text-muted-foreground'}`}>
                     <CheckCircle2 className={`w-3 h-3 shrink-0 transition-colors ${pwStarted && met ? 'text-success' : 'text-muted-foreground/50'}`} aria-hidden="true" />
@@ -207,10 +207,10 @@ const SignUpPage = () => {
                   className={`mt-0.5 ${errors.agreeToTerms ? 'border-destructive' : ''}`}
                 />
                 <Label htmlFor="signup-terms" className="text-sm text-foreground leading-relaxed cursor-pointer font-normal">
-                  I agree to the{' '}
-                  <a href="/docs/terms" className="text-primary hover:text-primary/80 font-medium underline underline-offset-1">Terms</a>
+                  Acepto los{' '}
+                  <a href="/docs/terms" className="text-primary hover:text-primary/80 font-medium underline underline-offset-1">Términos</a>
                   {' '}and{' '}
-                  <a href="/docs/privacy" className="text-primary hover:text-primary/80 font-medium underline underline-offset-1">Privacy Policy</a>
+                  <a href="/docs/privacy" className="text-primary hover:text-primary/80 font-medium underline underline-offset-1">Política de privacidad</a>
                 </Label>
               </div>
               <div aria-live="polite" aria-atomic="true">
@@ -231,12 +231,12 @@ const SignUpPage = () => {
               {isLoading ? (
                 <span className="flex items-center gap-2">
                   <span className="w-4 h-4 border-2 border-primary-foreground/40 border-t-primary-foreground rounded-full animate-spin" aria-hidden="true" />
-                  Creating account…
+                  Creando cuenta…
                 </span>
               ) : (
                 <span className="flex items-center gap-2">
                   <Utensils className="w-4 h-4" aria-hidden="true" />
-                  Create Account
+                  Crear cuenta
                 </span>
               )}
             </Button>

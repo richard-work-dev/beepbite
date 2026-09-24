@@ -32,15 +32,15 @@ const VerifyEmailPage = () => {
         if (error) {
           const msg =
             error.status === 410
-              ? 'This verification link has already been used or has expired. Use the button below to resend.'
-              : (error.message || 'Verification failed. Please request a new link.');
+              ? 'Este enlace ya fue utilizado o venció. Usá el botón para solicitar otro.'
+              : (error.message || 'No se pudo verificar el correo. Solicitá un nuevo enlace.');
           setErrorMessage(msg);
         } else {
           setConfirmed(true);
         }
       }).catch(() => {
         setConfirming(false);
-        setErrorMessage('Verification failed. Please try again.');
+        setErrorMessage('No se pudo verificar el correo. Intentá nuevamente.');
       });
     } else {
       const pendingEmail = localStorage.getItem('pendingVerificationEmail');
@@ -68,11 +68,11 @@ const VerifyEmailPage = () => {
         auth: false,
         body,
       });
-      setSuccessMessage('Verification email sent! Check your inbox.');
+      setSuccessMessage('Correo de verificación enviado. Revisá tu bandeja de entrada.');
       setResendCooldown(60);
     } catch (error) {
       console.error('Failed to resend verification email:', error);
-      setErrorMessage('Failed to resend. Please try again.');
+      setErrorMessage('No se pudo reenviar. Intentá nuevamente.');
     } finally {
       setIsResending(false);
     }
@@ -96,10 +96,10 @@ const VerifyEmailPage = () => {
               </div>
               <div className="space-y-1">
                 <CardTitle className="text-2xl font-display font-semibold text-foreground">
-                  Email verified!
+                  ¡Correo verificado!
                 </CardTitle>
                 <CardDescription className="text-sm text-muted-foreground">
-                  Your email address has been confirmed. You can now sign in.
+                  Tu correo fue confirmado. Ya podés ingresar.
                 </CardDescription>
               </div>
             </CardHeader>
@@ -108,7 +108,7 @@ const VerifyEmailPage = () => {
                 className="w-full h-11 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-glow transition-all text-sm"
                 onClick={() => navigate('/signin')}
               >
-                Sign In to Dashboard
+                Ingresar al sistema
               </Button>
             </CardContent>
           </>
@@ -116,7 +116,7 @@ const VerifyEmailPage = () => {
           /* ── Auto-confirming spinner ── */
           <CardContent className="px-7 py-12 flex flex-col items-center gap-4">
             <span className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" aria-hidden="true" />
-            <p className="text-sm text-muted-foreground">Verifying your email…</p>
+            <p className="text-sm text-muted-foreground">Verificando tu correo…</p>
           </CardContent>
         ) : (
           /* ── Default: check-your-inbox / resend state ── */
@@ -128,11 +128,11 @@ const VerifyEmailPage = () => {
               </div>
               <div className="space-y-1">
                 <CardTitle className="text-2xl font-display font-semibold text-foreground">
-                  Check your email
+                  Revisá tu correo
                 </CardTitle>
                 <CardDescription className="text-sm text-muted-foreground">
-                  We've sent a verification link to{' '}
-                  <strong className="text-foreground font-semibold">{email || 'your email address'}</strong>
+                  Enviamos un enlace de verificación a{' '}
+                  <strong className="text-foreground font-semibold">{email || 'tu correo electrónico'}</strong>
                 </CardDescription>
               </div>
             </CardHeader>
@@ -158,14 +158,14 @@ const VerifyEmailPage = () => {
 
               {/* Instructional info box */}
               <div className="rounded-xl bg-primary/5 border border-primary/15 px-4 py-3.5 space-y-2">
-                <p className="text-sm font-medium text-foreground">Next steps</p>
+                <p className="text-sm font-medium text-foreground">Próximos pasos</p>
                 <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-                  <li>Open the email from BeepBite</li>
-                  <li>Click the <strong className="font-medium text-foreground">Verify email</strong> link</li>
-                  <li>You'll be redirected to your dashboard</li>
+                  <li>Abrí el correo de RikoPollo</li>
+                  <li>Presioná el enlace <strong className="font-medium text-foreground">Verificar correo</strong></li>
+                  <li>Volverás automáticamente al sistema</li>
                 </ol>
                 <p className="text-xs text-muted-foreground pt-0.5">
-                  Can't find it? Check your spam or junk folder.
+                  ¿No lo encontrás? Revisá la carpeta de correo no deseado.
                 </p>
               </div>
 
@@ -175,19 +175,19 @@ const VerifyEmailPage = () => {
                   onClick={handleResendEmail}
                   disabled={isResending || resendCooldown > 0}
                   className="w-full h-11 rounded-xl bg-primary hover:bg-primary/90 active:bg-primary/80 text-primary-foreground font-semibold shadow-glow hover:shadow-glow transition-all text-sm"
-                  aria-label={resendCooldown > 0 ? `Resend available in ${resendCooldown} seconds` : 'Resend verification email'}
+                  aria-label={resendCooldown > 0 ? `Reenvío disponible en ${resendCooldown} segundos` : 'Reenviar correo de verificación'}
                 >
                   {isResending ? (
                     <span className="flex items-center gap-2">
                       <RefreshCw className="w-4 h-4 animate-spin" aria-hidden="true" />
-                      Sending…
+                      Enviando…
                     </span>
                   ) : resendCooldown > 0 ? (
-                    `Resend in ${resendCooldown}s`
+                    `Reenviar en ${resendCooldown}s`
                   ) : (
                     <span className="flex items-center gap-2">
                       <RefreshCw className="w-4 h-4" aria-hidden="true" />
-                      Resend Verification Email
+                      Reenviar correo de verificación
                     </span>
                   )}
                 </Button>
@@ -197,7 +197,7 @@ const VerifyEmailPage = () => {
                   onClick={handleChangeEmail}
                   className="w-full h-11 rounded-xl border-border hover:bg-muted font-medium text-sm"
                 >
-                  Use a Different Email
+                  Usar otro correo
                 </Button>
 
                 <Button
@@ -205,12 +205,12 @@ const VerifyEmailPage = () => {
                   onClick={() => navigate('/signin')}
                   className="w-full h-11 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted font-medium text-sm"
                 >
-                  Back to Sign In
+                  Volver al ingreso
                 </Button>
               </div>
 
               <p className="text-center text-xs text-muted-foreground">
-                After verifying you'll be taken straight to your BeepBite dashboard.
+                Después de verificar el correo ingresarás al sistema de RikoPollo.
               </p>
             </CardContent>
           </>

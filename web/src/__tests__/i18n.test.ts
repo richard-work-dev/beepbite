@@ -4,7 +4,7 @@
 //   1. All locale JSON files parse correctly and expose the same
 //      *translation* top-level keys as en.json (private meta-keys
 //      prefixed with "_" are excluded from the parity check).
-//   2. The i18n instance initialises with fallbackLng 'en'.
+//   2. The i18n instance initialises with fallbackLng 'es'.
 //   3. changeLanguage + t() returns the locale value; missing keys
 //      fall back to English.
 
@@ -141,7 +141,7 @@ describe('interpolation placeholders (every locale vs en.json)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 2. i18n instance initialises with fallback language 'en'
+// 2. i18n instance initialises with fallback language 'es'
 // ---------------------------------------------------------------------------
 
 describe('i18n instance initialisation', () => {
@@ -149,11 +149,11 @@ describe('i18n instance initialisation', () => {
     expect(i18n.isInitialized).toBe(true);
   });
 
-  it('has fallbackLng set to "en"', () => {
+  it('has fallbackLng set to "es"', () => {
     // i18next normalises fallbackLng to an array internally.
     const fallback = i18n.options.fallbackLng;
     const fallbackArr = Array.isArray(fallback) ? fallback : [fallback];
-    expect(fallbackArr).toContain('en');
+    expect(fallbackArr).toContain('es');
   });
 
   it('supports all expected language codes', () => {
@@ -198,14 +198,14 @@ describe('changeLanguage and t()', () => {
     await i18n.changeLanguage('en');
   });
 
-  it('falls back to English for a key missing from a locale', async () => {
+  it('falls back to Spanish for a key missing from a locale', async () => {
     // Inject a test locale that deliberately omits 'common.language'.
     i18n.addResourceBundle('xx', 'translation', { nav: { topBar: { home: 'XX Home' } } }, true, true);
     await i18n.changeLanguage('xx');
 
-    // 'common.language' is not present in 'xx' → should fall back to 'en' value
+    // 'common.language' is not present in 'xx' → should fall back to 'es' value
     const result = i18n.t('common.language');
-    expect(result).toBe('Language'); // en.json value
+    expect(result).toBe('Idioma'); // es.json value
 
     // Clean up test locale and restore.
     i18n.removeResourceBundle('xx', 'translation');

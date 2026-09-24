@@ -23,11 +23,11 @@ const ForgotPasswordPage = () => {
     setError('');
 
     if (!email.trim()) {
-      setError('Email is required');
+      setError('El correo electrónico es obligatorio');
       return;
     }
     if (!validateEmail(email)) {
-      setError('Please enter a valid email address');
+      setError('Ingresá un correo electrónico válido');
       return;
     }
 
@@ -40,7 +40,7 @@ const ForgotPasswordPage = () => {
       });
       setIsSubmitted(true);
     } catch (_err) {
-      setError('Failed to send reset link. Please try again.');
+      setError('No se pudo enviar el enlace. Intentá nuevamente.');
     } finally {
       setIsLoading(false);
     }
@@ -56,13 +56,13 @@ const ForgotPasswordPage = () => {
             className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-3 w-fit focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded transition-colors"
           >
             <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-            Back
+            Volver
           </button>
           <CardTitle className="text-2xl font-display font-semibold text-foreground">
-            Reset your password
+            Restablecer contraseña
           </CardTitle>
           <CardDescription className="text-sm text-muted-foreground">
-            Enter your email and we'll send a reset link
+            Ingresá tu correo y te enviaremos un enlace
           </CardDescription>
         </CardHeader>
 
@@ -82,7 +82,7 @@ const ForgotPasswordPage = () => {
               <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                 <div className="space-y-1.5">
                   <Label htmlFor="forgot-email" className="text-sm font-medium text-foreground">
-                    Email address
+                    Correo electrónico
                   </Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" aria-hidden="true" />
@@ -90,7 +90,7 @@ const ForgotPasswordPage = () => {
                       id="forgot-email"
                       type="email"
                       autoComplete="email"
-                      placeholder="you@restaurant.com"
+                      placeholder="tu@correo.com"
                       value={email}
                       onChange={(e) => {
                         setEmail(e.target.value);
@@ -121,19 +121,19 @@ const ForgotPasswordPage = () => {
                   {isLoading ? (
                     <span className="flex items-center gap-2">
                       <span className="w-4 h-4 border-2 border-primary-foreground/40 border-t-primary-foreground rounded-full animate-spin" aria-hidden="true" />
-                      Sending reset link…
+                      Enviando enlace…
                     </span>
                   ) : (
                     <span className="flex items-center gap-2">
                       <Mail className="w-4 h-4" aria-hidden="true" />
-                      Send Reset Link
+                      Enviar enlace
                     </span>
                   )}
                 </Button>
               </form>
 
               <p className="text-center text-sm text-muted-foreground">
-                Remember your password?{' '}
+                ¿Recordaste tu contraseña?{' '}
                 <button
                   type="button"
                   className="text-primary hover:text-primary/80 font-semibold underline underline-offset-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"
@@ -152,14 +152,14 @@ const ForgotPasswordPage = () => {
                   <CheckCircle2 className="w-8 h-8 text-success" aria-hidden="true" />
                 </div>
                 <div className="text-center space-y-1.5">
-                  <h2 className="font-display font-semibold text-foreground text-lg">Check your inbox</h2>
+                  <h2 className="font-display font-semibold text-foreground text-lg">Revisá tu correo</h2>
                   <p className="text-sm text-muted-foreground">
-                    We've sent a reset link to{' '}
+                    Enviamos un enlace de recuperación a{' '}
                     <span className="font-medium text-foreground">{email}</span>.
-                    The link expires in 1 hour.
+                    El enlace vence en una hora.
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Can't find it? Check your spam folder.
+                    ¿No lo encontrás? Revisá la carpeta de correo no deseado.
                   </p>
                 </div>
               </div>
@@ -169,14 +169,14 @@ const ForgotPasswordPage = () => {
                   className="w-full h-11 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-glow transition-all text-sm"
                   onClick={() => setIsSubmitted(false)}
                 >
-                  Try a different email
+                  Usar otro correo
                 </Button>
                 <Button
                   variant="outline"
                   className="w-full h-11 rounded-xl border-border hover:bg-muted font-medium text-sm"
                   onClick={() => navigate('/signin')}
                 >
-                  Back to Sign In
+                  Volver al ingreso
                 </Button>
               </div>
             </div>

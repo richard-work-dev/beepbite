@@ -3,13 +3,6 @@ name: Terraform
 on:
   pull_request:
     branches: [develop, main]
-    paths:
-      - ".github/workflows/deploy-development.yml"
-      - ".github/workflows/terraform.yml"
-      - "backend/cmd/serverless/**"
-      - "backend/go.mod"
-      - "backend/go.sum"
-      - "infra/aws/**"
   workflow_dispatch:
 
 permissions:

@@ -34,7 +34,17 @@ export async function fetchStoreReviews(slug: string, limit?: number) {
   const qs = new URLSearchParams();
   if (limit != null) qs.set('limit', String(limit));
   const query = qs.toString() ? `?${qs.toString()}` : '';
-  return api.request<Review[]>('GET', `/stores/${encodeURIComponent(slug)}/reviews${query}`, { auth: false });
+  const result = await api.request<Review[] | { data: Review[]; limit: number }>(
+    'GET',
+    `/stores/${encodeURIComponent(slug)}/reviews${query}`,
+    { auth: false },
+  );
+  if (result.error) return { data: null, error: result.error };
+  const payload = result.data;
+  return {
+    data: Array.isArray(payload) ? payload : (Array.isArray(payload?.data) ? payload.data : []),
+    error: null,
+  };
 }
 
 /**

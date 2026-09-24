@@ -90,6 +90,13 @@ func loadApplication(ctx context.Context) (*application, error) {
 }
 
 func handler(ctx context.Context, request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
+	// HTTP API sends unmatched preflight requests through the $default route.
+	// Return a successful empty response so API Gateway can attach its configured
+	// Access-Control-* headers for the requesting origin.
+	if request.RequestContext.HTTP.Method == "OPTIONS" {
+		return events.APIGatewayV2HTTPResponse{StatusCode: 204}, nil
+	}
+
 	if request.RequestContext.HTTP.Method == "GET" && (request.RawPath == "/health" || request.RawPath == "/api/health") {
 		return jsonResponse(200, map[string]any{
 			"service": "beepbite-api", "status": "ok", "architecture": "lambda-dynamodb",

@@ -25,6 +25,7 @@ jobs:
       TF_VAR_aws_profile: ""
       TF_VAR_aws_region: ${{ vars.AWS_REGION }}
       TF_VAR_environment: dev
+      TF_VAR_enable_custom_domains: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5

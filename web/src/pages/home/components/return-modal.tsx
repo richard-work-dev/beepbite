@@ -58,10 +58,10 @@ interface ReturnModalProps {
 }
 
 const REASONS = [
-  { value: 'refund', label: 'Refund' },
-  { value: 'void', label: 'Void' },
-  { value: 'comp', label: 'Comp' },
-  { value: 'manager_discount', label: 'Manager Discount' },
+  { value: 'refund', label: 'Reembolso' },
+  { value: 'void', label: 'Anulación' },
+  { value: 'comp', label: 'Cortesía' },
+  { value: 'manager_discount', label: 'Descuento del encargado' },
 ];
 
 /**
@@ -173,7 +173,7 @@ export default function ReturnModal({
   const handleLookup = async () => {
     setLookupError('');
     if (!orderQuery.trim()) {
-      setLookupError('Enter an order number');
+      setLookupError('Ingresá un número de pedido');
       return;
     }
     setLookupLoading(true);
@@ -182,16 +182,16 @@ export default function ReturnModal({
         'GET',
         `/data/orders?eq=order_number,${encodeURIComponent(orderQuery.trim())}&eq=location_id,${encodeURIComponent(locationId)}&limit=1`,
       );
-      if (error) throw new Error(error.message || 'Order lookup failed');
+      if (error) throw new Error(error.message || 'No se pudo buscar el pedido');
       const rows = Array.isArray(data) ? data : data ? [data] : [];
       if (rows.length === 0) {
-        setLookupError('Order not found');
+        setLookupError('No se encontró el pedido');
         setOrder(null);
         return;
       }
       setOrder(rows[0]);
     } catch (err) {
-      setLookupError(err instanceof Error ? err.message : 'Order lookup failed');
+      setLookupError(err instanceof Error ? err.message : 'No se pudo buscar el pedido');
       setOrder(null);
     } finally {
       setLookupLoading(false);
@@ -241,14 +241,14 @@ export default function ReturnModal({
     } catch (rawErr) {
       const err = rawErr as { status?: number; message?: string };
       if (err.status === 401) {
-        setSubmitError(err.message || 'Manager PIN incorrect');
+        setSubmitError(err.message || 'El PIN del encargado es incorrecto');
         setManagerPin('');
       } else if (err.status === 403) {
-        setSubmitError('That user is not a manager.');
+        setSubmitError('Ese usuario no es encargado.');
       } else if (err.status === 409) {
-        setSubmitError(err.message || 'This order has already been adjusted.');
+        setSubmitError(err.message || 'Este pedido ya fue ajustado.');
       } else {
-        setSubmitError(err.message || 'Adjustment failed');
+        setSubmitError(err.message || 'No se pudo aplicar el ajuste');
       }
     } finally {
       setSubmitting(false);
@@ -261,24 +261,24 @@ export default function ReturnModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <RotateCcw className="w-5 h-5 text-primary" />
-            Process Return
+            Procesar devolución
           </DialogTitle>
           <DialogDescription>
-            Return or void items on an existing order. Requires a manager PIN.
+            Devolvé o anulá productos de un pedido existente. Requiere el PIN de un encargado.
           </DialogDescription>
         </DialogHeader>
 
         {/* ---- Order lookup ---- */}
         {!initialOrder && (
           <div className="space-y-1.5">
-            <Label htmlFor="ret-order">Order number</Label>
+            <Label htmlFor="ret-order">Número de pedido</Label>
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   id="ret-order"
                   className="pl-9"
-                  placeholder="e.g. 1042"
+                  placeholder="Ej.: 1042"
                   value={orderQuery}
                   onChange={(e) => setOrderQuery(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleLookup()}
@@ -290,7 +290,7 @@ export default function ReturnModal({
                 onClick={handleLookup}
                 disabled={lookupLoading}
               >
-                {lookupLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Find'}
+                {lookupLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Buscar'}
               </Button>
             </div>
             {lookupError && (
@@ -305,7 +305,7 @@ export default function ReturnModal({
             <CardContent className="p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Order</p>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Pedido</p>
                   <p className="font-semibold text-foreground">#{order.order_number}</p>
                 </div>
                 {order.status && (
@@ -316,7 +316,7 @@ export default function ReturnModal({
               </div>
 
               {orderItems.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No line items loaded.</p>
+                <p className="text-sm text-muted-foreground">No se cargaron productos.</p>
               ) : (
                 <div className="divide-y border rounded-md">
                   {orderItems.map((oi) => {
@@ -328,7 +328,7 @@ export default function ReturnModal({
                             {oi.item_name || oi.name || `Item ${oi.id?.slice(0, 6)}`}
                           </p>
                           <p className="text-xs text-muted-foreground tabular-nums">
-                            Qty {oi.quantity} · {format(Math.round(parseFloat(String(oi.total_price || 0)) * scale))}
+                            Cant. {oi.quantity} · {format(Math.round(parseFloat(String(oi.total_price || 0)) * scale))}
                           </p>
                         </div>
                         <div className="flex items-center gap-1.5">
@@ -338,7 +338,7 @@ export default function ReturnModal({
                             variant="outline"
                             onClick={() => updateQty(oi.id, qty - 1)}
                             className="h-7 w-7 p-0 rounded-full border-primary/20"
-                            aria-label="Decrease return quantity"
+                            aria-label="Reducir cantidad a devolver"
                           >
                             <Minus className="w-3 h-3" />
                           </Button>
@@ -350,7 +350,7 @@ export default function ReturnModal({
                             size="sm"
                             onClick={() => updateQty(oi.id, qty + 1)}
                             className="h-7 w-7 p-0 rounded-full bg-primary hover:bg-primary/90"
-                            aria-label="Increase return quantity"
+                            aria-label="Aumentar cantidad a devolver"
                           >
                             <Plus className="w-3 h-3" />
                           </Button>
@@ -366,7 +366,7 @@ export default function ReturnModal({
 
         {/* ---- Reason ---- */}
         <div className="space-y-1.5">
-          <Label htmlFor="ret-reason">Reason</Label>
+          <Label htmlFor="ret-reason">Motivo</Label>
           <select
             id="ret-reason"
             value={reason}
@@ -379,12 +379,12 @@ export default function ReturnModal({
           </select>
           {reason === 'void' && (
             <p className="text-xs text-muted-foreground">
-              Void cancels the entire order (no items selected required).
+              La anulación cancela todo el pedido; no requiere seleccionar productos.
             </p>
           )}
           {reason === 'refund' && (
             <p className="text-xs text-muted-foreground">
-              Refunds reverse a completed payment for the whole order.
+              El reembolso revierte el pago completo del pedido.
             </p>
           )}
         </div>
@@ -397,12 +397,12 @@ export default function ReturnModal({
         >
           <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
             <ShieldCheck className="w-4 h-4 text-warning" />
-            Manager Authorization Required
+            Se requiere autorización de un encargado
           </div>
 
           <div className="grid sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="ret-mgr">Approving manager</Label>
+              <Label htmlFor="ret-mgr">Encargado que autoriza</Label>
               <select
                 id="ret-mgr"
                 value={approverStaffId}
@@ -411,7 +411,7 @@ export default function ReturnModal({
                 className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
               >
                 <option value="">
-                  {managersLoading ? 'Loading…' : 'Select manager'}
+                  {managersLoading ? 'Cargando…' : 'Seleccionar encargado'}
                 </option>
                 {managers.map((m) => (
                   <option key={m.id} value={m.id}>
@@ -423,13 +423,13 @@ export default function ReturnModal({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="ret-pin">Manager PIN</Label>
+              <Label htmlFor="ret-pin">PIN del encargado</Label>
               <Input
                 id="ret-pin"
                 type="password"
                 inputMode="numeric"
                 maxLength={6}
-                placeholder="4–6 digits"
+                placeholder="4 a 6 dígitos"
                 value={managerPin}
                 onChange={(e) => {
                   setManagerPin(e.target.value.replace(/\D/g, ''));
@@ -450,7 +450,7 @@ export default function ReturnModal({
         {success && (
           <Alert className="bg-success/10 border-success/30 text-success">
             <CheckCircle2 className="h-4 w-4 text-success" />
-            <AlertDescription>Adjustment applied successfully.</AlertDescription>
+            <AlertDescription>El ajuste se aplicó correctamente.</AlertDescription>
           </Alert>
         )}
 
@@ -461,7 +461,7 @@ export default function ReturnModal({
             onClick={() => onOpenChange(false)}
             disabled={submitting}
           >
-            Cancel
+            Cancelar
           </Button>
           <Button
             type="button"
@@ -473,12 +473,12 @@ export default function ReturnModal({
             {submitting ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Submitting…
+                Enviando…
               </>
             ) : (
               <>
                 <ShieldCheck className="w-4 h-4 mr-2" />
-                Process Return
+                Procesar devolución
               </>
             )}
           </Button>

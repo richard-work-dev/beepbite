@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { useMoney } from "@/context/locale-context";
 import type {
   HomeCartItem,
@@ -49,7 +50,7 @@ interface OrderModalsProps {
   setSelectedItem: (item: HomeMenuItem | null) => void;
   selectedVariations: Record<string, string>;
   handleVariationChange: (variationId: string, optionId: string) => void;
-  // `item` can be null: the "Add to Cart" button below is not gated on
+  // `item` can be null: the "Agregar al carrito" button below is not gated on
   // `selectedItem` being set (pre-existing — flagged, not fixed).
   addToCart: (item: HomeMenuItem | null, variations: Record<string, string>) => void;
 
@@ -143,12 +144,12 @@ const OrderModals = ({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Plus className="w-5 h-5 text-primary" />
-              Create Order
+              Crear pedido
             </DialogTitle>
             <DialogDescription>
               {cart.length > 0 
-                ? `Create order with ${cart.length} items (Total: ${format(toMinor(cartTotal))})`
-                : "Create a new order with customer details."
+                ? `Crear pedido con ${cart.length} productos (total: ${format(toMinor(cartTotal))})`
+                : "Creá un pedido nuevo con los datos del cliente."
               }
             </DialogDescription>
           </DialogHeader>
@@ -156,10 +157,10 @@ const OrderModals = ({
           <div className="space-y-4 mt-4">
             <div>
               <label className="text-sm font-medium text-foreground block mb-2">
-                Order Number <span className="text-destructive">*</span>
+                Número de pedido <span className="text-destructive">*</span>
               </label>
               <Input
-                placeholder="e.g., ORD123"
+                placeholder="Ej.: PED123"
                 value={orderNumber}
                 onChange={(e) => setOrderNumber(e.target.value)}
                 className="w-full"
@@ -168,10 +169,10 @@ const OrderModals = ({
 
             <div>
               <label className="text-sm font-medium text-foreground block mb-2">
-                Customer Phone <span className="text-destructive">*</span>
+                Teléfono del cliente <span className="text-destructive">*</span>
               </label>
               <Input
-                placeholder="Enter phone number"
+                placeholder="Ingresá el teléfono"
                 value={customerPhone}
                 onChange={(e) => setCustomerPhone(e.target.value)}
                 className="w-full"
@@ -180,7 +181,7 @@ const OrderModals = ({
 
             {cart.length > 0 && (
               <div className="bg-primary/5 p-3 rounded-lg">
-                <h4 className="font-medium text-foreground mb-2">Order Items:</h4>
+                <h4 className="font-medium text-foreground mb-2">Productos del pedido:</h4>
                 <div className="space-y-1 text-sm">
                   {cart.map((item) => (
                     <div key={item.cartItemKey} className="flex justify-between">
@@ -211,7 +212,7 @@ const OrderModals = ({
               className="flex-1"
               disabled={creating}
             >
-              Cancel
+              Cancelar
             </Button>
             <Button 
               onClick={createOrder}
@@ -221,12 +222,12 @@ const OrderModals = ({
               {creating ? (
                 <>
                   <Clock className="w-4 h-4 mr-2 animate-spin" />
-                  Creating...
+                  Creando…
                 </>
               ) : (
                 <>
                   <Plus className="w-4 h-4 mr-2" />
-                  Create Order
+                  Crear pedido
                 </>
               )}
             </Button>
@@ -240,7 +241,7 @@ const OrderModals = ({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Utensils className="w-5 h-5 text-primary" />
-              Customize Item
+              Personalizar producto
             </DialogTitle>
             <DialogDescription>
               {selectedItem?.name} - {format(toMinor(selectedItem?.price))}
@@ -286,7 +287,7 @@ const OrderModals = ({
               {/* Price Preview */}
               <div className="bg-primary/5 p-3 rounded-lg">
                 <div className="flex justify-between items-center">
-                  <span className="font-medium text-foreground">Total Price:</span>
+                  <span className="font-medium text-foreground">Precio total:</span>
                   <span className="text-lg font-bold text-primary">
                     {(() => {
                       let total = parseFloat(String(selectedItem.price || 0));
@@ -316,13 +317,13 @@ const OrderModals = ({
               }}
               className="flex-1"
             >
-              Cancel
+              Cancelar
             </Button>
             <Button 
               onClick={() => addToCart(selectedItem, selectedVariations)}
               className="flex-1"
             >
-              Add to Cart
+              Agregar al carrito
             </Button>
           </div>
         </DialogContent>
@@ -334,10 +335,10 @@ const OrderModals = ({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Edit className="w-5 h-5 text-primary" />
-              Edit Order #{editingOrder?.order_number}
+              Editar pedido n.º{editingOrder?.order_number}
             </DialogTitle>
             <DialogDescription>
-              Modify order status and details
+              Modificá el estado y los detalles del pedido
             </DialogDescription>
           </DialogHeader>
           
@@ -345,27 +346,27 @@ const OrderModals = ({
             <div className="space-y-4 mt-4">
               <div>
                 <label className="text-sm font-medium text-foreground block mb-2">
-                  Order Status
+                  Estado del pedido
                 </label>
                 <select
                   value={editingOrder.status}
                   onChange={(e) => setEditingOrder({...editingOrder, status: e.target.value})}
                   className="w-full p-2 border border-border rounded-md focus:border-primary focus:ring-primary/20"
                 >
-                  <option value="pending">Pending</option>
-                  <option value="confirmed">Confirmed</option>
-                  <option value="preparing">Preparing</option>
-                  <option value="ready">Ready</option>
-                  <option value="out_for_delivery">Out for Delivery</option>
-                  <option value="delivered">Delivered</option>
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
+                  <option value="pending">Pendiente</option>
+                  <option value="confirmed">Confirmado</option>
+                  <option value="preparing">En preparación</option>
+                  <option value="ready">Listo</option>
+                  <option value="out_for_delivery">En reparto</option>
+                  <option value="delivered">Entregado</option>
+                  <option value="completed">Completado</option>
+                  <option value="cancelled">Cancelado</option>
                 </select>
               </div>
 
               <div>
                 <label className="text-sm font-medium text-foreground block mb-2">
-                  Customer Phone
+                  Teléfono del cliente
                 </label>
                 <Input
                   value={editingOrder.customers?.whatsapp_number || ''}
@@ -379,10 +380,10 @@ const OrderModals = ({
 
               <div className="bg-muted p-3 rounded-lg">
                 <p className="text-sm text-muted-foreground">
-                  <strong className="text-foreground">Created:</strong> {formatDistanceToNow(new Date(editingOrder.created_at), { addSuffix: true })}
+                  <strong className="text-foreground">Creado:</strong> {formatDistanceToNow(new Date(editingOrder.created_at), { addSuffix: true, locale: es })}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  <strong className="text-foreground">Type:</strong> {editingOrder.order_type}
+                  <strong className="text-foreground">Tipo:</strong> {editingOrder.order_type === 'delivery' ? 'Entrega a domicilio' : editingOrder.order_type === 'pickup' ? 'Retiro' : editingOrder.order_type === 'dine_in' ? 'Consumo en el local' : editingOrder.order_type}
                 </p>
               </div>
             </div>
@@ -397,7 +398,7 @@ const OrderModals = ({
               }}
               className="flex-1"
             >
-              Cancel
+              Cancelar
             </Button>
             <Button 
               onClick={async () => {
@@ -409,7 +410,7 @@ const OrderModals = ({
               }}
               className="flex-1"
             >
-              Save Changes
+              Guardar cambios
             </Button>
           </div>
         </DialogContent>
@@ -421,17 +422,17 @@ const OrderModals = ({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Settings className="w-5 h-5 text-primary" />
-              Fractional Quantity
+              Cantidad fraccionada
             </DialogTitle>
             <DialogDescription>
-              Enter a fractional quantity for {fractionalQtyItem?.name}
+              Ingresá una cantidad fraccionada para {fractionalQtyItem?.name}
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 mt-4">
             <div>
               <label className="text-sm font-medium text-foreground block mb-2">
-                Quantity (e.g., 1.5, 2.25, 0.75)
+                Cantidad (ej.: 1,5; 2,25; 0,75)
               </label>
               <Input
                 type="number"
@@ -439,7 +440,7 @@ const OrderModals = ({
                 min="0.01"
                 value={fractionalQtyValue}
                 onChange={(e) => setFractionalQtyValue(e.target.value)}
-                placeholder="Enter quantity"
+                placeholder="Ingresá la cantidad"
                 className="w-full text-center text-lg"
               />
             </div>
@@ -463,7 +464,7 @@ const OrderModals = ({
             {fractionalQtyItem && fractionalQtyValue && !isNaN(parseFloat(fractionalQtyValue)) && (
               <div className="bg-primary/5 p-3 rounded-lg">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-foreground">Total Price:</span>
+                  <span className="text-sm text-foreground">Precio total:</span>
                   <span className="text-lg font-bold text-primary">
                     {format(toMinor(Number(fractionalQtyItem.price) * parseFloat(fractionalQtyValue)))}
                   </span>
@@ -478,13 +479,13 @@ const OrderModals = ({
               onClick={() => setIsFractionalQtyOpen(false)}
               className="flex-1"
             >
-              Cancel
+              Cancelar
             </Button>
             <Button 
               onClick={saveFractionalQty}
               className="flex-1"
             >
-              Update Quantity
+              Actualizar cantidad
             </Button>
           </div>
         </DialogContent>
@@ -496,10 +497,10 @@ const OrderModals = ({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Eye className="w-5 h-5 text-primary" />
-              Order Details
+              Detalles del pedido
             </DialogTitle>
             <DialogDescription>
-              Detailed view of order #{viewingOrder?.order_number}
+              Vista detallada del pedido n.º{viewingOrder?.order_number}
             </DialogDescription>
           </DialogHeader>
           
@@ -516,30 +517,30 @@ const OrderModals = ({
               {/* Order Header */}
               <div className="bg-muted p-4 rounded-lg border border-border">
                 <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-bold text-foreground text-xl">Order #{orderDetails.order_number}</h3>
+                  <h3 className="font-bold text-foreground text-xl">Pedido n.º{orderDetails.order_number}</h3>
                   <Badge className={cn("text-xs", getStatusColor(orderDetails.status))}>
                     {getStatusLabel(orderDetails.status)}
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  <strong>Created:</strong> {formatDistanceToNow(new Date(orderDetails.created_at), { addSuffix: true })}
+                  <strong>Creado:</strong> {formatDistanceToNow(new Date(orderDetails.created_at), { addSuffix: true, locale: es })}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  <strong>Type:</strong> {orderDetails.order_type}
+                  <strong>Tipo:</strong> {orderDetails.order_type === 'delivery' ? 'Entrega a domicilio' : orderDetails.order_type === 'pickup' ? 'Retiro' : orderDetails.order_type === 'dine_in' ? 'Consumo en el local' : orderDetails.order_type}
                 </p>
               </div>
 
               {/* Customer Info */}
               <Card className="border-border">
                 <CardContent className="p-4">
-                  <h4 className="font-medium text-foreground mb-2">Customer Information</h4>
+                  <h4 className="font-medium text-foreground mb-2">Información del cliente</h4>
                   <div className="space-y-1 text-sm">
-                    <p><strong>Phone:</strong> {orderDetails.customers?.whatsapp_number || 'N/A'}</p>
+                    <p><strong>Teléfono:</strong> {orderDetails.customers?.whatsapp_number || 'N/A'}</p>
                     {orderDetails.customers?.first_name && (
-                      <p><strong>Name:</strong> {orderDetails.customers.first_name} {orderDetails.customers.last_name}</p>
+                      <p><strong>Nombre:</strong> {orderDetails.customers.first_name} {orderDetails.customers.last_name}</p>
                     )}
                     {orderDetails.customers?.email && (
-                      <p><strong>Email:</strong> {orderDetails.customers.email}</p>
+                      <p><strong>Correo:</strong> {orderDetails.customers.email}</p>
                     )}
                   </div>
                 </CardContent>
@@ -548,11 +549,11 @@ const OrderModals = ({
               {/* Order Details */}
               <Card className="border-border">
                 <CardContent className="p-4">
-                  <h4 className="font-medium text-foreground mb-3">Order Details</h4>
+                  <h4 className="font-medium text-foreground mb-3">Detalles del pedido</h4>
                   <div className="space-y-2 text-sm">
-                    <p><strong>Delivery Address:</strong> {orderDetails.delivery_address || 'N/A'}</p>
-                    <p><strong>Notes:</strong> {orderDetails.notes || 'N/A'}</p>
-                    <p><strong>Kitchen Notes:</strong> {orderDetails.kitchen_notes || 'N/A'}</p>
+                    <p><strong>Dirección de entrega:</strong> {orderDetails.delivery_address || 'N/A'}</p>
+                    <p><strong>Notas:</strong> {orderDetails.notes || 'N/A'}</p>
+                    <p><strong>Notas de cocina:</strong> {orderDetails.kitchen_notes || 'N/A'}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -560,7 +561,7 @@ const OrderModals = ({
               {/* Order Items */}
               <Card className="border-border">
                 <CardContent className="p-4">
-                  <h4 className="font-medium text-foreground mb-3">Order Items</h4>
+                  <h4 className="font-medium text-foreground mb-3">Productos del pedido</h4>
                   <div className="space-y-3">
                     {orderDetails.order_items?.map((orderItem) => (
                       <div key={orderItem.id} className="border border-border rounded-lg p-3">
@@ -609,7 +610,7 @@ const OrderModals = ({
               {(orderDetails.subtotal_cents != null || orderDetails.total_cents != null) && (
                 <Card className="border-border">
                   <CardContent className="p-4">
-                    <h4 className="font-medium text-foreground mb-3">Order Summary</h4>
+                    <h4 className="font-medium text-foreground mb-3">Resumen del pedido</h4>
                     <div className="space-y-2 text-sm">
                       {orderDetails.subtotal_cents != null && (
                         <div className="flex justify-between">
@@ -619,7 +620,7 @@ const OrderModals = ({
                       )}
                       {orderDetails.tax_cents != null && (
                         <div className="flex justify-between">
-                          <span>Tax:</span>
+                          <span>Impuesto:</span>
                           <span>{format(orderDetails.tax_cents)}</span>
                         </div>
                       )}
@@ -638,7 +639,7 @@ const OrderModals = ({
               {orderDetails.notes && (
                 <Card className="border-border">
                   <CardContent className="p-4">
-                    <h4 className="font-medium text-foreground mb-2">Notes</h4>
+                    <h4 className="font-medium text-foreground mb-2">Notas</h4>
                     <p className="text-sm text-muted-foreground">{orderDetails.notes}</p>
                   </CardContent>
                 </Card>
@@ -647,7 +648,7 @@ const OrderModals = ({
           ) : (
             <div className="text-center py-8">
               <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-              <p className="text-muted-foreground">Failed to load order details</p>
+              <p className="text-muted-foreground">No se pudieron cargar los detalles del pedido</p>
             </div>
           )}
         </DialogContent>
@@ -656,4 +657,4 @@ const OrderModals = ({
   );
 };
 
-export default OrderModals; 
+export default OrderModals;

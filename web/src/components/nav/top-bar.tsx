@@ -204,13 +204,13 @@ const TopBar = () => {
           <div className="h-full flex items-center justify-between max-w-content mx-auto">
             {/* Left: Logo and Navigation */}
             <div className="flex items-center gap-6">
-              <Link to="/" className="flex items-center" aria-label="BeepBite home">
+              <Link to="/" className="flex items-center" aria-label="RikoPollo, inicio">
                 <Logo variant="minimal" />
               </Link>
 
               {/* Desktop Navigation - Show for authenticated users */}
               {user && (
-                <nav className="hidden sm:flex items-center gap-1.5" aria-label="Primary">
+                <nav className="hidden sm:flex items-center gap-1.5" aria-label="Navegación principal">
                   {topNavigationItems.map((item) => {
                     const Icon = item.icon;
                     const isActive = isActivePath(item.path);
@@ -237,7 +237,7 @@ const TopBar = () => {
 
               {/* Mobile Navigation - Show for authenticated users */}
               {user && (
-                <nav className="flex sm:hidden items-center gap-1" aria-label="Primary">
+                <nav className="flex sm:hidden items-center gap-1" aria-label="Navegación principal">
                   {topNavigationItems.slice(0, 2).map((item) => {
                     const Icon = item.icon;
                     const isActive = isActivePath(item.path);

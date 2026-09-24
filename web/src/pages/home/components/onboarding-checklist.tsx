@@ -165,8 +165,8 @@ const OnboardingChecklist = ({ onComplete }: OnboardingChecklistProps) => {
     {
       key: STEP_KEYS.ORG,
       icon: Building2,
-      label: 'Create your business',
-      description: 'Your organisation account is set up and ready.',
+      label: 'Creá tu negocio',
+      description: 'La cuenta de tu negocio está configurada y lista.',
       done: true,
       actionLabel: null,
       onAction: null,
@@ -175,72 +175,72 @@ const OnboardingChecklist = ({ onComplete }: OnboardingChecklistProps) => {
     {
       key: STEP_KEYS.LOCATION,
       icon: MapPin,
-      label: 'Add your first location',
-      description: 'A location is a physical store or service point. You need at least one to start selling.',
+      label: 'Agregá tu primera ubicación',
+      description: 'Una ubicación es una tienda física o punto de atención. Necesitás al menos una para comenzar a vender.',
       done: locationsCount > 0,
-      actionLabel: locationsCount > 0 ? null : 'Add location',
+      actionLabel: locationsCount > 0 ? null : 'Agregar ubicación',
       onAction: locationsCount > 0 ? null : () => setAddLocationOpen(true),
       isPrimary: true,
     },
     {
       key: STEP_KEYS.SERVICE_STYLE,
       icon: Store,
-      label: "What's your setup?",
+      label: "¿Cómo trabajás?",
       description: serviceStyleChosen
         ? serviceStyle === 'dine_in'
-          ? 'Dine-in with tables — floor plan and seat selection available.'
-          : 'Takeaway / counter — no tables needed, straight to orders.'
-        : 'Tell BeepBite how you serve customers so it shows the right features.',
+          ? 'Consumo en el local con mesas, plano del salón y selección de asientos.'
+          : 'Pedidos para llevar desde el mostrador, sin necesidad de mesas.'
+        : 'Indicá cómo atendés a tus clientes para mostrar las funciones adecuadas.',
       done: serviceStyleChosen,
       actionLabel: null,
       onAction: null,
       disabled: locationsCount === 0,
-      disabledHint: 'Add a location first',
+      disabledHint: 'Primero agregá una ubicación',
       isServiceStyleStep: true,
     },
     {
       key: STEP_KEYS.MENU,
       icon: UtensilsCrossed,
-      label: 'Build your menu',
-      description: 'Add the items you sell — food, drinks, products or services.',
+      label: 'Armá tu menú',
+      description: 'Agregá lo que vendés: comidas, bebidas, productos o servicios.',
       done: itemCount != null && itemCount > 0,
-      actionLabel: 'Add menu items',
+      actionLabel: 'Agregar productos al menú',
       // Braced (not `() => navigate(...)`) so the arrow function doesn't
       // implicitly return navigate()'s `void | Promise<void>` result where
       // `onAction: () => void` is expected.
       onAction: () => { void navigate('/menu'); },
       disabled: locationsCount === 0,
-      disabledHint: 'Add a location first',
+      disabledHint: 'Primero agregá una ubicación',
     },
     {
       key: STEP_KEYS.TEAM,
       icon: Users,
-      label: 'Invite your team',
-      description: 'Add staff members so they can take orders and manage the store.',
+      label: 'Invitá a tu equipo',
+      description: 'Agregá personal para tomar pedidos y administrar el local.',
       done: staffCount != null && staffCount > 0,
-      actionLabel: 'Invite staff',
+      actionLabel: 'Invitar personal',
       // Same as the menu step above — braced to avoid implicitly returning
       // navigate()'s result.
       onAction: () => { void navigate('/staff'); },
       disabled: locationsCount === 0,
-      disabledHint: 'Add a location first',
+      disabledHint: 'Primero agregá una ubicación',
     },
     {
       key: STEP_KEYS.ORDER,
       icon: ShoppingBag,
-      label: 'Take your first order',
-      description: 'Everything is set — open the POS and start serving customers.',
+      label: 'Tomá tu primer pedido',
+      description: 'Todo está listo: abrí el punto de venta y comenzá a atender.',
       done: false,
-      actionLabel: 'Open POS',
+      actionLabel: 'Abrir punto de venta',
       onAction: () => {
         if (onComplete) onComplete();
       },
       disabled: locationsCount === 0 || itemCount === 0,
       disabledHint:
         locationsCount === 0
-          ? 'Add a location first'
+          ? 'Primero agregá una ubicación'
           : itemCount === 0
-          ? 'Add menu items first'
+          ? 'Primero agregá productos al menú'
           : null,
     },
   ];
@@ -284,10 +284,10 @@ const OnboardingChecklist = ({ onComplete }: OnboardingChecklistProps) => {
                 </div>
                 <div className="min-w-0">
                   <h1 className="text-xl sm:text-2xl font-bold leading-tight">
-                    Let&apos;s get {activeOrganization?.name || 'your business'} ready to serve
+                    Dejemos todo {activeOrganization?.name || 'tu negocio'} listo para atender
                   </h1>
                   <p className="text-primary-foreground/80 text-sm mt-1">
-                    Complete the steps below to unlock the full POS experience.
+                    Completá estos pasos para habilitar toda la experiencia del punto de venta.
                   </p>
                 </div>
               </div>
@@ -295,7 +295,7 @@ const OnboardingChecklist = ({ onComplete }: OnboardingChecklistProps) => {
               {/* Progress */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-primary-foreground/80">Setup progress</span>
+                  <span className="text-primary-foreground/80">Progreso de configuración</span>
                   <span className="font-bold tabular-nums">
                     {doneCount}/{totalCount}
                   </span>
@@ -305,7 +305,7 @@ const OnboardingChecklist = ({ onComplete }: OnboardingChecklistProps) => {
                   aria-valuemin={0}
                   aria-valuemax={100}
                   aria-valuenow={progressPct}
-                  aria-label={`Setup ${progressPct}% complete`}
+                  aria-label={`Configuración completada al ${progressPct}%`}
                   className="h-2.5 rounded-full bg-primary-foreground/20 overflow-hidden"
                 >
                   <div
@@ -318,14 +318,14 @@ const OnboardingChecklist = ({ onComplete }: OnboardingChecklistProps) => {
               {allDone && (
                 <div className="mt-4 flex items-center gap-2 text-sm font-medium bg-primary-foreground/20 rounded-xl px-4 py-2.5" role="status">
                   <CheckCircle2 className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
-                  All set! You can now take orders.
+                  ¡Todo listo! Ya podés tomar pedidos.
                 </div>
               )}
             </CardContent>
           </Card>
 
           {/* Steps */}
-          <ol className="space-y-3 list-none" aria-label="Setup checklist">
+          <ol className="space-y-3 list-none" aria-label="Lista de configuración">
             {steps.map((step, idx) => {
               const Icon = step.icon;
               const isDisabled = step.disabled && !step.done;
@@ -396,12 +396,12 @@ const OnboardingChecklist = ({ onComplete }: OnboardingChecklistProps) => {
                             </span>
                             {idx === 0 && (
                               <Badge variant="success" className="text-xs">
-                                Done
+                                Listo
                               </Badge>
                             )}
                             {step.isPrimary && !step.done && (
                               <Badge className="bg-primary/10 text-primary border-primary/25 text-xs border">
-                                Required
+                                Obligatorio
                               </Badge>
                             )}
                           </div>
@@ -432,8 +432,8 @@ const OnboardingChecklist = ({ onComplete }: OnboardingChecklistProps) => {
                                 )}
                               >
                                 <UtensilsCrossed className="w-5 h-5" />
-                                <span>Dine-in</span>
-                                <span className="text-[10px] font-normal text-muted-foreground leading-tight">Tables &amp; floor plan</span>
+                                <span>Consumo en el local</span>
+                                <span className="text-[10px] font-normal text-muted-foreground leading-tight">Mesas y plano del salón</span>
                               </Button>
                               <Button
                                 type="button"
@@ -448,8 +448,8 @@ const OnboardingChecklist = ({ onComplete }: OnboardingChecklistProps) => {
                                 )}
                               >
                                 <ShoppingBag className="w-5 h-5" />
-                                <span>Takeaway</span>
-                                <span className="text-[10px] font-normal text-muted-foreground leading-tight">Counter / market stall</span>
+                                <span>Para llevar</span>
+                                <span className="text-[10px] font-normal text-muted-foreground leading-tight">Mostrador o puesto</span>
                               </Button>
                             </div>
                           )}
@@ -483,7 +483,7 @@ const OnboardingChecklist = ({ onComplete }: OnboardingChecklistProps) => {
 
           {/* Footer hint */}
           <p className="text-center text-xs text-muted-foreground px-4">
-            You can revisit these steps any time from Settings. The checklist disappears once you have at least one location.
+            Podés volver a estos pasos desde Configuración. La lista desaparecerá cuando tengas al menos una ubicación.
           </p>
         </div>
       </div>

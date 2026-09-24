@@ -73,12 +73,12 @@ describe('OnboardingChecklist — mount smoke', () => {
     ).not.toThrow();
   });
 
-  it('shows "Setup progress" text', () => {
+  it('shows the Spanish setup progress text', () => {
     render(
       <Wrapper>
         <OnboardingChecklist onComplete={vi.fn()} />
       </Wrapper>,
     );
-    expect(screen.getByText(/Setup progress/i)).toBeInTheDocument();
+    expect(screen.getByText(/Progreso de configuración/i)).toBeInTheDocument();
   });
 });

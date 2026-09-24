@@ -4,10 +4,10 @@ import { Button } from '@/components/ui/button';
 export type StatsPeriod = 'day' | 'week' | 'month' | 'year';
 
 const PERIODS: { value: StatsPeriod; label: string }[] = [
-  { value: 'day',   label: 'Today' },
-  { value: 'week',  label: 'Week' },
-  { value: 'month', label: 'Month' },
-  { value: 'year',  label: 'Year' },
+  { value: 'day',   label: 'Hoy' },
+  { value: 'week',  label: 'Semana' },
+  { value: 'month', label: 'Mes' },
+  { value: 'year',  label: 'Año' },
 ];
 
 interface PeriodFilterProps {
@@ -23,7 +23,7 @@ export default function PeriodFilter({ value, onChange }: PeriodFilterProps) {
   return (
     <div
       role="group"
-      aria-label="Time period"
+      aria-label="Período"
       className="inline-flex rounded-lg border border-primary/20 bg-card p-0.5 gap-0.5 shadow-sm"
     >
       {PERIODS.map((p) => (

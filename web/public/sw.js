@@ -1,5 +1,5 @@
 /**
- * sw.js — BeepBite offline service worker (Wave 13 / Now-24 Offline Tier 1).
+ * sw.js — RikoPollo offline service worker.
  *
  * STRATEGY OVERVIEW
  * -----------------
@@ -18,8 +18,8 @@
  *
  * CACHES
  * ------
- *   bb-shell-v1   — app shell assets listed in SHELL_ASSETS
- *   bb-menu-v1    — GET /stores/<slug> snapshots (stale-while-revalidate)
+ *   bb-shell-v2   — app shell assets listed in SHELL_ASSETS
+ *   bb-menu-v2    — GET /stores/<slug> snapshots (stale-while-revalidate)
  *
  * NOTE: The service worker is served from /sw.js (public directory).  Vite
  * does NOT bundle files in public/ so this file must be plain JS with no
@@ -32,8 +32,8 @@
 
 // ---- configuration ---------------------------------------------------------
 
-const SHELL_CACHE = 'bb-shell-v1';
-const MENU_CACHE  = 'bb-menu-v1';
+const SHELL_CACHE = 'bb-shell-v2';
+const MENU_CACHE  = 'bb-menu-v2';
 
 // Assets to pre-cache on install.  Keep this list minimal — large lists slow
 // down the install phase.  Add versioned asset manifests here once you have a

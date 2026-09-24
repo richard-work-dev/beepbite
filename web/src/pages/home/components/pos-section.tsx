@@ -129,7 +129,7 @@ const POSSection = ({
         <div className="relative">
           <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground w-6 h-6" />
           <Input
-            placeholder="Search menu items..."
+            placeholder="Buscar productos del menú…"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-12 h-12 text-lg font-medium border-2 border-primary/20 focus:border-primary focus:ring-primary/20 rounded-xl"
@@ -140,7 +140,7 @@ const POSSection = ({
               variant="ghost"
               size="icon"
               onClick={() => setSearchTerm('')}
-              aria-label="Clear search"
+              aria-label="Limpiar búsqueda"
               className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground hover:text-foreground"
             >
               <X className="w-5 h-5" />
@@ -163,7 +163,7 @@ const POSSection = ({
             )}
           >
             <Filter className="w-3 h-3 flex-shrink-0 mr-1.5" />
-            <span className="truncate">All Items</span>
+            <span className="truncate">Todos los productos</span>
           </Button>
           {categories.map((category) => (
             <Button
@@ -202,9 +202,9 @@ const POSSection = ({
         ) : filteredItems.length === 0 ? (
           <div className="text-center py-12">
             <Utensils className="w-16 h-16 text-muted-foreground/40 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-foreground mb-2">No items found</h3>
+            <h3 className="text-lg font-medium text-foreground mb-2">No se encontraron productos</h3>
             <p className="text-muted-foreground">
-              {searchTerm ? 'Try a different search term' : 'No items in this category'}
+              {searchTerm ? 'Probá con otra búsqueda' : 'No hay productos en esta categoría'}
             </p>
           </div>
         ) : (
@@ -269,7 +269,7 @@ const POSSection = ({
                           "mt-1.5 inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-primary/80 bg-primary/10 px-1.5 py-0.5 rounded-full",
                           isOrdersExpanded && "text-xs px-2 py-0.5"
                         )}>
-                          {item.item_variations.length} option{item.item_variations.length === 1 ? '' : 's'}
+                          {item.item_variations.length} opción{item.item_variations.length === 1 ? '' : 's'}
                         </p>
                       )}
                     </div>
@@ -279,7 +279,7 @@ const POSSection = ({
                       "flex justify-between items-center mt-2 pt-2 border-t border-border"
                     )}>
                       <div className="flex flex-col leading-none">
-                        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">Price</span>
+                        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">Precio</span>
                         <span className={cn(
                           "font-bold text-foreground tabular-nums",
                           isOrdersExpanded ? "text-xl" : "text-base"

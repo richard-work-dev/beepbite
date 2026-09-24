@@ -88,11 +88,11 @@ const AddLocationModal = ({ open, onOpenChange, onSuccess }: AddLocationModalPro
         .single();
 
       if (error) throw error;
-      if (!data?.id) throw new Error('Location was not created');
+      if (!data?.id) throw new Error('No se creó la ubicación');
 
       toast({
-        title: 'Location added',
-        description: `${name.trim()} is ready. You can now set up your menu and start taking orders.`,
+        title: 'Ubicación agregada',
+        description: `${name.trim()} está listo. Ahora podés configurar el menú y comenzar a tomar pedidos.`,
       });
 
       // Refresh location list in auth context
@@ -103,9 +103,9 @@ const AddLocationModal = ({ open, onOpenChange, onSuccess }: AddLocationModalPro
       if (onSuccess) onSuccess(data);
     } catch (err) {
       const e = err as { message?: string; error?: string } | null;
-      const msg = e?.message || e?.error || 'Failed to create location';
+      const msg = e?.message || e?.error || 'No se pudo crear la ubicación';
       toast({
-        title: 'Could not add location',
+        title: 'No se pudo agregar la ubicación',
         description: msg,
         variant: 'destructive',
       });
@@ -122,11 +122,10 @@ const AddLocationModal = ({ open, onOpenChange, onSuccess }: AddLocationModalPro
             <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10">
               <MapPin className="w-4 h-4 text-primary" />
             </div>
-            <DialogTitle>Add your first location</DialogTitle>
+            <DialogTitle>Agregá tu primera ubicación</DialogTitle>
           </div>
           <DialogDescription>
-            A location represents one of your physical stores or service points.
-            You can add more later from Settings.
+            Una ubicación representa una tienda física o punto de atención. Podés agregar más desde Configuración.
           </DialogDescription>
         </DialogHeader>
 
@@ -134,11 +133,11 @@ const AddLocationModal = ({ open, onOpenChange, onSuccess }: AddLocationModalPro
           {/* Location name */}
           <div className="space-y-1.5">
             <Label htmlFor="loc-name">
-              Location name <span className="text-destructive">*</span>
+              Nombre de la ubicación <span className="text-destructive">*</span>
             </Label>
             <Input
               id="loc-name"
-              placeholder="e.g. Main Branch, CBD Store"
+              placeholder="Ej.: Sucursal principal"
               value={name}
               onChange={(e) => setName(e.target.value)}
               disabled={submitting}
@@ -150,10 +149,10 @@ const AddLocationModal = ({ open, onOpenChange, onSuccess }: AddLocationModalPro
 
           {/* Address */}
           <div className="space-y-1.5">
-            <Label htmlFor="loc-address">Street address</Label>
+            <Label htmlFor="loc-address">Dirección</Label>
             <AddressAutocomplete
               id="loc-address"
-              placeholder="Start typing an address…"
+              placeholder="Comenzá a escribir una dirección…"
               value={address}
               onChange={setAddress}
               onSelect={(s) => {
@@ -164,16 +163,16 @@ const AddLocationModal = ({ open, onOpenChange, onSuccess }: AddLocationModalPro
               }}
               disabled={submitting}
             />
-            <p className="text-xs text-muted-foreground">Pick a suggestion to set the location on the map automatically.</p>
+            <p className="text-xs text-muted-foreground">Elegí una sugerencia para ubicar el local automáticamente en el mapa.</p>
           </div>
 
           {/* City + Country row */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="loc-city">City</Label>
+              <Label htmlFor="loc-city">Ciudad</Label>
               <Input
                 id="loc-city"
-                placeholder="City or town"
+                placeholder="Ciudad o localidad"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
                 disabled={submitting}
@@ -182,7 +181,7 @@ const AddLocationModal = ({ open, onOpenChange, onSuccess }: AddLocationModalPro
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="loc-country">
-                Country <span className="text-destructive">*</span>
+                País <span className="text-destructive">*</span>
               </Label>
               <Select
                 value={country || undefined}
@@ -190,7 +189,7 @@ const AddLocationModal = ({ open, onOpenChange, onSuccess }: AddLocationModalPro
                 disabled={submitting}
               >
                 <SelectTrigger id="loc-country">
-                  <SelectValue placeholder="Select…" />
+                  <SelectValue placeholder="Seleccionar…" />
                 </SelectTrigger>
                 <SelectContent className="max-h-72">
                   {countries.map((c) => (
@@ -211,7 +210,7 @@ const AddLocationModal = ({ open, onOpenChange, onSuccess }: AddLocationModalPro
               onClick={() => handleOpenChange(false)}
               disabled={submitting}
             >
-              Cancel
+              Cancelar
             </Button>
             <Button
               type="submit"
@@ -221,10 +220,10 @@ const AddLocationModal = ({ open, onOpenChange, onSuccess }: AddLocationModalPro
               {submitting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Adding…
+                  Agregando…
                 </>
               ) : (
-                'Add location'
+                'Agregar ubicación'
               )}
             </Button>
           </div>

@@ -126,6 +126,9 @@ func handler(ctx context.Context, request events.APIGatewayV2HTTPRequest) (event
 		if table, ok := dataTableFromPath(request.RawPath); ok {
 			return application.handleData(ctx, request, table)
 		}
+		if response, handled, operationErr := application.handleOperationalAPI(ctx, request); handled {
+			return response, operationErr
+		}
 		return jsonResponse(404, map[string]string{"error": "not_found"})
 	}
 }

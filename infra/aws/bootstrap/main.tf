@@ -197,6 +197,7 @@ resource "aws_iam_role_policy" "github_application" {
         Action = [
           "cloudwatch:DeleteAlarms",
           "cloudwatch:DescribeAlarms",
+          "cloudwatch:ListTagsForResource",
           "cloudwatch:PutMetricAlarm",
           "cloudwatch:TagResource",
           "cloudwatch:UntagResource"

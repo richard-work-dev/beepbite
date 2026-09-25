@@ -37,7 +37,7 @@ const AccountSettings = () => {
     setDeleteError('');
     const { error } = await deleteAccount();
     if (error) {
-      setDeleteError(error.message ?? 'An error occurred. Please try again.');
+      setDeleteError(error.message ?? 'Ocurrió un error. Intentá nuevamente.');
       setDeleteState('confirm');
       return;
     }
@@ -50,7 +50,7 @@ const AccountSettings = () => {
     setRestoreError('');
     const { error } = await restoreAccount();
     if (error) {
-      setRestoreError(error.message ?? 'An error occurred. Please try again.');
+      setRestoreError(error.message ?? 'Ocurrió un error. Intentá nuevamente.');
       setRestoreState('idle');
       return;
     }
@@ -63,7 +63,7 @@ const AccountSettings = () => {
     setExportError('');
     const { data, error } = await requestDataExport();
     if (error) {
-      setExportError(error.message ?? 'Export failed. Please try again.');
+      setExportError(error.message ?? 'No se pudo exportar. Intentá nuevamente.');
       setExportState('error');
       return;
     }
@@ -85,9 +85,9 @@ const AccountSettings = () => {
   return (
     <PageContainer className="max-w-2xl">
       <PageHeader
-        eyebrow="Settings"
-        title="Account & Data"
-        description="Manage your account, export your data, or request deletion."
+        eyebrow="Configuración"
+        title="Cuenta y datos"
+        description="Administrá tu cuenta, exportá tus datos o solicitá su eliminación."
         icon={UserCog}
       />
 
@@ -97,17 +97,17 @@ const AccountSettings = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-warning">
               <AlertCircle className="h-5 w-5" />
-              Account scheduled for deletion
+              Cuenta programada para eliminarse
             </CardTitle>
             <CardDescription className="text-warning">
-              Your account will be permanently deleted when the 30-day grace period
-              expires. You can cancel the deletion below.
+              Tu cuenta se eliminará definitivamente cuando termine el período de gracia
+              de 30 días. Podés cancelar la eliminación a continuación.
             </CardDescription>
           </CardHeader>
           <CardContent>
             {restoreState === 'done' ? (
               <p className="text-success font-medium">
-                Deletion cancelled — your account is active again.
+                Eliminación cancelada: tu cuenta está activa nuevamente.
               </p>
             ) : (
               <>
@@ -125,7 +125,7 @@ const AccountSettings = () => {
                   ) : (
                     <RotateCcw className="h-4 w-4 mr-2" />
                   )}
-                  Cancel deletion &amp; restore account
+                  Cancelar eliminación y restaurar cuenta
                 </Button>
               </>
             )}
@@ -136,10 +136,10 @@ const AccountSettings = () => {
       {/* ── Export data ── */}
       <Card>
         <CardHeader>
-          <CardTitle>Export your data</CardTitle>
+          <CardTitle>Exportar tus datos</CardTitle>
           <CardDescription>
-            Download a JSON archive of your organisation&apos;s orders, customers,
-            staff, and audit log (last 90 days).
+            Descargá un archivo JSON con los pedidos, clientes, personal y registro
+            de auditoría de tu organización de los últimos 90 días.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -148,7 +148,7 @@ const AccountSettings = () => {
           )}
           {exportState === 'done' && (
             <p className="text-success text-sm font-medium">
-              Export downloaded successfully.
+              Exportación descargada correctamente.
             </p>
           )}
           <Button
@@ -161,7 +161,7 @@ const AccountSettings = () => {
             ) : (
               <Download className="h-4 w-4 mr-2" />
             )}
-            {exportState === 'loading' ? 'Building archive…' : 'Export data'}
+            {exportState === 'loading' ? 'Preparando archivo…' : 'Exportar datos'}
           </Button>
         </CardContent>
       </Card>
@@ -170,10 +170,10 @@ const AccountSettings = () => {
       {!isDeleted && deleteState !== 'done' && (
         <Card className="border-destructive/30">
           <CardHeader>
-            <CardTitle className="text-destructive">Delete account</CardTitle>
+            <CardTitle className="text-destructive">Eliminar cuenta</CardTitle>
             <CardDescription>
-              Permanently removes your organisation and all associated data after a
-              30-day grace period. This action can be reversed within 30 days.
+              Elimina definitivamente tu organización y todos sus datos luego de un
+              período de gracia de 30 días. Podés revertir la acción durante ese plazo.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -188,13 +188,13 @@ const AccountSettings = () => {
                 disabled={deleteState === 'loading'}
               >
                 <Trash2 className="h-4 w-4 mr-2" />
-                Delete account
+                Eliminar cuenta
               </Button>
             ) : (
               <div className="space-y-3">
                 <p className="text-sm text-destructive font-medium">
-                  Are you sure? Your account will be scheduled for permanent
-                  deletion in 30 days.
+                  ¿Confirmás la eliminación? Tu cuenta quedará programada para eliminarse
+                  definitivamente dentro de 30 días.
                 </p>
                 <div className="flex gap-3">
                   <Button
@@ -207,14 +207,14 @@ const AccountSettings = () => {
                     ) : (
                       <Trash2 className="h-4 w-4 mr-2" />
                     )}
-                    Yes, delete my account
+                    Sí, eliminar mi cuenta
                   </Button>
                   <Button
                     variant="outline"
                     onClick={handleDeleteCancel}
                     disabled={(deleteState as string) === 'loading'}
                   >
-                    Cancel
+                    Cancelar
                   </Button>
                 </div>
               </div>

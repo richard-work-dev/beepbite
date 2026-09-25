@@ -48,7 +48,7 @@ export default function CouponManager({ promotionId, promotionName }: {
 
   const handleAdd = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!form.code.trim()) { setAddError('Code is required.'); return; }
+    if (!form.code.trim()) { setAddError('El código es obligatorio.'); return; }
     setSaving(true);
     setAddError('');
     try {
@@ -69,7 +69,7 @@ export default function CouponManager({ promotionId, promotionName }: {
       });
       setForm(EMPTY_CODE);
     } catch (err) {
-      setAddError(err instanceof Error ? err.message : 'Failed to add coupon code.');
+      setAddError(err instanceof Error ? err.message : 'No se pudo agregar el código de cupón.');
     } finally {
       setSaving(false);
     }
@@ -79,9 +79,9 @@ export default function CouponManager({ promotionId, promotionName }: {
     if (!codeToDelete) return;
     try {
       await deleteCode(codeToDelete.id);
-      toast({ title: 'Coupon code deleted.' });
+      toast({ title: 'Código de cupón eliminado.' });
     } catch (err) {
-      toast({ variant: 'destructive', title: 'Delete failed', description: err instanceof Error ? err.message : 'Unknown error' });
+      toast({ variant: 'destructive', title: 'No se pudo eliminar', description: err instanceof Error ? err.message : 'Error desconocido' });
     } finally {
       setCodeToDelete(null);
     }
@@ -94,7 +94,7 @@ export default function CouponManager({ promotionId, promotionName }: {
         <AccordionTrigger className="text-sm font-medium">
           <span className="flex items-center gap-2">
             <Ticket className="h-4 w-4 text-muted-foreground" />
-            Coupon Codes
+            Códigos de cupón
             {codes.length > 0 && (
               <Badge variant="secondary" className="ml-1">
                 {codes.length}
@@ -106,9 +106,9 @@ export default function CouponManager({ promotionId, promotionName }: {
         <AccordionContent className="pt-2 pb-4 space-y-4">
           {/* Existing codes */}
           {loading ? (
-            <p className="text-sm text-muted-foreground">Loading codes…</p>
+            <p className="text-sm text-muted-foreground">Cargando códigos…</p>
           ) : codes.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No codes yet.</p>
+            <p className="text-sm text-muted-foreground">Todavía no hay códigos.</p>
           ) : (
             <div className="space-y-2">
               {codes.map((c) => (
@@ -119,11 +119,11 @@ export default function CouponManager({ promotionId, promotionName }: {
                   <div className="flex items-center gap-3">
                     <code className="font-mono font-semibold">{c.code}</code>
                     <span className="text-muted-foreground">
-                      {c.used_count ?? 0}/{c.max_uses ?? '∞'} uses
+                      {c.used_count ?? 0}/{c.max_uses ?? '∞'} usos
                     </span>
                     {!c.is_active && (
                       <Badge variant="outline" className="text-xs">
-                        Inactive
+                        Inactivo
                       </Badge>
                     )}
                   </div>
@@ -143,12 +143,12 @@ export default function CouponManager({ promotionId, promotionName }: {
           {/* Add code form */}
           <form onSubmit={handleAdd} className="rounded-md border p-3 space-y-3">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Add code
+              Agregar código
             </p>
             <div className="grid grid-cols-3 gap-2">
               <div className="col-span-3 sm:col-span-1">
                 <Label htmlFor={`cc-code-${promotionId}`} className="text-xs">
-                  Code *
+                  Código *
                 </Label>
                 <Input
                   id={`cc-code-${promotionId}`}
@@ -160,7 +160,7 @@ export default function CouponManager({ promotionId, promotionName }: {
               </div>
               <div>
                 <Label htmlFor={`cc-max-${promotionId}`} className="text-xs">
-                  Max uses
+                  Usos máximos
                 </Label>
                 <Input
                   id={`cc-max-${promotionId}`}
@@ -173,7 +173,7 @@ export default function CouponManager({ promotionId, promotionName }: {
               </div>
               <div>
                 <Label htmlFor={`cc-per-${promotionId}`} className="text-xs">
-                  Per-customer limit
+                  Límite por cliente
                 </Label>
                 <Input
                   id={`cc-per-${promotionId}`}
@@ -196,7 +196,7 @@ export default function CouponManager({ promotionId, promotionName }: {
               className="h-8 text-xs"
             >
               <Plus className="h-3.5 w-3.5 mr-1" />
-              {saving ? 'Adding…' : 'Add code'}
+              {saving ? 'Agregando…' : 'Agregar código'}
             </Button>
           </form>
         </AccordionContent>
@@ -206,23 +206,23 @@ export default function CouponManager({ promotionId, promotionName }: {
       <AlertDialog open={Boolean(codeToDelete)} onOpenChange={(v) => !v && setCodeToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete coupon code?</AlertDialogTitle>
+            <AlertDialogTitle>¿Eliminar código de cupón?</AlertDialogTitle>
             <AlertDialogDescription>
               {codeToDelete && (
                 <>
-                  "{codeToDelete.code}" will be permanently deleted
-                  {promotionName ? ` from ${promotionName}` : ''}. This action cannot be undone.
+                  “{codeToDelete.code}” se eliminará definitivamente
+                  {promotionName ? ` de ${promotionName}` : ''}. Esta acción no se puede deshacer.
                 </>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteConfirm}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              Eliminar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

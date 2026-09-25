@@ -97,9 +97,9 @@ export default function HardwareSettingsPage() {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-        <h2 className="text-xl font-semibold mb-1">No location selected</h2>
+        <h2 className="text-xl font-semibold mb-1">No hay un local seleccionado</h2>
         <p className="text-muted-foreground">
-          Please select a location to manage hardware settings.
+          Seleccioná un local para administrar la configuración de equipos.
         </p>
       </div>
     );
@@ -110,10 +110,10 @@ export default function HardwareSettingsPage() {
       <div>
         <h1 className="font-display text-2xl flex items-center gap-2">
           <Printer className="h-6 w-6 text-primary" />
-          Hardware
+          Equipos
         </h1>
         <p className="text-muted-foreground text-sm mt-0.5">
-          Manage ESC/POS printers for{' '}
+          Administrá las impresoras ESC/POS de{' '}
           <strong>{activeLocation.name}</strong>.
         </p>
       </div>
@@ -161,7 +161,7 @@ function PrintersTab({ locationId }: { locationId: string }) {
       setPrinters(ps);
       setStations(ss);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load hardware settings.');
+      setError(e instanceof Error ? e.message : 'No se pudo cargar la configuración de equipos.');
     } finally {
       setLoading(false);
     }
@@ -200,7 +200,7 @@ function PrintersTab({ locationId }: { locationId: string }) {
       setDeleteTarget(null);
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to delete printer.');
+      setError(e instanceof Error ? e.message : 'No se pudo eliminar la impresora.');
     } finally {
       setDeleting(false);
     }
@@ -217,7 +217,7 @@ function PrintersTab({ locationId }: { locationId: string }) {
     } catch (e) {
       setTestResults((prev) => ({
         ...prev,
-        [printer.id]: { loading: false, ok: false, error: e instanceof Error ? e.message : 'Test failed.' },
+        [printer.id]: { loading: false, ok: false, error: e instanceof Error ? e.message : 'La prueba falló.' },
       }));
     }
   }
@@ -228,7 +228,7 @@ function PrintersTab({ locationId }: { locationId: string }) {
     return (
       <div className="flex items-center gap-2 py-8 text-muted-foreground">
         <Loader2 className="h-5 w-5 animate-spin" />
-        Loading printers…
+        Cargando impresoras…
       </div>
     );
   }
@@ -246,20 +246,20 @@ function PrintersTab({ locationId }: { locationId: string }) {
     <>
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          {printers.length} printer{printers.length !== 1 ? 's' : ''} configured
+          {printers.length} {printers.length === 1 ? 'impresora configurada' : 'impresoras configuradas'}
         </p>
         <Button size="sm" onClick={openCreate}>
           <Plus className="h-4 w-4 mr-1" />
-          Add printer
+          Agregar impresora
         </Button>
       </div>
 
       {printers.length === 0 ? (
         <div className="border rounded-lg p-10 text-center text-muted-foreground">
           <Printer className="h-10 w-10 mx-auto mb-3 opacity-30" />
-          <p className="font-medium">No printers configured</p>
+          <p className="font-medium">No hay impresoras configuradas</p>
           <p className="text-sm mt-1">
-            Add a network or USB ESC/POS printer to enable receipt and kitchen printing.
+            Agregá una impresora ESC/POS de red o USB para imprimir comprobantes y comandas.
           </p>
         </div>
       ) : (
@@ -267,12 +267,12 @@ function PrintersTab({ locationId }: { locationId: string }) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Kind</TableHead>
-                <TableHead>Connection</TableHead>
-                <TableHead>Host : Port</TableHead>
-                <TableHead>Station</TableHead>
-                <TableHead>Active</TableHead>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Uso</TableHead>
+                <TableHead>Conexión</TableHead>
+                <TableHead>Host : puerto</TableHead>
+                <TableHead>Estación</TableHead>
+                <TableHead>Activo</TableHead>
                 <TableHead className="w-32" />
               </TableRow>
             </TableHeader>
@@ -288,7 +288,7 @@ function PrintersTab({ locationId }: { locationId: string }) {
                     <TableCell className="font-medium">{p.name}</TableCell>
                     <TableCell>
                       <Badge variant={p.kind === 'receipt' ? 'secondary' : 'outline'}>
-                        {p.kind}
+                        {p.kind === 'receipt' ? 'Comprobantes' : 'Cocina'}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -298,7 +298,7 @@ function PrintersTab({ locationId }: { locationId: string }) {
                         ) : (
                           <Usb className="h-3.5 w-3.5 text-muted-foreground" />
                         )}
-                        {p.connection}
+                        {p.connection === 'network' ? 'Red' : 'USB'}
                       </span>
                     </TableCell>
                     <TableCell className="font-mono text-sm">
@@ -307,7 +307,7 @@ function PrintersTab({ locationId }: { locationId: string }) {
                     <TableCell className="text-sm">{stationName}</TableCell>
                     <TableCell>
                       <Badge variant={p.is_active ? 'default' : 'secondary'}>
-                        {p.is_active ? 'active' : 'inactive'}
+                        {p.is_active ? 'Activa' : 'Inactiva'}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -317,7 +317,7 @@ function PrintersTab({ locationId }: { locationId: string }) {
                           size="icon"
                           variant="ghost"
                           className="h-7 w-7"
-                          title="Send test ticket"
+                          title="Enviar impresión de prueba"
                           onClick={() => handleTest(p)}
                           disabled={tr?.loading}
                         >
@@ -375,20 +375,20 @@ function PrintersTab({ locationId }: { locationId: string }) {
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete printer?</AlertDialogTitle>
+            <AlertDialogTitle>¿Eliminar impresora?</AlertDialogTitle>
             <AlertDialogDescription>
-              Remove <strong>{deleteTarget?.name}</strong>? This cannot be undone.
+              ¿Eliminar <strong>{deleteTarget?.name}</strong>? Esta acción no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               disabled={deleting}
               variant="destructive"
             >
               {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-              Delete printer
+              Eliminar impresora
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -468,7 +468,7 @@ function PrinterSheet({ open, onClose, onSave, printer, stations }: {
     e.preventDefault();
     setFormError(null);
     if (!form.name.trim()) {
-      setFormError('Name is required.');
+      setFormError('El nombre es obligatorio.');
       return;
     }
     setSaving(true);
@@ -487,7 +487,7 @@ function PrinterSheet({ open, onClose, onSave, printer, stations }: {
 
       await onSave(payload);
     } catch (e) {
-      setFormError(e instanceof Error ? e.message : 'Failed to save printer.');
+      setFormError(e instanceof Error ? e.message : 'No se pudo guardar la impresora.');
     } finally {
       setSaving(false);
     }
@@ -499,48 +499,48 @@ function PrinterSheet({ open, onClose, onSave, printer, stations }: {
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
       <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
         <SheetHeader>
-          <SheetTitle>{printer ? 'Edit printer' : 'Add printer'}</SheetTitle>
+          <SheetTitle>{printer ? 'Editar impresora' : 'Agregar impresora'}</SheetTitle>
           <SheetDescription>
-            Configure an ESC/POS receipt or kitchen printer.
+            Configurá una impresora ESC/POS para comprobantes o cocina.
           </SheetDescription>
         </SheetHeader>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           {/* Name */}
           <div className="space-y-1.5">
-            <Label htmlFor="hw-name">Name</Label>
+            <Label htmlFor="hw-name">Nombre</Label>
             <Input
               id="hw-name"
               value={form.name}
               onChange={(e) => set('name', e.target.value)}
-              placeholder="Front counter receipt"
+              placeholder="Comprobantes del mostrador"
               required
             />
           </div>
 
           {/* Kind */}
           <div className="space-y-1.5">
-            <Label>Kind</Label>
+            <Label>Uso</Label>
             <Select value={form.kind} onValueChange={(v) => set('kind', v)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="receipt">Receipt</SelectItem>
-                <SelectItem value="kitchen">Kitchen</SelectItem>
+                <SelectItem value="receipt">Comprobantes</SelectItem>
+                <SelectItem value="kitchen">Cocina</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {/* Connection */}
           <div className="space-y-1.5">
-            <Label>Connection</Label>
+            <Label>Conexión</Label>
             <Select value={form.connection} onValueChange={(v) => set('connection', v)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="network">Network (TCP)</SelectItem>
+                <SelectItem value="network">Red (TCP)</SelectItem>
                 <SelectItem value="usb">USB</SelectItem>
               </SelectContent>
             </Select>
@@ -559,7 +559,7 @@ function PrinterSheet({ open, onClose, onSave, printer, stations }: {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="hw-port">Port</Label>
+                <Label htmlFor="hw-port">Puerto</Label>
                 <Input
                   id="hw-port"
                   type="number"
@@ -575,16 +575,16 @@ function PrinterSheet({ open, onClose, onSave, printer, stations }: {
           {/* Station binding — only for kitchen printers */}
           {form.kind === 'kitchen' && (
             <div className="space-y-1.5">
-              <Label>Kitchen station (optional)</Label>
+              <Label>Estación de cocina (opcional)</Label>
               <Select
                 value={form.station_id || '__none__'}
                 onValueChange={(v) => set('station_id', v === '__none__' ? '' : v)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="All stations" />
+                  <SelectValue placeholder="Todas las estaciones" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__">All stations</SelectItem>
+                  <SelectItem value="__none__">Todas las estaciones</SelectItem>
                   {kitchenStations.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
                       {s.name}
@@ -593,7 +593,7 @@ function PrinterSheet({ open, onClose, onSave, printer, stations }: {
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Bind to a station to receive only tickets routed to that station.
+                Asociá una estación para recibir únicamente sus comandas.
               </p>
             </div>
           )}
@@ -605,7 +605,7 @@ function PrinterSheet({ open, onClose, onSave, printer, stations }: {
               checked={form.is_active}
               onCheckedChange={(v) => set('is_active', v)}
             />
-            <Label htmlFor="hw-active">Active</Label>
+            <Label htmlFor="hw-active">Activo</Label>
           </div>
 
           {formError && (
@@ -618,10 +618,10 @@ function PrinterSheet({ open, onClose, onSave, printer, stations }: {
           <div className="flex gap-2 pt-2">
             <Button type="submit" disabled={saving} className="flex-1">
               {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-              {printer ? 'Save changes' : 'Add printer'}
+              {printer ? 'Guardar cambios' : 'Agregar impresora'}
             </Button>
             <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
+              Cancelar
             </Button>
           </div>
         </form>

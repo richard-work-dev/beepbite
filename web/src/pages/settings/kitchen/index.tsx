@@ -152,9 +152,9 @@ export default function KitchenSettingsPage() {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-        <h2 className="text-xl font-semibold mb-1">No location selected</h2>
+        <h2 className="text-xl font-semibold mb-1">No hay un local seleccionado</h2>
         <p className="text-muted-foreground">
-          Please select a location to manage kitchen settings.
+          Seleccioná un local para administrar la configuración de cocina.
         </p>
       </div>
     );
@@ -166,10 +166,10 @@ export default function KitchenSettingsPage() {
       <div>
         <h1 className="font-display text-2xl flex items-center gap-2">
           <ChefHat className="h-6 w-6 text-primary" />
-          Kitchen routing
+          Rutas de cocina
         </h1>
         <p className="text-muted-foreground text-sm mt-0.5">
-          Configure which station receives each category or item at{' '}
+          Configurá qué estación recibe cada categoría o producto de{' '}
           <strong>{activeLocation.name}</strong>.
         </p>
       </div>
@@ -179,19 +179,19 @@ export default function KitchenSettingsPage() {
         <TabsList>
           <TabsTrigger value="stations" className="gap-1.5">
             <Settings2 className="h-4 w-4" />
-            Stations
+            Estaciones
           </TabsTrigger>
           <TabsTrigger value="categories" className="gap-1.5">
             <Tag className="h-4 w-4" />
-            Category routes
+            Rutas por categoría
           </TabsTrigger>
           <TabsTrigger value="items" className="gap-1.5">
             <Utensils className="h-4 w-4" />
-            Item routes
+            Rutas por producto
           </TabsTrigger>
           <TabsTrigger value="groups" className="gap-1.5">
             <Layers className="h-4 w-4" />
-            Display groups
+            Grupos de pantallas
           </TabsTrigger>
         </TabsList>
 
@@ -264,7 +264,7 @@ function StationsTab({ locationId }: { locationId: string }) {
     try {
       setStations(await fetchStations(locationId));
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load stations.');
+      setError(e instanceof Error ? e.message : 'No se pudieron cargar las estaciones.');
     } finally {
       setLoading(false);
     }
@@ -288,7 +288,7 @@ function StationsTab({ locationId }: { locationId: string }) {
       await load();
       closeSheet();
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Failed to save station.');
+      alert(e instanceof Error ? e.message : 'No se pudo guardar la estación.');
     } finally {
       setSaving(false);
     }
@@ -297,7 +297,7 @@ function StationsTab({ locationId }: { locationId: string }) {
   const confirmDelete = async () => {
     if (!toDelete) return;
     try { await deleteStation(toDelete.id); await load(); }
-    catch (e) { alert(e instanceof Error ? e.message : 'Failed to delete station.'); }
+    catch (e) { alert(e instanceof Error ? e.message : 'No se pudo eliminar la estación.'); }
     finally { setToDelete(null); }
   };
 
@@ -305,7 +305,7 @@ function StationsTab({ locationId }: { locationId: string }) {
     try {
       await updateStation(station.id, { is_active: !station.is_active });
       await load();
-    } catch (e) { alert(e instanceof Error ? e.message : 'Failed to update station.'); }
+    } catch (e) { alert(e instanceof Error ? e.message : 'No se pudo actualizar la estación.'); }
   };
 
   return (
@@ -313,7 +313,7 @@ function StationsTab({ locationId }: { locationId: string }) {
       <div className="flex justify-end">
         <Button onClick={openNew} className="gap-2">
           <Plus className="h-4 w-4" />
-          New station
+          Nueva estación
         </Button>
       </div>
 
@@ -323,10 +323,10 @@ function StationsTab({ locationId }: { locationId: string }) {
       {!loading && stations.length === 0 && (
         <EmptyState
           icon={Settings2}
-          label="No stations yet"
+          label="Todavía no hay estaciones"
           action={
             <Button variant="outline" onClick={openNew} className="mt-3 gap-2">
-              <Plus className="h-4 w-4" /> New station
+              <Plus className="h-4 w-4" /> Nueva estación
             </Button>
           }
         />
@@ -337,10 +337,10 @@ function StationsTab({ locationId }: { locationId: string }) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Order</TableHead>
-                <TableHead className="text-center">Active</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Orden</TableHead>
+                <TableHead className="text-center">Activo</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -352,15 +352,15 @@ function StationsTab({ locationId }: { locationId: string }) {
                     <Switch
                       checked={s.is_active ?? true}
                       onCheckedChange={() => toggleActive(s)}
-                      aria-label="Toggle active"
+                      aria-label="Cambiar estado activo"
                     />
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openEdit(s)} title="Edit">
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openEdit(s)} title="Editar">
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => setToDelete(s)} title="Delete">
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => setToDelete(s)} title="Eliminar">
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -376,9 +376,9 @@ function StationsTab({ locationId }: { locationId: string }) {
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent side="right" className="sm:max-w-md overflow-y-auto">
           <SheetHeader className="mb-4">
-            <SheetTitle>{editing ? 'Edit station' : 'New station'}</SheetTitle>
+            <SheetTitle>{editing ? 'Editar estación' : 'Nueva estación'}</SheetTitle>
             <SheetDescription>
-              {editing ? `Update "${editing.name}"` : 'Add a new KDS station for this location.'}
+              {editing ? `Actualizá “${editing.name}”` : 'Agregá una estación de cocina para este local.'}
             </SheetDescription>
           </SheetHeader>
           <StationForm initial={editing} onSubmit={handleSubmit} onCancel={closeSheet} saving={saving} />
@@ -389,15 +389,15 @@ function StationsTab({ locationId }: { locationId: string }) {
       <AlertDialog open={Boolean(toDelete)} onOpenChange={(v) => !v && setToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete station?</AlertDialogTitle>
+            <AlertDialogTitle>¿Eliminar estación?</AlertDialogTitle>
             <AlertDialogDescription>
-              "{toDelete?.name}" will be removed. Existing routing rules that reference this station will be orphaned.
+              Se eliminará “{toDelete?.name}”. Las rutas existentes que usan esta estación quedarán sin asignar.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDelete} variant="destructive">
-              Delete station
+              Eliminar estación
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -426,17 +426,17 @@ function StationForm({ initial, onSubmit, onCancel, saving }: {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-1.5">
-        <Label htmlFor="st-name">Station name</Label>
+        <Label htmlFor="st-name">Nombre de la estación</Label>
         <Input
           id="st-name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. Grill, Cold, Pizza"
+          placeholder="Por ejemplo, Parrilla, Fríos, Frituras"
           required
         />
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="st-order">Display order</Label>
+        <Label htmlFor="st-order">Orden en pantalla</Label>
         <Input
           id="st-order"
           type="number"
@@ -449,9 +449,9 @@ function StationForm({ initial, onSubmit, onCancel, saving }: {
       <div className="flex gap-2 pt-2">
         <Button type="submit" disabled={saving || !name.trim()} className="flex-1">
           {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {initial ? 'Save changes' : 'Create station'}
+          {initial ? 'Guardar cambios' : 'Crear estación'}
         </Button>
-        <Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
+        <Button type="button" variant="ghost" onClick={onCancel}>Cancelar</Button>
       </div>
     </form>
   );
@@ -486,7 +486,7 @@ function CategoryRoutingTab({ locationId }: { locationId: string }) {
       setCategories(c);
       setRoutings(r);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load category routings.');
+      setError(e instanceof Error ? e.message : 'No se pudieron cargar las rutas por categoría.');
     } finally {
       setLoading(false);
     }
@@ -509,7 +509,7 @@ function CategoryRoutingTab({ locationId }: { locationId: string }) {
       await load();
       closeSheet();
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Failed to save category route.');
+      alert(e instanceof Error ? e.message : 'No se pudo guardar la ruta por categoría.');
     } finally {
       setSaving(false);
     }
@@ -518,7 +518,7 @@ function CategoryRoutingTab({ locationId }: { locationId: string }) {
   const confirmDelete = async () => {
     if (!toDelete) return;
     try { await deleteCategoryRouting(toDelete.id); await load(); }
-    catch (e) { alert(e instanceof Error ? e.message : 'Failed to delete category route.'); }
+    catch (e) { alert(e instanceof Error ? e.message : 'No se pudo eliminar la ruta por categoría.'); }
     finally { setToDelete(null); }
   };
 
@@ -526,11 +526,11 @@ function CategoryRoutingTab({ locationId }: { locationId: string }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Route all items in a category to a specific station by default.
+          Enviá todos los productos de una categoría a una estación específica.
         </p>
         <Button onClick={openNew} className="gap-2">
           <Plus className="h-4 w-4" />
-          Add route
+          Agregar ruta
         </Button>
       </div>
 
@@ -540,10 +540,10 @@ function CategoryRoutingTab({ locationId }: { locationId: string }) {
       {!loading && routings.length === 0 && (
         <EmptyState
           icon={Tag}
-          label="No category routes yet"
+          label="Todavía no hay rutas por categoría"
           action={
             <Button variant="outline" onClick={openNew} className="mt-3 gap-2">
-              <Plus className="h-4 w-4" /> Add route
+              <Plus className="h-4 w-4" /> Agregar ruta
             </Button>
           }
         />
@@ -554,9 +554,9 @@ function CategoryRoutingTab({ locationId }: { locationId: string }) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Category</TableHead>
-                <TableHead>Station</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>Categoría</TableHead>
+                <TableHead>Estación</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -573,10 +573,10 @@ function CategoryRoutingTab({ locationId }: { locationId: string }) {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openEdit(r)} title="Edit">
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openEdit(r)} title="Editar">
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => setToDelete(r)} title="Delete">
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => setToDelete(r)} title="Eliminar">
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -592,14 +592,14 @@ function CategoryRoutingTab({ locationId }: { locationId: string }) {
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent side="right" className="sm:max-w-md overflow-y-auto">
           <SheetHeader className="mb-4">
-            <SheetTitle>{editing ? 'Edit category route' : 'Add category route'}</SheetTitle>
-            <SheetDescription>Bind a menu category to a KDS station.</SheetDescription>
+            <SheetTitle>{editing ? 'Editar ruta por categoría' : 'Agregar ruta por categoría'}</SheetTitle>
+            <SheetDescription>Asociá una categoría del menú con una estación de cocina.</SheetDescription>
           </SheetHeader>
           <RoutingForm
             initial={editing}
             stations={stations}
             sourceItems={categories}
-            sourceLabel="Category"
+            sourceLabel="Categoría"
             sourceKey="categoryId"
             onSubmit={handleSubmit}
             onCancel={closeSheet}
@@ -612,11 +612,11 @@ function CategoryRoutingTab({ locationId }: { locationId: string }) {
       <DeleteConfirm
         open={Boolean(toDelete)}
         onOpenChange={(v) => !v && setToDelete(null)}
-        title="Remove category route?"
-        description={`The route for "${(toDelete && categoryById[toDelete.category_id]?.name) ?? toDelete?.category_id}" will be removed.`}
+        title="¿Eliminar ruta por categoría?"
+        description={`Se eliminará la ruta de “${(toDelete && categoryById[toDelete.category_id]?.name) ?? toDelete?.category_id}”.`}
         onConfirm={confirmDelete}
         variant="warning"
-        confirmLabel="Remove route"
+        confirmLabel="Eliminar ruta"
       />
     </div>
   );
@@ -651,7 +651,7 @@ function ItemRoutingTab({ locationId }: { locationId: string }) {
       setItems(it);
       setRoutings(r);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load item routings.');
+      setError(e instanceof Error ? e.message : 'No se pudieron cargar las rutas por producto.');
     } finally {
       setLoading(false);
     }
@@ -675,7 +675,7 @@ function ItemRoutingTab({ locationId }: { locationId: string }) {
       await load();
       closeSheet();
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Failed to save item route.');
+      alert(e instanceof Error ? e.message : 'No se pudo guardar la ruta por producto.');
     } finally {
       setSaving(false);
     }
@@ -684,7 +684,7 @@ function ItemRoutingTab({ locationId }: { locationId: string }) {
   const confirmDelete = async () => {
     if (!toDelete) return;
     try { await deleteItemRouting(toDelete.id); await load(); }
-    catch (e) { alert(e instanceof Error ? e.message : 'Failed to delete item route.'); }
+    catch (e) { alert(e instanceof Error ? e.message : 'No se pudo eliminar la ruta por producto.'); }
     finally { setToDelete(null); }
   };
 
@@ -692,11 +692,11 @@ function ItemRoutingTab({ locationId }: { locationId: string }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Item-level overrides take precedence over category routes.
+          Las rutas por producto tienen prioridad sobre las rutas por categoría.
         </p>
         <Button onClick={openNew} className="gap-2">
           <Plus className="h-4 w-4" />
-          Add route
+          Agregar ruta
         </Button>
       </div>
 
@@ -706,10 +706,10 @@ function ItemRoutingTab({ locationId }: { locationId: string }) {
       {!loading && routings.length === 0 && (
         <EmptyState
           icon={Utensils}
-          label="No item routes yet"
+          label="Todavía no hay rutas por producto"
           action={
             <Button variant="outline" onClick={openNew} className="mt-3 gap-2">
-              <Plus className="h-4 w-4" /> Add route
+              <Plus className="h-4 w-4" /> Agregar ruta
             </Button>
           }
         />
@@ -720,9 +720,9 @@ function ItemRoutingTab({ locationId }: { locationId: string }) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Item</TableHead>
-                <TableHead>Station</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>Producto</TableHead>
+                <TableHead>Estación</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -739,10 +739,10 @@ function ItemRoutingTab({ locationId }: { locationId: string }) {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openEdit(r)} title="Edit">
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openEdit(r)} title="Editar">
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => setToDelete(r)} title="Delete">
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => setToDelete(r)} title="Eliminar">
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -758,8 +758,8 @@ function ItemRoutingTab({ locationId }: { locationId: string }) {
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent side="right" className="sm:max-w-md overflow-y-auto">
           <SheetHeader className="mb-4">
-            <SheetTitle>{editing ? 'Edit item route' : 'Add item route'}</SheetTitle>
-            <SheetDescription>Override which station receives a specific menu item.</SheetDescription>
+            <SheetTitle>{editing ? 'Editar ruta por producto' : 'Agregar ruta por producto'}</SheetTitle>
+            <SheetDescription>Elegí qué estación recibe un producto específico del menú.</SheetDescription>
           </SheetHeader>
           <RoutingForm
             initial={editing
@@ -768,7 +768,7 @@ function ItemRoutingTab({ locationId }: { locationId: string }) {
             }
             stations={stations}
             sourceItems={items}
-            sourceLabel="Item"
+            sourceLabel="Producto"
             sourceKey="categoryId"
             onSubmit={handleSubmit}
             onCancel={closeSheet}
@@ -780,11 +780,11 @@ function ItemRoutingTab({ locationId }: { locationId: string }) {
       <DeleteConfirm
         open={Boolean(toDelete)}
         onOpenChange={(v) => !v && setToDelete(null)}
-        title="Remove item route?"
-        description={`The override for "${(toDelete && itemById[toDelete.item_id]?.name) ?? toDelete?.item_id}" will be removed.`}
+        title="¿Eliminar ruta por producto?"
+        description={`Se eliminará la ruta de “${(toDelete && itemById[toDelete.item_id]?.name) ?? toDelete?.item_id}”.`}
         onConfirm={confirmDelete}
         variant="warning"
-        confirmLabel="Remove route"
+        confirmLabel="Eliminar ruta"
       />
     </div>
   );
@@ -825,7 +825,7 @@ function RoutingForm({ initial, stations, sourceItems, sourceLabel, sourceKey, o
         <Label>{sourceLabel}</Label>
         <Select value={sourceId} onValueChange={setSourceId} required>
           <SelectTrigger>
-            <SelectValue placeholder={`Select a ${sourceLabel.toLowerCase()}…`} />
+            <SelectValue placeholder={`Seleccioná ${sourceLabel.toLowerCase()}…`} />
           </SelectTrigger>
           <SelectContent>
             {sourceItems.map((it) => (
@@ -836,10 +836,10 @@ function RoutingForm({ initial, stations, sourceItems, sourceLabel, sourceKey, o
       </div>
 
       <div className="space-y-1.5">
-        <Label>Station</Label>
+        <Label>Estación</Label>
         <Select value={stationId} onValueChange={setStationId} required>
           <SelectTrigger>
-            <SelectValue placeholder="Select a station…" />
+            <SelectValue placeholder="Seleccioná una estación…" />
           </SelectTrigger>
           <SelectContent>
             {stations.filter((s) => s.is_active !== false).map((s) => (
@@ -852,9 +852,9 @@ function RoutingForm({ initial, stations, sourceItems, sourceLabel, sourceKey, o
       <div className="flex gap-2 pt-2">
         <Button type="submit" disabled={saving || !sourceId || !stationId} className="flex-1">
           {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {initial ? 'Save changes' : 'Add route'}
+          {initial ? 'Guardar cambios' : 'Agregar ruta'}
         </Button>
-        <Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
+        <Button type="button" variant="ghost" onClick={onCancel}>Cancelar</Button>
       </div>
     </form>
   );
@@ -893,7 +893,7 @@ function DisplayGroupsTab({ locationId }: { locationId: string }) {
       setStations(s);
       setGroups(g);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load display groups.');
+      setError(e instanceof Error ? e.message : 'No se pudieron cargar los grupos de pantallas.');
     } finally {
       setLoading(false);
     }
@@ -919,7 +919,7 @@ function DisplayGroupsTab({ locationId }: { locationId: string }) {
       await load();
       closeSheet();
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Failed to save display group.');
+      alert(e instanceof Error ? e.message : 'No se pudo guardar el grupo de pantallas.');
     } finally {
       setSaving(false);
     }
@@ -928,7 +928,7 @@ function DisplayGroupsTab({ locationId }: { locationId: string }) {
   const confirmDelete = async () => {
     if (!toDelete) return;
     try { await deleteDisplayGroup(toDelete.id); await load(); }
-    catch (e) { alert(e instanceof Error ? e.message : 'Failed to delete display group.'); }
+    catch (e) { alert(e instanceof Error ? e.message : 'No se pudo eliminar el grupo de pantallas.'); }
     finally { setToDelete(null); }
   };
 
@@ -936,11 +936,11 @@ function DisplayGroupsTab({ locationId }: { locationId: string }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Group multiple stations into a single display view with optional auto-recall.
+          Agrupá varias estaciones en una sola pantalla con recuperación automática opcional.
         </p>
         <Button onClick={openNew} className="gap-2">
           <Plus className="h-4 w-4" />
-          New group
+          Nuevo grupo
         </Button>
       </div>
 
@@ -950,10 +950,10 @@ function DisplayGroupsTab({ locationId }: { locationId: string }) {
       {!loading && groups.length === 0 && (
         <EmptyState
           icon={Layers}
-          label="No display groups yet"
+          label="Todavía no hay grupos de pantallas"
           action={
             <Button variant="outline" onClick={openNew} className="mt-3 gap-2">
-              <Plus className="h-4 w-4" /> New group
+              <Plus className="h-4 w-4" /> Nuevo grupo
             </Button>
           }
         />
@@ -964,11 +964,11 @@ function DisplayGroupsTab({ locationId }: { locationId: string }) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Stations</TableHead>
-                <TableHead>Order</TableHead>
-                <TableHead>Auto-recall</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Estaciones</TableHead>
+                <TableHead>Orden</TableHead>
+                <TableHead>Recuperación automática</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -983,7 +983,7 @@ function DisplayGroupsTab({ locationId }: { locationId: string }) {
                         </Badge>
                       ))}
                       {(!g.station_ids || g.station_ids.length === 0) && (
-                        <span className="italic text-muted-foreground text-sm">none</span>
+                        <span className="italic text-muted-foreground text-sm">ninguna</span>
                       )}
                     </div>
                   </TableCell>
@@ -991,15 +991,15 @@ function DisplayGroupsTab({ locationId }: { locationId: string }) {
                   <TableCell className="text-sm">
                     {g.auto_recall_seconds
                       ? <span className="flex items-center gap-1 text-success tabular-nums"><RotateCcw className="h-3.5 w-3.5" />{g.auto_recall_seconds}s</span>
-                      : <span className="text-muted-foreground">off</span>
+                      : <span className="text-muted-foreground">desactivado</span>
                     }
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openEdit(g)} title="Edit">
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openEdit(g)} title="Editar">
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => setToDelete(g)} title="Delete">
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => setToDelete(g)} title="Eliminar">
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -1015,9 +1015,9 @@ function DisplayGroupsTab({ locationId }: { locationId: string }) {
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent side="right" className="sm:max-w-md overflow-y-auto">
           <SheetHeader className="mb-4">
-            <SheetTitle>{editing ? 'Edit display group' : 'New display group'}</SheetTitle>
+            <SheetTitle>{editing ? 'Editar grupo de pantallas' : 'Nuevo grupo de pantallas'}</SheetTitle>
             <SheetDescription>
-              {editing ? `Update "${editing.name}"` : 'Create a grouped KDS view spanning multiple stations.'}
+              {editing ? `Actualizá “${editing.name}”` : 'Creá una vista de cocina que agrupe varias estaciones.'}
             </SheetDescription>
           </SheetHeader>
           <DisplayGroupForm
@@ -1033,11 +1033,11 @@ function DisplayGroupsTab({ locationId }: { locationId: string }) {
       <DeleteConfirm
         open={Boolean(toDelete)}
         onOpenChange={(v) => !v && setToDelete(null)}
-        title="Delete display group?"
-        description={`"${toDelete?.name}" will be permanently deleted.`}
+        title="¿Eliminar grupo de pantallas?"
+        description={`“${toDelete?.name}” se eliminará definitivamente.`}
         onConfirm={confirmDelete}
         variant="destructive"
-        confirmLabel="Delete group"
+        confirmLabel="Eliminar grupo"
       />
     </div>
   );
@@ -1080,20 +1080,20 @@ function DisplayGroupForm({ initial, stations, onSubmit, onCancel, saving }: {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-1.5">
-        <Label htmlFor="dg-name">Group name</Label>
+        <Label htmlFor="dg-name">Nombre del grupo</Label>
         <Input
           id="dg-name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. Hot Food, Cold & Salads"
+          placeholder="Por ejemplo, Calientes, Fríos y ensaladas"
           required
         />
       </div>
 
       <div className="space-y-2">
-        <Label>Stations in this group</Label>
+        <Label>Estaciones de este grupo</Label>
         {stations.length === 0 && (
-          <p className="text-sm text-muted-foreground italic">No stations configured yet.</p>
+          <p className="text-sm text-muted-foreground italic">Todavía no hay estaciones configuradas.</p>
         )}
         <div className="space-y-1.5">
           {stations.map((s) => (
@@ -1111,7 +1111,7 @@ function DisplayGroupForm({ initial, stations, onSubmit, onCancel, saving }: {
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="dg-order">Display order</Label>
+        <Label htmlFor="dg-order">Orden en pantalla</Label>
         <Input
           id="dg-order"
           type="number"
@@ -1123,26 +1123,26 @@ function DisplayGroupForm({ initial, stations, onSubmit, onCancel, saving }: {
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="dg-recall">Auto-recall after (seconds, blank = off)</Label>
+        <Label htmlFor="dg-recall">Recuperar después de (segundos; vacío = desactivado)</Label>
         <Input
           id="dg-recall"
           type="number"
           value={autoRecall}
           onChange={(e) => setAutoRecall(e.target.value)}
-          placeholder="e.g. 300"
+          placeholder="Por ejemplo, 300"
           min={0}
         />
         <p className="text-xs text-muted-foreground">
-          Bumped tickets in this group are automatically recalled after this many seconds.
+          Las comandas completadas de este grupo reaparecen automáticamente después de estos segundos.
         </p>
       </div>
 
       <div className="flex gap-2 pt-2">
         <Button type="submit" disabled={saving || !name.trim()} className="flex-1">
           {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {initial ? 'Save changes' : 'Create group'}
+          {initial ? 'Guardar cambios' : 'Crear grupo'}
         </Button>
-        <Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
+        <Button type="button" variant="ghost" onClick={onCancel}>Cancelar</Button>
       </div>
     </form>
   );
@@ -1157,7 +1157,7 @@ function DisplayGroupForm({ initial, stations, onSubmit, onCancel, saving }: {
 // from the same tab and doesn't cascade or destroy other config. Call sites
 // that delete a whole named config object (display group) or something that
 // orphans other records (station) should pass variant="destructive".
-function DeleteConfirm({ open, onOpenChange, title, description, onConfirm, variant = 'warning', confirmLabel = 'Remove' }: {
+function DeleteConfirm({ open, onOpenChange, title, description, onConfirm, variant = 'warning', confirmLabel = 'Eliminar' }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
@@ -1174,7 +1174,7 @@ function DeleteConfirm({ open, onOpenChange, title, description, onConfirm, vari
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
             variant={variant}

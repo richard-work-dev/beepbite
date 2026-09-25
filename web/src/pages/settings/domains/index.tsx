@@ -4,7 +4,7 @@
  * Allows org members to:
  *   • Add a custom hostname to their location.
  *   • See the required TXT and CNAME DNS records.
- *   • Click "Verify" to trigger DNS verification and cert issuance.
+ *   • Click "Verificar" to trigger DNS verification and cert issuance.
  *   • Remove a domain.
  *
  * Route: wired externally; this file is the default export.
@@ -74,12 +74,12 @@ import {
 // ---------------------------------------------------------------------------
 
 const STATUS_LABEL: Record<string, string> = {
-  pending:      'Pending DNS',
-  verifying:    'Verifying',
-  verified:     'Verified',
-  cert_issuing: 'Issuing Cert',
-  live:         'Live',
-  failed:       'Failed',
+  pending:      'DNS pendiente',
+  verifying:    'Verificando',
+  verified:     'Verificado',
+  cert_issuing: 'Emitiendo certificado',
+  live:         'Publicado',
+  failed:       'Falló',
 };
 
 // Semantic per-status signal instead of one hue ("default" orange) for every
@@ -125,7 +125,7 @@ function CopyButton({ value }: { value: string }) {
       type="button"
       onClick={handleCopy}
       className="ml-2 inline-flex items-center text-muted-foreground hover:text-foreground transition-colors"
-      title="Copy to clipboard"
+      title="Copiar al portapapeles"
     >
       {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
     </button>
@@ -143,13 +143,13 @@ function DnsInstructions({ domain }: { domain: Domain }) {
 
   return (
     <div className="rounded-md border bg-muted/40 p-4 space-y-4 text-sm">
-      <p className="font-medium">Add these DNS records at your domain registrar:</p>
+      <p className="font-medium">Agregá estos registros DNS en el proveedor de tu dominio:</p>
 
       {/* TXT record */}
       <div className="space-y-1">
         <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground uppercase tracking-wide">
           <span className="bg-secondary rounded px-1 py-0.5">TXT</span>
-          <span>Ownership verification</span>
+          <span>Verificación de propiedad</span>
         </div>
         <div className="grid gap-1">
           <div className="flex items-center">
@@ -158,7 +158,7 @@ function DnsInstructions({ domain }: { domain: Domain }) {
             <CopyButton value={txtHost} />
           </div>
           <div className="flex items-center">
-            <span className="w-14 shrink-0 text-muted-foreground">Value</span>
+            <span className="w-14 shrink-0 text-muted-foreground">Valor</span>
             <code className="font-mono break-all">{txtValue}</code>
             <CopyButton value={txtValue} />
           </div>
@@ -171,7 +171,7 @@ function DnsInstructions({ domain }: { domain: Domain }) {
       <div className="space-y-1">
         <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground uppercase tracking-wide">
           <span className="bg-secondary rounded px-1 py-0.5">CNAME</span>
-          <span>Traffic routing</span>
+          <span>Enrutamiento del tráfico</span>
         </div>
         <div className="grid gap-1">
           <div className="flex items-center">
@@ -180,7 +180,7 @@ function DnsInstructions({ domain }: { domain: Domain }) {
             <CopyButton value={domain.hostname} />
           </div>
           <div className="flex items-center">
-            <span className="w-14 shrink-0 text-muted-foreground">Target</span>
+            <span className="w-14 shrink-0 text-muted-foreground">Destino</span>
             <code className="font-mono break-all">{cnameTarget}</code>
             <CopyButton value={cnameTarget} />
           </div>
@@ -188,8 +188,8 @@ function DnsInstructions({ domain }: { domain: Domain }) {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        DNS changes can take up to 48 hours to propagate. Click{' '}
-        <strong>Verify</strong> once both records are in place.
+        Los cambios de DNS pueden demorar hasta 48 horas en propagarse. Hacé clic en{' '}
+        <strong>Verificar</strong> cuando ambos registros estén configurados.
       </p>
     </div>
   );
@@ -230,7 +230,7 @@ function DomainRow({ domain, onVerify, onRemove, verifying }: {
               ) : (
                 <ShieldCheck className="h-3.5 w-3.5 mr-1" />
               )}
-              Verify
+              Verificar
             </Button>
           )}
           {needsDns && (
@@ -239,7 +239,7 @@ function DomainRow({ domain, onVerify, onRemove, verifying }: {
               variant="ghost"
               onClick={() => setExpanded((v) => !v)}
             >
-              DNS instructions
+              Instrucciones DNS
             </Button>
           )}
           <Button
@@ -259,8 +259,8 @@ function DomainRow({ domain, onVerify, onRemove, verifying }: {
         <div className="flex items-center gap-1.5 text-xs text-success">
           <CheckCircle2 className="h-3.5 w-3.5" />
           <span>
-            Active — visitors to{' '}
-            <strong>{domain.hostname}</strong> are routed to this location.
+            Activo: las visitas a{' '}
+            <strong>{domain.hostname}</strong> se dirigen a este local.
           </span>
         </div>
       )}
@@ -268,7 +268,7 @@ function DomainRow({ domain, onVerify, onRemove, verifying }: {
       {domain.status === 'cert_issuing' && (
         <div className="flex items-center gap-1.5 text-xs text-warning">
           <Clock className="h-3.5 w-3.5" />
-          <span>SSL certificate is being issued — this may take a few minutes.</span>
+          <span>Se está emitiendo el certificado SSL; puede demorar unos minutos.</span>
         </div>
       )}
     </div>
@@ -315,13 +315,13 @@ export default function DomainsSettingsPage() {
     try {
       const { data, error: err } = await listDomains(activeLocation.id);
       if (err) {
-        setError(err.message || 'Failed to load domains');
+        setError(err.message || 'No se pudieron cargar los dominios');
       } else {
         setDomains(Array.isArray(data) ? data : (data?.data ?? []));
       }
     } catch (err) {
       console.error('Error loading domains:', err);
-      setError('Failed to load domains');
+      setError('No se pudieron cargar los dominios');
     } finally {
       setLoading(false);
     }
@@ -334,7 +334,7 @@ export default function DomainsSettingsPage() {
   // ---------------------------------------------------------------------------
 
   async function handleAdd() {
-    if (!hostname.trim()) { setAddError('Hostname is required'); return; }
+    if (!hostname.trim()) { setAddError('El nombre del host es obligatorio'); return; }
     if (!activeLocation) return;
     setAdding(true);
     setAddError(null);
@@ -345,7 +345,7 @@ export default function DomainsSettingsPage() {
     });
 
     if (err) {
-      setAddError(err.message || 'Failed to add domain');
+      setAddError(err.message || 'No se pudo agregar el dominio');
       setAdding(false);
       return;
     }
@@ -367,7 +367,7 @@ export default function DomainsSettingsPage() {
     const { data, error: err } = await verifyDomain(id);
 
     if (err) {
-      setVerifyError(err.message || 'Verification failed');
+      setVerifyError(err.message || 'La verificación falló');
     } else {
       setDomains((prev) => prev.map((d) => (d.id === id ? data! : d)));
     }
@@ -399,7 +399,7 @@ export default function DomainsSettingsPage() {
     return (
       <div className="flex items-center gap-2 p-6 text-muted-foreground">
         <AlertTriangle className="h-4 w-4" />
-        <span>Select a location to manage custom domains.</span>
+        <span>Seleccioná un local para administrar sus dominios personalizados.</span>
       </div>
     );
   }
@@ -408,16 +408,16 @@ export default function DomainsSettingsPage() {
     <PageContainer className="max-w-3xl">
       {/* Header */}
       <PageHeader
-        eyebrow="Settings"
-        title="Custom Domains"
+        eyebrow="Configuración"
+        title="Dominios personalizados"
         icon={Globe}
         description={
           <>
-            Connect your own hostname (e.g.{' '}
+            Conectá tu propio nombre de host (por ejemplo,{' '}
             <code className="font-mono text-xs bg-muted px-1 rounded">
-              order.mybakery.com
+              pedidos.rikopollo.com
             </code>
-            ) to <strong>{activeLocation.name}</strong>.
+            ) con <strong>{activeLocation.name}</strong>.
           </>
         }
         actions={
@@ -429,11 +429,11 @@ export default function DomainsSettingsPage() {
               disabled={loading}
             >
               <RefreshCw className={cn('h-3.5 w-3.5 mr-1', loading && 'animate-spin')} />
-              Refresh
+              Actualizar
             </Button>
             <Button size="sm" onClick={() => { setAddError(null); setHostname(''); setAddOpen(true); }}>
               <Plus className="h-3.5 w-3.5 mr-1" />
-              Add domain
+              Agregar dominio
             </Button>
           </>
         }
@@ -444,7 +444,7 @@ export default function DomainsSettingsPage() {
         <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 flex items-start gap-2 text-sm text-destructive">
           <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
           <div className="space-y-1">
-            <p className="font-medium">Verification failed</p>
+            <p className="font-medium">La verificación falló</p>
             <p>{verifyError}</p>
           </div>
           <button
@@ -452,7 +452,7 @@ export default function DomainsSettingsPage() {
             className="ml-auto text-xs underline"
             onClick={() => setVerifyError(null)}
           >
-            Dismiss
+            Cerrar
           </button>
         </div>
       )}
@@ -460,16 +460,16 @@ export default function DomainsSettingsPage() {
       {/* Domain list */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Domains</CardTitle>
+          <CardTitle className="text-base">Dominios</CardTitle>
           <CardDescription>
-            Add your custom hostname, configure DNS, then click Verify to go live.
+            Agregá tu nombre de host, configurá el DNS y verificá para publicarlo.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {loading && (
             <div className="flex items-center gap-2 text-muted-foreground py-6 justify-center">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span>Loading domains…</span>
+              <span>Cargando dominios…</span>
             </div>
           )}
 
@@ -479,13 +479,13 @@ export default function DomainsSettingsPage() {
 
           {!loading && !error && domains.length === 0 && (
             <div className="text-muted-foreground text-sm py-8 text-center">
-              No custom domains yet.{' '}
+              Todavía no hay dominios personalizados.{' '}
               <button
                 type="button"
                 className="underline"
                 onClick={() => { setAddError(null); setHostname(''); setAddOpen(true); }}
               >
-                Add one
+                Agregar uno
               </button>
               .
             </div>
@@ -506,22 +506,22 @@ export default function DomainsSettingsPage() {
       {/* How it works */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">How it works</CardTitle>
+          <CardTitle className="text-base">Cómo funciona</CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground space-y-2">
           <ol className="list-decimal list-inside space-y-1">
-            <li>Add your custom hostname above.</li>
+            <li>Agregá arriba tu nombre de host personalizado.</li>
             <li>
-              Click <strong>DNS instructions</strong> to see the TXT and CNAME records
-              you need to add at your domain registrar.
+              Abrí las <strong>instrucciones DNS</strong> para ver los registros TXT y CNAME
+              que debés agregar en tu proveedor de dominio.
             </li>
             <li>
-              Once the records are in place (may take up to 48 h), click{' '}
-              <strong>Verify</strong>.
+              Cuando los registros estén configurados (puede demorar hasta 48 horas), presioná{' '}
+              <strong>Verificar</strong>.
             </li>
             <li>
-              BeepBite automatically issues an SSL certificate and routes traffic to
-              this location.
+              El sistema emite automáticamente un certificado SSL y dirige el tráfico
+              a este local.
             </li>
           </ol>
         </CardContent>
@@ -531,27 +531,27 @@ export default function DomainsSettingsPage() {
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Add custom domain</DialogTitle>
+            <DialogTitle>Agregar dominio personalizado</DialogTitle>
             <DialogDescription>
-              Enter the hostname you want to point to{' '}
+              Ingresá el nombre de host que querés dirigir a{' '}
               <strong>{activeLocation.name}</strong>.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3 py-2">
             <div className="space-y-1">
-              <Label htmlFor="hostname">Hostname</Label>
+              <Label htmlFor="hostname">Nombre del host</Label>
               <Input
                 id="hostname"
-                placeholder="order.mybakery.com"
+                placeholder="pedidos.rikopollo.com"
                 value={hostname}
                 onChange={(e) => setHostname(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
                 disabled={adding}
               />
               <p className="text-xs text-muted-foreground">
-                Use a subdomain (e.g. <code>order.example.com</code>), not a bare apex
-                domain, for best DNS compatibility.
+                Usá un subdominio (por ejemplo, <code>pedidos.ejemplo.com</code>) para
+                obtener la mejor compatibilidad con DNS.
               </p>
             </div>
             {addError && (
@@ -561,11 +561,11 @@ export default function DomainsSettingsPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddOpen(false)} disabled={adding}>
-              Cancel
+              Cancelar
             </Button>
             <Button onClick={handleAdd} disabled={adding}>
               {adding && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
-              Add domain
+              Agregar dominio
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -575,21 +575,21 @@ export default function DomainsSettingsPage() {
       <AlertDialog open={!!removeTarget} onOpenChange={(o) => !o && setRemoveTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove domain?</AlertDialogTitle>
+            <AlertDialogTitle>¿Eliminar dominio?</AlertDialogTitle>
             <AlertDialogDescription>
-              Removing <strong>{removeTarget?.hostname}</strong> will stop routing
-              traffic to this location. This action cannot be undone.
+              Si eliminás <strong>{removeTarget?.hostname}</strong>, el tráfico dejará
+              de dirigirse a este local. Esta acción no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={removing}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={removing}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmRemove}
               disabled={removing}
               variant="destructive"
             >
               {removing && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
-              Remove domain
+              Eliminar dominio
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

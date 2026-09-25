@@ -64,7 +64,7 @@ export default function BusinessInfoPage() {
   // change for no gain — but nothing the operator READS should assert a tax
   // regime their country does not have.
   const { taxLabel, locale } = useLocale();
-  const tax = taxLabel || 'Tax';
+  const tax = taxLabel || 'Impuesto';
   const countries = useMemo(() => countryOptions(locale), [locale]);
 
   const [form, setForm] = useState<BusinessInfoForm>(EMPTY_FORM);
@@ -97,11 +97,11 @@ export default function BusinessInfoPage() {
       }
       // 404 is fine — no profile yet; user will create one on save.
       if (err && err.status !== 404) {
-        setError(err.message || 'Failed to load business info.');
+        setError(err.message || 'No se pudieron cargar los datos comerciales.');
       }
     } catch (err) {
       console.error('Error loading business info:', err);
-      setError('Failed to load business info.');
+      setError('No se pudieron cargar los datos comerciales.');
     } finally {
       setLoading(false);
     }
@@ -138,7 +138,7 @@ export default function BusinessInfoPage() {
 
     const { error: err } = await saveTaxProfile(body);
     if (err) {
-      setError(err.message || 'Failed to save business info.');
+      setError(err.message || 'No se pudieron guardar los datos comerciales.');
     } else {
       setSuccess(true);
     }
@@ -167,7 +167,7 @@ export default function BusinessInfoPage() {
       {success && (
         <Alert className="rounded-xl border-success/20 bg-success/10 text-success">
           <CheckCircle className="h-4 w-4 text-success" />
-          <AlertDescription>Business info saved successfully.</AlertDescription>
+          <AlertDescription>Datos comerciales guardados correctamente.</AlertDescription>
         </Alert>
       )}
 
@@ -180,9 +180,9 @@ export default function BusinessInfoPage() {
                   <Building2 className="h-4 w-4" />
                 </span>
                 <div>
-                  <CardTitle>Legal details</CardTitle>
+                  <CardTitle>Datos legales</CardTitle>
                   <CardDescription className="mt-0.5">
-                    Used as the "From" block on invoices you raise.
+                    Se usan como datos del emisor en las facturas.
                   </CardDescription>
                 </div>
               </div>
@@ -190,33 +190,33 @@ export default function BusinessInfoPage() {
             <CardContent className="space-y-4">
               {/* Legal name */}
               <div className="space-y-1.5">
-                <Label htmlFor="legal_name" className="text-sm font-medium">Legal business name</Label>
+                <Label htmlFor="legal_name" className="text-sm font-medium">Razón social</Label>
                 <Input
                   id="legal_name"
                   name="legal_name"
                   value={form.legal_name}
                   onChange={handleChange}
-                  placeholder="Acme Restaurant Group"
+                  placeholder="RikoPollo"
                   className="rounded-xl h-10"
                 />
               </div>
 
               {/* Registered address */}
               <div className="space-y-1.5">
-                <Label htmlFor="registered_address" className="text-sm font-medium">Registered address</Label>
+                <Label htmlFor="registered_address" className="text-sm font-medium">Domicilio fiscal</Label>
                 <Input
                   id="registered_address"
                   name="registered_address"
                   value={form.registered_address}
                   onChange={handleChange}
-                  placeholder="Street, city, postal code"
+                  placeholder="Calle, ciudad y código postal"
                   className="rounded-xl h-10"
                 />
               </div>
 
               {/* Country */}
               <div className="space-y-1.5">
-                <Label htmlFor="country" className="text-sm font-medium">Country</Label>
+                <Label htmlFor="country" className="text-sm font-medium">País</Label>
                 <Select
                   value={form.country || undefined}
                   onValueChange={(v) => {
@@ -225,7 +225,7 @@ export default function BusinessInfoPage() {
                   }}
                 >
                   <SelectTrigger id="country" className="rounded-xl h-10 max-w-xs">
-                    <SelectValue placeholder="Select a country…" />
+                    <SelectValue placeholder="Seleccioná un país…" />
                   </SelectTrigger>
                   <SelectContent className="max-h-72">
                     {countries.map((c) => (
@@ -243,15 +243,15 @@ export default function BusinessInfoPage() {
               {/* Company number */}
               <div className="space-y-1.5">
                 <Label htmlFor="company_number" className="text-sm font-medium">
-                  Company / registration number{' '}
-                  <span className="text-muted-foreground font-normal text-xs">(optional)</span>
+                  Número de empresa o registro{' '}
+                  <span className="text-muted-foreground font-normal text-xs">(opcional)</span>
                 </Label>
                 <Input
                   id="company_number"
                   name="company_number"
                   value={form.company_number}
                   onChange={handleChange}
-                  placeholder="As issued by your company registry"
+                  placeholder="Según el registro de tu empresa"
                   className="rounded-xl h-10"
                 />
               </div>
@@ -261,7 +261,7 @@ export default function BusinessInfoPage() {
                 <Label htmlFor="vat_number" className="text-sm font-medium">
                   {tax} registration number{' '}
                   <span className="text-muted-foreground font-normal text-xs">
-                    (optional — enables the {tax} line on invoices)
+                    (opcional; agrega la línea de {tax} en las facturas)
                   </span>
                 </Label>
                 <Input
@@ -269,11 +269,11 @@ export default function BusinessInfoPage() {
                   name="vat_number"
                   value={form.vat_number}
                   onChange={handleChange}
-                  placeholder="As issued by your tax authority"
+                  placeholder="Según la autoridad fiscal"
                   className="rounded-xl h-10"
                 />
                 <p className="text-xs text-muted-foreground">
-                  When set, a {tax} line is automatically added to every invoice
+                  Si lo completás, se agrega automáticamente una línea de {tax} a cada factura
                   you issue and the number is printed on the PDF.
                 </p>
               </div>
@@ -289,36 +289,36 @@ export default function BusinessInfoPage() {
                   <Phone className="h-4 w-4" />
                 </span>
                 <div>
-                  <CardTitle>Contact details</CardTitle>
+                  <CardTitle>Datos de contacto</CardTitle>
                   <CardDescription className="mt-0.5">
-                    Shown on the invoice so recipients can reach you.
+                    Se muestran en la factura para que el destinatario pueda contactarte.
                   </CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="contact_email" className="text-sm font-medium">Contact email</Label>
+                <Label htmlFor="contact_email" className="text-sm font-medium">Correo de contacto</Label>
                 <Input
                   id="contact_email"
                   name="contact_email"
                   type="email"
                   value={form.contact_email}
                   onChange={handleChange}
-                  placeholder="accounts@yourcompany.example"
+                  placeholder="cuentas@tuempresa.com"
                   className="rounded-xl h-10"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="contact_phone" className="text-sm font-medium">Contact phone</Label>
+                <Label htmlFor="contact_phone" className="text-sm font-medium">Teléfono de contacto</Label>
                 <Input
                   id="contact_phone"
                   name="contact_phone"
                   type="tel"
                   value={form.contact_phone}
                   onChange={handleChange}
-                  placeholder="International format, starting with +"
+                  placeholder="Formato internacional, comenzando con +"
                   className="rounded-xl h-10"
                 />
               </div>
@@ -332,12 +332,12 @@ export default function BusinessInfoPage() {
               {saving ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving…
+                  Guardando…
                 </>
               ) : (
                 <>
                   <Save className="mr-2 h-4 w-4" />
-                  Save Business Info
+                  Guardar datos comerciales
                 </>
               )}
             </Button>

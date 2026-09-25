@@ -29,7 +29,7 @@ export function DateRangePicker({
   className,
   date,
   setDate,
-  placeholder = "Pick a date range",
+  placeholder = "Elegí un período",
   presets = true,
   ...props
 }: DateRangePickerProps) {
@@ -69,42 +69,42 @@ export function DateRangePicker({
 
   const presetRanges: PresetRange[] = [
     {
-      label: "Today",
+      label: "Hoy",
       range: {
         from: new Date(),
         to: new Date(),
       },
     },
     {
-      label: "Yesterday",
+      label: "Ayer",
       range: {
         from: addDays(new Date(), -1),
         to: addDays(new Date(), -1),
       },
     },
     {
-      label: "Last 7 days",
+      label: "Últimos 7 días",
       range: {
         from: addDays(new Date(), -6),
         to: new Date(),
       },
     },
     {
-      label: "Last 30 days",
+      label: "Últimos 30 días",
       range: {
         from: addDays(new Date(), -29),
         to: new Date(),
       },
     },
     {
-      label: "This month",
+      label: "Este mes",
       range: {
         from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
         to: new Date(),
       },
     },
     {
-      label: "Last month",
+      label: "Mes anterior",
       range: {
         from: new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1),
         to: new Date(new Date().getFullYear(), new Date().getMonth(), 0),
@@ -146,7 +146,7 @@ export function DateRangePicker({
             {presets && (
               <div className="border-b sm:border-b-0 sm:border-r border-border bg-muted/50">
                 <div className="p-3">
-                  <div className="text-sm font-medium text-foreground mb-2">Quick select</div>
+                  <div className="text-sm font-medium text-foreground mb-2">Selección rápida</div>
                   <div className="flex flex-row sm:flex-col gap-1">
                     {presetRanges.map((preset) => (
                       <Button
@@ -183,4 +183,4 @@ export function DateRangePicker({
       </Popover>
     </div>
   );
-} 
+}

@@ -80,9 +80,9 @@ export default function DeliveryZonesPage() {
         await createZone(payload);
       }
       closeSheet();
-      toast({ title: editing?.id ? 'Zone updated.' : 'Zone created.' });
+      toast({ title: editing?.id ? 'Zona actualizada.' : 'Zona creada.' });
     } catch (err) {
-      toast({ variant: 'destructive', title: 'Save failed', description: err instanceof Error ? err.message : 'Unknown error' });
+      toast({ variant: 'destructive', title: 'No se pudo guardar', description: err instanceof Error ? err.message : 'Error desconocido' });
     } finally {
       setSaving(false);
     }
@@ -94,9 +94,9 @@ export default function DeliveryZonesPage() {
     if (!toDelete) return;
     try {
       await deleteZone(toDelete.id);
-      toast({ title: 'Zone deactivated.' });
+      toast({ title: 'Zona desactivada.' });
     } catch (err) {
-      toast({ variant: 'destructive', title: 'Deactivate failed', description: err instanceof Error ? err.message : 'Unknown error' });
+      toast({ variant: 'destructive', title: 'No se pudo desactivar', description: err instanceof Error ? err.message : 'Error desconocido' });
     } finally {
       setToDelete(null);
     }
@@ -108,9 +108,9 @@ export default function DeliveryZonesPage() {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-        <h2 className="text-xl font-semibold mb-1">No location selected</h2>
+        <h2 className="text-xl font-semibold mb-1">No hay un local seleccionado</h2>
         <p className="text-muted-foreground">
-          Please select a location to manage delivery zones.
+          Seleccioná un local para administrar las zonas de entrega.
         </p>
       </div>
     );
@@ -121,14 +121,14 @@ export default function DeliveryZonesPage() {
 
       {/* Header */}
       <PageHeader
-        eyebrow="Settings"
-        title="Delivery zones"
-        description={`Define deliverable areas with per-zone fees and ETAs for ${activeLocation.name}.`}
+        eyebrow="Configuración"
+        title="Zonas de entrega"
+        description={`Definí las áreas de entrega, sus costos y tiempos estimados para ${activeLocation.name}.`}
         icon={MapPin}
         actions={
           <Button onClick={openNew} className="gap-2">
             <Plus className="h-4 w-4" />
-            New zone
+            Nueva zona
           </Button>
         }
       />
@@ -153,13 +153,13 @@ export default function DeliveryZonesPage() {
       {!loading && zones.length === 0 && (
         <div className="rounded-lg border border-dashed p-10 text-center">
           <MapPin className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-          <p className="font-medium">No delivery zones yet</p>
+          <p className="font-medium">Todavía no hay zonas de entrega</p>
           <p className="text-sm text-muted-foreground mb-4">
-            Create your first zone to define deliverable areas.
+            Creá la primera zona para definir el área de cobertura.
           </p>
           <Button variant="outline" onClick={openNew} className="gap-2">
             <Plus className="h-4 w-4" />
-            New zone
+            Nueva zona
           </Button>
         </div>
       )}
@@ -170,13 +170,13 @@ export default function DeliveryZonesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[200px]">Name</TableHead>
+                <TableHead className="w-[200px]">Nombre</TableHead>
                 <TableHead>Fee</TableHead>
-                <TableHead>Min order</TableHead>
+                <TableHead>Pedido mínimo</TableHead>
                 <TableHead>ETA</TableHead>
-                <TableHead>Priority</TableHead>
-                <TableHead className="text-center">Active</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>Prioridad</TableHead>
+                <TableHead className="text-center">Activo</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -202,7 +202,7 @@ export default function DeliveryZonesPage() {
                     <Switch
                       checked={zone.is_active}
                       onCheckedChange={() => toggleActive(zone)}
-                      aria-label="Toggle active"
+                      aria-label="Cambiar estado activo"
                     />
                   </TableCell>
                   <TableCell className="text-right">
@@ -212,7 +212,7 @@ export default function DeliveryZonesPage() {
                         size="sm"
                         className="h-8 w-8 p-0"
                         onClick={() => openEdit(zone)}
-                        title="Edit"
+                        title="Editar"
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -221,7 +221,7 @@ export default function DeliveryZonesPage() {
                         size="sm"
                         className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                         onClick={() => setToDelete(zone)}
-                        title="Deactivate"
+                        title="Desactivar"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -239,12 +239,12 @@ export default function DeliveryZonesPage() {
         <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
           <SheetHeader className="mb-4">
             <SheetTitle>
-              {editing ? 'Edit delivery zone' : 'New delivery zone'}
+              {editing ? 'Editar zona de entrega' : 'Nueva zona de entrega'}
             </SheetTitle>
             <SheetDescription>
               {editing
-                ? `Update "${editing.name}"`
-                : 'Define the polygon and fee for a new delivery zone.'}
+                ? `Actualizá “${editing.name}”`
+                : 'Definí el área y el costo de la nueva zona de entrega.'}
             </SheetDescription>
           </SheetHeader>
 
@@ -264,19 +264,19 @@ export default function DeliveryZonesPage() {
       <AlertDialog open={Boolean(toDelete)} onOpenChange={(v) => !v && setToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Deactivate zone?</AlertDialogTitle>
+            <AlertDialogTitle>¿Desactivar zona?</AlertDialogTitle>
             <AlertDialogDescription>
               "{toDelete?.name}" will be deactivated and hidden from delivery lookups.
               You can re-enable it later from the table.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Deactivate
+              Desactivar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

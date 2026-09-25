@@ -41,7 +41,7 @@ export default function ZoneForm({ initial, organizationId, locationId, location
     e.preventDefault();
     if (!name.trim()) return;
     if (!polygon || !polygon.coordinates?.[0]?.length) {
-      setPolygonError('A polygon with at least 3 vertices is required.');
+      setPolygonError('El área debe tener al menos 3 puntos.');
       return;
     }
     setPolygonError('');
@@ -60,17 +60,17 @@ export default function ZoneForm({ initial, organizationId, locationId, location
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      {field('Zone name *',
+      {field('Nombre de la zona *',
         <Input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. Inner city"
+          placeholder="Por ejemplo, centro"
           required
         />
       )}
 
       <div className="grid grid-cols-2 gap-3">
-        {field('Delivery fee (cents)',
+        {field('Costo de entrega (centavos)',
           <Input
             type="number"
             min="0"
@@ -78,7 +78,7 @@ export default function ZoneForm({ initial, organizationId, locationId, location
             onChange={(e) => setDeliveryFeeCents(e.target.value)}
           />
         )}
-        {field('Min order (cents)',
+        {field('Pedido mínimo (centavos)',
           <Input
             type="number"
             min="0"
@@ -86,7 +86,7 @@ export default function ZoneForm({ initial, organizationId, locationId, location
             onChange={(e) => setMinOrderCents(e.target.value)}
           />
         )}
-        {field('ETA (minutes)',
+        {field('Tiempo estimado (minutos)',
           <Input
             type="number"
             min="1"
@@ -94,23 +94,23 @@ export default function ZoneForm({ initial, organizationId, locationId, location
             onChange={(e) => setEtaMinutes(e.target.value)}
           />
         )}
-        {field('Priority',
+        {field('Prioridad',
           <Input
             type="number"
             value={priority}
             onChange={(e) => setPriority(e.target.value)}
-            title="Higher priority zones win when polygons overlap"
+            title="Si las áreas se superponen, se usa la zona con mayor prioridad"
           />
         )}
       </div>
 
       <div className="flex items-center gap-3">
         <Switch checked={isActive} onCheckedChange={setIsActive} id="zone-active" />
-        <Label htmlFor="zone-active" className="cursor-pointer">Active</Label>
+        <Label htmlFor="zone-active" className="cursor-pointer">Activo</Label>
       </div>
 
       <div className="space-y-1">
-        <Label className="text-sm font-medium">Delivery polygon *</Label>
+        <Label className="text-sm font-medium">Área de entrega *</Label>
         <PolygonEditor
           value={polygon}
           onChange={setPolygon}
@@ -127,10 +127,10 @@ export default function ZoneForm({ initial, organizationId, locationId, location
 
       <div className="flex gap-2 pt-2">
         <Button type="submit" disabled={saving} className="flex-1">
-          {saving ? 'Saving…' : (initial ? 'Save changes' : 'Create zone')}
+          {saving ? 'Guardando…' : (initial ? 'Guardar cambios' : 'Crear zona')}
         </Button>
         <Button type="button" variant="outline" onClick={onCancel} disabled={saving}>
-          Cancel
+          Cancelar
         </Button>
       </div>
     </form>

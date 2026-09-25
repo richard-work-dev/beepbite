@@ -188,9 +188,9 @@ const OrganizationSettings = () => {
       {/* Page header */}
       <Reveal>
         <PageHeader
-          eyebrow="Settings"
-          title="Organization"
-          description="Manage your organization profile and locations."
+          eyebrow="Configuración"
+          title="Organización"
+          description="Administrá el perfil de tu organización y sus locales."
           icon={Building2}
           actions={
             <Button
@@ -204,12 +204,12 @@ const OrganizationSettings = () => {
               {saving ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Saving…
+                  Guardando…
                 </>
               ) : (
                 <>
                   <Save className="w-4 h-4 mr-2" />
-                  Save changes
+                  Guardar cambios
                 </>
               )}
             </Button>
@@ -247,11 +247,11 @@ const OrganizationSettings = () => {
                 <Building2 className="w-5 h-5" />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="font-semibold text-foreground truncate">{activeOrganization?.name || 'Unknown Organization'}</p>
-                <p className="text-xs text-muted-foreground">Active organization</p>
+                <p className="font-semibold text-foreground truncate">{activeOrganization?.name || 'Organización desconocida'}</p>
+                <p className="text-xs text-muted-foreground">Organización activa</p>
               </div>
               <Badge variant={formData.is_active ? 'default' : 'secondary'} className="shrink-0">
-                {formData.is_active ? 'Active' : 'Inactive'}
+                {formData.is_active ? 'Activo' : 'Inactivo'}
               </Badge>
             </div>
           </CardContent>
@@ -267,22 +267,22 @@ const OrganizationSettings = () => {
               className="flex items-center gap-2 text-xs sm:text-sm py-2.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary"
             >
               <Building2 className="w-4 h-4" />
-              <span className="hidden xs:inline">Organization</span>
-              <span className="xs:hidden">Org</span>
+              <span className="hidden xs:inline">Organización</span>
+              <span className="xs:hidden">Org.</span>
             </TabsTrigger>
             <TabsTrigger
               value="locations"
               className="flex items-center gap-2 text-xs sm:text-sm py-2.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary"
             >
               <MapPin className="w-4 h-4" />
-              <span>Locations</span>
+              <span>Locales</span>
             </TabsTrigger>
             <TabsTrigger
               value="businessinfo"
               className="flex items-center gap-2 text-xs sm:text-sm py-2.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary"
             >
               <FileText className="w-4 h-4" />
-              <span className="hidden xs:inline">Business Info</span>
+              <span className="hidden xs:inline">Datos comerciales</span>
               <span className="xs:hidden">Info</span>
             </TabsTrigger>
           </TabsList>
@@ -297,8 +297,8 @@ const OrganizationSettings = () => {
                       <Building2 className="h-4 w-4" />
                     </span>
                     <div>
-                      <CardTitle>Organization information</CardTitle>
-                      <CardDescription className="mt-0.5">Your organization's name and operational status.</CardDescription>
+                      <CardTitle>Información de la organización</CardTitle>
+                      <CardDescription className="mt-0.5">Nombre y estado operativo de tu organización.</CardDescription>
                     </div>
                   </div>
                 </CardHeader>
@@ -306,34 +306,34 @@ const OrganizationSettings = () => {
                   {/* Name field */}
                   <div className="space-y-1.5">
                     <label htmlFor="org-name" className="block text-sm font-medium text-foreground">
-                      Organization name <span className="text-destructive">*</span>
+                      Nombre de la organización <span className="text-destructive">*</span>
                     </label>
                     <Input
                       id="org-name"
-                      placeholder="Your Organization Name"
+                      placeholder="Nombre de tu organización"
                       value={formData.name}
                       onChange={(e) => handleInputChange('name', e.target.value)}
                       className="rounded-xl h-10"
                       required
                     />
                     <p className="text-xs text-muted-foreground">
-                      The name of your organization that contains all your locations
+                      La organización agrupa todos tus locales
                     </p>
                   </div>
 
                   {/* Status toggle */}
                   <div className="flex items-center justify-between gap-4 p-4 bg-muted/50 rounded-xl border border-border/50">
                     <div>
-                      <p className="text-sm font-medium text-foreground">Organization status</p>
+                      <p className="text-sm font-medium text-foreground">Estado de la organización</p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        Control whether this organization is active
+                        Definí si esta organización está activa
                       </p>
                     </div>
                     <Switch
                       id="is_active"
                       checked={formData.is_active}
                       onCheckedChange={(checked) => handleInputChange('is_active', checked)}
-                      aria-label="Organization active"
+                      aria-label="Organización activa"
                       className="shrink-0"
                     />
                   </div>
@@ -342,15 +342,15 @@ const OrganizationSettings = () => {
                   <div className="grid grid-cols-3 gap-3 p-4 bg-primary/5 rounded-xl border border-primary/15">
                     <div className="text-center">
                       <p className="text-xl font-bold font-display text-foreground">{locations.length}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Total locations</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Locales totales</p>
                     </div>
                     <div className="text-center border-x border-primary/15">
                       <p className="text-xl font-bold font-display text-primary">{locations.filter(l => l.is_active).length}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Active</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Activo</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-xl font-bold font-display text-foreground">{formData.is_active ? 'On' : 'Off'}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Org status</p>
+                      <p className="text-xl font-bold font-display text-foreground">{formData.is_active ? 'Activa' : 'Inactiva'}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Estado</p>
                     </div>
                   </div>
                 </CardContent>
@@ -367,12 +367,12 @@ const OrganizationSettings = () => {
                 {saving ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Saving…
+                    Guardando…
                   </>
                 ) : (
                   <>
                     <Save className="w-4 h-4 mr-2" />
-                    Save Organization Settings
+                    Guardar configuración de la organización
                   </>
                 )}
               </Button>
@@ -389,9 +389,9 @@ const OrganizationSettings = () => {
                       <MapPin className="h-4 w-4" />
                     </span>
                     <div>
-                      <CardTitle>Location management</CardTitle>
+                      <CardTitle>Administración de locales</CardTitle>
                       <CardDescription className="mt-0.5">
-                        Manage all locations in your organization. Each location can have its own delivery, pickup, and service preferences.
+                        Administrá los locales de tu organización. Cada uno puede tener sus propias opciones de entrega, retiro y atención.
                       </CardDescription>
                     </div>
                   </div>
@@ -402,9 +402,9 @@ const OrganizationSettings = () => {
                       <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted mb-4">
                         <MapPin className="w-6 h-6 text-muted-foreground" />
                       </span>
-                      <p className="font-medium text-foreground">No locations yet</p>
+                      <p className="font-medium text-foreground">Todavía no hay locales</p>
                       <p className="text-sm text-muted-foreground mt-1">
-                        Create locations to manage your business branches
+                        Creá locales para administrar las sucursales del negocio
                       </p>
                     </div>
                   ) : (
@@ -418,16 +418,16 @@ const OrganizationSettings = () => {
                               </span>
                               <div className="min-w-0">
                                 <p className="font-medium text-foreground truncate">{location.name}</p>
-                                <p className="text-xs text-muted-foreground truncate">{location.address || 'No address set'}</p>
+                                <p className="text-xs text-muted-foreground truncate">{location.address || 'Sin dirección configurada'}</p>
                                 <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                                   <Badge variant={location.is_active ? "default" : "secondary"} className="text-[10px] px-1.5 py-0">
-                                    {location.is_active ? "Active" : "Inactive"}
+                                    {location.is_active ? "Activo" : "Inactivo"}
                                   </Badge>
                                   {location.accepts_delivery && (
-                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/30 text-primary">Delivery</Badge>
+                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/30 text-primary">Entrega</Badge>
                                   )}
                                   {location.accepts_pickup && (
-                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/30 text-primary">Pickup</Badge>
+                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/30 text-primary">Retiro</Badge>
                                   )}
                                   {location.whatsapp_number && (
                                     <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/30 text-primary">WhatsApp</Badge>
@@ -442,7 +442,7 @@ const OrganizationSettings = () => {
                               className="shrink-0 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg gap-1 group-hover:translate-x-0.5 transition-transform"
                             >
                               <Edit className="w-3.5 h-3.5" />
-                              <span className="hidden sm:inline text-xs">Edit</span>
+                              <span className="hidden sm:inline text-xs">Editar</span>
                               <ChevronRight className="w-3 h-3" />
                             </Button>
                           </div>
@@ -456,9 +456,9 @@ const OrganizationSettings = () => {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-4 border-t border-border/50">
                       {[
                         { label: 'Total', value: locations.length, accent: false },
-                        { label: 'Active', value: locations.filter(l => l.is_active).length, accent: true },
-                        { label: 'With delivery', value: locations.filter(l => l.accepts_delivery).length, accent: true },
-                        { label: 'With pickup', value: locations.filter(l => l.accepts_pickup).length, accent: true },
+                        { label: 'Activo', value: locations.filter(l => l.is_active).length, accent: true },
+                        { label: 'Con entrega', value: locations.filter(l => l.accepts_delivery).length, accent: true },
+                        { label: 'Con retiro', value: locations.filter(l => l.accepts_pickup).length, accent: true },
                       ].map(({ label, value, accent }) => (
                         <div key={label} className="text-center p-3 rounded-xl bg-muted/40">
                           <p className={cn('text-2xl font-bold font-display', accent ? 'text-primary' : 'text-foreground')}>{value}</p>

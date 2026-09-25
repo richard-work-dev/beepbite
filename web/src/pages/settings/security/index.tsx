@@ -89,7 +89,7 @@ function BackupCodes({ codes }: { codes: string[] }) {
       </div>
       <Button variant="outline" size="sm" onClick={handleCopy} className="gap-1.5">
         {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-        {copied ? 'Copied' : 'Copy all'}
+        {copied ? 'Copiados' : 'Copiar todos'}
       </Button>
     </div>
   );
@@ -121,7 +121,7 @@ export default function SecuritySettings() {
     try {
       const { data: result, error: err } = await getTOTPStatus();
       if (err) {
-        setError(err.message || 'Failed to load 2FA status');
+        setError(err.message || 'No se pudo cargar el estado de la autenticación en dos pasos');
         setStep(STEP.DISABLED);
         return;
       }
@@ -137,7 +137,7 @@ export default function SecuritySettings() {
       }
     } catch (err) {
       console.error('Error loading 2FA status:', err);
-      setError('Failed to load 2FA status');
+      setError('No se pudo cargar el estado de la autenticación en dos pasos');
       setStep(STEP.DISABLED);
     }
   }, []);
@@ -154,7 +154,7 @@ export default function SecuritySettings() {
     const { data, error: err } = await enrollTOTP();
     setBusy(false);
     if (err) {
-      setError(err.message || 'Failed to start enrollment');
+      setError(err.message || 'No se pudo iniciar la configuración');
       return;
     }
     setOtpauthURL(data!.otpauth_url);
@@ -168,14 +168,14 @@ export default function SecuritySettings() {
     e.preventDefault();
     clearError();
     if (!verifyCode.trim()) {
-      setError('Enter the 6-digit code from your authenticator app');
+      setError('Ingresá el código de 6 dígitos de tu aplicación de autenticación');
       return;
     }
     setBusy(true);
     const { data, error: err } = await verifyTOTP(verifyCode.trim());
     setBusy(false);
     if (err) {
-      setError(err.message || 'Invalid code — try again');
+      setError(err.message || 'Código inválido. Intentá nuevamente.');
       return;
     }
     setBackupCodes(data!.backup_codes);
@@ -188,7 +188,7 @@ export default function SecuritySettings() {
     e.preventDefault();
     clearError();
     if (!disableCode.trim() && !disableBackup.trim()) {
-      setError('Enter your TOTP code or a backup code to disable 2FA');
+      setError('Ingresá tu código de autenticación o un código de respaldo para desactivar la verificación en dos pasos');
       return;
     }
     setBusy(true);
@@ -198,7 +198,7 @@ export default function SecuritySettings() {
     });
     setBusy(false);
     if (err) {
-      setError(err.message || 'Failed to disable 2FA');
+      setError(err.message || 'No se pudo desactivar la verificación en dos pasos');
       return;
     }
     setDisableCode('');
@@ -212,9 +212,9 @@ export default function SecuritySettings() {
     <PageContainer className="max-w-2xl">
       {/* Page header */}
       <PageHeader
-        eyebrow="Settings"
-        title="Security"
-        description="Manage your account security settings."
+        eyebrow="Configuración"
+        title="Seguridad"
+        description="Administrá la seguridad de tu cuenta."
         icon={Shield}
       />
 
@@ -235,16 +235,16 @@ export default function SecuritySettings() {
             ) : (
               <ShieldOff className="h-5 w-5 text-muted-foreground" />
             )}
-            Two-Factor Authentication
+            Autenticación en dos pasos
             {step === STEP.ENABLED && (
               <Badge variant="success" className="ml-1">
-                Enabled
+                Activada
               </Badge>
             )}
           </CardTitle>
           <CardDescription>
-            Use an authenticator app (Google Authenticator, Authy, etc.) to
-            generate time-based one-time passwords for an extra layer of security.
+            Usá una aplicación como Google Authenticator o Authy para generar
+            códigos temporales y agregar una capa adicional de seguridad.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
@@ -252,7 +252,7 @@ export default function SecuritySettings() {
           {step === STEP.LOADING && (
             <div className="flex items-center gap-2 text-muted-foreground text-sm">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Loading…
+              Cargando…
             </div>
           )}
 
@@ -260,7 +260,7 @@ export default function SecuritySettings() {
           {step === STEP.DISABLED && (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                Two-factor authentication is not enabled on your account.
+                La autenticación en dos pasos no está activada en tu cuenta.
               </p>
               <Button onClick={handleEnroll} disabled={busy} className="gap-1.5">
                 {busy ? (
@@ -268,7 +268,7 @@ export default function SecuritySettings() {
                 ) : (
                   <KeyRound className="h-4 w-4" />
                 )}
-                Set up 2FA
+                Configurar verificación en dos pasos
               </Button>
             </div>
           )}
@@ -278,13 +278,13 @@ export default function SecuritySettings() {
             <div className="space-y-5">
               <div className="space-y-2">
                 <p className="text-sm font-medium">
-                  1. Scan this QR code with your authenticator app
+                  1. Escaneá este código QR con tu aplicación de autenticación
                 </p>
                 <div className="inline-block p-3 bg-card rounded-lg border shadow-sm">
                   <QRCodeSVG value={otpauthURL} size={180} />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Can't scan? Copy the URL manually:
+                  ¿No podés escanearlo? Copiá la URL manualmente:
                 </p>
                 <code className="block text-xs break-all bg-muted px-2 py-1.5 rounded select-all">
                   {otpauthURL}
@@ -295,7 +295,7 @@ export default function SecuritySettings() {
 
               <form onSubmit={handleVerify} className="space-y-3">
                 <p className="text-sm font-medium">
-                  2. Enter the 6-digit code from your app
+                  2. Ingresá el código de 6 dígitos de la aplicación
                 </p>
                 <div className="flex gap-2">
                   <Input
@@ -311,7 +311,7 @@ export default function SecuritySettings() {
                     required
                   />
                   <Button type="submit" disabled={busy || verifyCode.length !== 6}>
-                    {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Verify'}
+                    {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Verificar'}
                   </Button>
                   <Button
                     type="button"
@@ -319,7 +319,7 @@ export default function SecuritySettings() {
                     onClick={() => { setStep(STEP.DISABLED); clearError(); }}
                     disabled={busy}
                   >
-                    Cancel
+                    Cancelar
                   </Button>
                 </div>
               </form>
@@ -332,22 +332,22 @@ export default function SecuritySettings() {
               <Alert className="border-success/20 bg-success/10">
                 <ShieldCheck className="h-4 w-4 text-success" />
                 <AlertDescription className="text-success">
-                  2FA is now enabled. Save these backup codes in a safe place —
-                  they will not be shown again.
+                  La autenticación en dos pasos está activada. Guardá estos códigos
+                  de respaldo en un lugar seguro; no se volverán a mostrar.
                 </AlertDescription>
               </Alert>
 
               <div className="space-y-2">
-                <p className="text-sm font-medium">Backup codes</p>
+                <p className="text-sm font-medium">Códigos de respaldo</p>
                 <p className="text-xs text-muted-foreground">
-                  Each code can be used once if you lose access to your
-                  authenticator app.
+                  Cada código puede usarse una sola vez si perdés el acceso a tu
+                  aplicación de autenticación.
                 </p>
                 <BackupCodes codes={backupCodes} />
               </div>
 
               <Button onClick={() => { setBackupCodes([]); void loadStatus(); }}>
-                I've saved my backup codes
+                Guardé mis códigos de respaldo
               </Button>
             </div>
           )}
@@ -357,9 +357,9 @@ export default function SecuritySettings() {
             <div className="space-y-4">
               <div className="text-sm text-muted-foreground space-y-1">
                 <p>
-                  Two-factor authentication is active.{' '}
+                  La autenticación en dos pasos está activa.{' '}
                   <span className="font-medium text-foreground">
-                    {backupRemaining} backup code{backupRemaining !== 1 ? 's' : ''} remaining.
+                    Quedan {backupRemaining} {backupRemaining === 1 ? 'código' : 'códigos'} de respaldo.
                   </span>
                 </p>
               </div>
@@ -371,7 +371,7 @@ export default function SecuritySettings() {
                   onClick={() => { setStep(STEP.DISABLING); clearError(); }}
                 >
                   <ShieldOff className="h-4 w-4" />
-                  Disable 2FA
+                  Desactivar verificación en dos pasos
                 </Button>
               )}
             </div>
@@ -383,14 +383,14 @@ export default function SecuritySettings() {
               <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
-                  Disabling 2FA reduces your account security. Enter your
-                  authenticator code or a backup code to confirm.
+                  Desactivar esta función reduce la seguridad de tu cuenta. Ingresá
+                  el código de autenticación o uno de respaldo para confirmar.
                 </AlertDescription>
               </Alert>
 
               <div className="space-y-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="disable-code">Authenticator code</Label>
+                  <Label htmlFor="disable-code">Código de autenticación</Label>
                   <Input
                     id="disable-code"
                     type="text"
@@ -408,10 +408,10 @@ export default function SecuritySettings() {
                   />
                 </div>
 
-                <p className="text-xs text-muted-foreground">— or —</p>
+                <p className="text-xs text-muted-foreground">— o —</p>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="disable-backup">Backup code</Label>
+                  <Label htmlFor="disable-backup">Código de respaldo</Label>
                   <Input
                     id="disable-backup"
                     type="text"
@@ -434,7 +434,7 @@ export default function SecuritySettings() {
                   disabled={busy || (!disableCode && !disableBackup)}
                 >
                   {busy ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
-                  Disable 2FA
+                  Desactivar verificación en dos pasos
                 </Button>
                 <Button
                   type="button"
@@ -442,7 +442,7 @@ export default function SecuritySettings() {
                   onClick={() => { setStep(STEP.ENABLED); clearError(); }}
                   disabled={busy}
                 >
-                  Cancel
+                  Cancelar
                 </Button>
               </div>
             </form>

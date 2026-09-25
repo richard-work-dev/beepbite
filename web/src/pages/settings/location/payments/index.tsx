@@ -17,7 +17,7 @@ export default function LocationPaymentsPage() {
   const { locations } = useAuth();
 
   const location = locations?.find((l) => l.id === locationId);
-  const locationName = location?.name ?? locationId ?? 'this location';
+  const locationName = location?.name ?? locationId ?? 'este local';
 
   const [methods, setMethods] = useState<string[]>([]);
 
@@ -33,9 +33,9 @@ export default function LocationPaymentsPage() {
   return (
     <PageContainer className="max-w-3xl">
       <PageHeader
-        eyebrow="Settings"
-        title={`Payment options for ${locationName}`}
-        description="Choose how customers can pay when their order is handed over. Orders are settled in the POS — BeepBite does not process card payments on your behalf."
+        eyebrow="Configuración"
+        title={`Opciones de pago de ${locationName}`}
+        description="Elegí cómo pueden pagar los clientes al recibir su pedido. Los cobros se registran en el punto de venta; RikoPollo no procesa pagos con tarjeta en línea."
         icon={CreditCard}
       />
 

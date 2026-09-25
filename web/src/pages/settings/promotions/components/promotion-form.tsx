@@ -24,27 +24,27 @@ import {
 import { cn } from '@/lib/utils';
 
 const PROMO_TYPES = [
-  { value: 'percent_off',       label: 'Percent off' },
-  { value: 'fixed_off',         label: 'Fixed amount off' },
-  { value: 'bogo',              label: 'Buy X get Y (BOGO)' },
-  { value: 'free_item',         label: 'Free item' },
-  { value: 'happy_hour_price',  label: 'Happy-hour price' },
-  { value: 'free_delivery',     label: 'Free delivery' },
+  { value: 'percent_off',       label: 'Descuento porcentual' },
+  { value: 'fixed_off',         label: 'Descuento fijo' },
+  { value: 'bogo',              label: 'Comprá X y llevá Y' },
+  { value: 'free_item',         label: 'Producto gratis' },
+  { value: 'happy_hour_price',  label: 'Precio de horario promocional' },
+  { value: 'free_delivery',     label: 'Entrega gratis' },
 ];
 
 const SCOPES = [
-  { value: 'order',            label: 'Entire order' },
-  { value: 'item',             label: 'Specific items' },
-  { value: 'category',         label: 'Category' },
-  { value: 'delivery',         label: 'Delivery fee' },
+  { value: 'order',            label: 'Pedido completo' },
+  { value: 'item',             label: 'Productos específicos' },
+  { value: 'category',         label: 'Categoría' },
+  { value: 'delivery',         label: 'Costo de entrega' },
   // 'customer_segment' is handled via the customer_segment column, not scope
 ];
 
 const SEGMENTS = [
-  { value: 'all',        label: 'All customers' },
-  { value: 'first_time', label: 'First-time only' },
+  { value: 'all',        label: 'Todos los clientes' },
+  { value: 'first_time', label: 'Solo primera compra' },
   { value: 'vip',        label: 'VIP' },
-  { value: 'lapsed',     label: 'Lapsed' },
+  { value: 'lapsed',     label: 'Inactivos' },
 ];
 
 interface PromotionFormState {
@@ -266,7 +266,7 @@ function DateField({ label, value, onChange }: {
             )}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
-            {value ? format(value, 'PPP') : 'Pick a date'}
+            {value ? format(value, 'PPP') : 'Elegí una fecha'}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
@@ -325,10 +325,10 @@ export default function PromotionForm({
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!form.name.trim()) { setValidationError('Name is required.'); return; }
+    if (!form.name.trim()) { setValidationError('El nombre es obligatorio.'); return; }
     if (form.dayparts_raw.trim()) {
       try { JSON.parse(form.dayparts_raw); }
-      catch { setValidationError('Dayparts must be valid JSON.'); return; }
+      catch { setValidationError('Los horarios deben tener un formato JSON válido.'); return; }
     }
     setValidationError('');
     const payload = buildPayload(form, locationId, organizationId);
@@ -343,29 +343,29 @@ export default function PromotionForm({
       {/* Basic info */}
       <div className="space-y-3">
         <div>
-          <Label htmlFor="promo-name">Name *</Label>
+          <Label htmlFor="promo-name">Nombre *</Label>
           <Input
             id="promo-name"
             value={form.name}
             onChange={(e) => set('name', e.target.value)}
-            placeholder="e.g. Happy Hour 20% off"
+            placeholder="Por ejemplo, 20% de descuento al mediodía"
           />
         </div>
         <div>
-          <Label htmlFor="promo-desc">Description</Label>
+          <Label htmlFor="promo-desc">Descripción</Label>
           <Textarea
             id="promo-desc"
             value={form.description}
             onChange={(e) => set('description', e.target.value)}
             rows={2}
-            placeholder="Optional customer-facing description"
+            placeholder="Descripción opcional para el cliente"
           />
         </div>
       </div>
 
       {/* Type */}
       <div>
-        <Label className="mb-2 block">Promotion type *</Label>
+        <Label className="mb-2 block">Tipo de promoción *</Label>
         <RadioGroup
           value={form.promo_type}
           onValueChange={(v) => set('promo_type', v)}
@@ -393,7 +393,7 @@ export default function PromotionForm({
       {/* Type-specific discount fields */}
       {form.promo_type === 'percent_off' && (
         <div>
-          <Label htmlFor="pct-off">Percent off (0–100)</Label>
+          <Label htmlFor="pct-off">Porcentaje de descuento (0–100)</Label>
           <Input
             id="pct-off"
             type="number"
@@ -402,14 +402,14 @@ export default function PromotionForm({
             step="0.01"
             value={form.percent_off}
             onChange={(e) => set('percent_off', e.target.value)}
-            placeholder="e.g. 20"
+            placeholder="Por ejemplo, 20"
           />
         </div>
       )}
 
       {form.promo_type === 'fixed_off' && (
         <div>
-          <Label htmlFor="fixed-off">Discount amount ($)</Label>
+          <Label htmlFor="fixed-off">Importe del descuento ($)</Label>
           <Input
             id="fixed-off"
             type="number"
@@ -417,14 +417,14 @@ export default function PromotionForm({
             step="0.01"
             value={form.fixed_off_dollars}
             onChange={(e) => set('fixed_off_dollars', e.target.value)}
-            placeholder="e.g. 5.00"
+            placeholder="Por ejemplo, 5000"
           />
         </div>
       )}
 
       {form.promo_type === 'happy_hour_price' && (
         <div>
-          <Label htmlFor="hh-price">Override price ($)</Label>
+          <Label htmlFor="hh-price">Precio promocional ($)</Label>
           <Input
             id="hh-price"
             type="number"
@@ -432,7 +432,7 @@ export default function PromotionForm({
             step="0.01"
             value={form.happy_hour_price_dollars}
             onChange={(e) => set('happy_hour_price_dollars', e.target.value)}
-            placeholder="e.g. 1.99"
+            placeholder="Por ejemplo, 19900"
           />
         </div>
       )}
@@ -440,7 +440,7 @@ export default function PromotionForm({
       {form.promo_type === 'bogo' && (
         <div className="grid grid-cols-3 gap-3">
           <div>
-            <Label htmlFor="bogo-buy">Buy qty</Label>
+            <Label htmlFor="bogo-buy">Cantidad a comprar</Label>
             <Input
               id="bogo-buy"
               type="number"
@@ -450,7 +450,7 @@ export default function PromotionForm({
             />
           </div>
           <div>
-            <Label htmlFor="bogo-get">Get qty</Label>
+            <Label htmlFor="bogo-get">Cantidad a recibir</Label>
             <Input
               id="bogo-get"
               type="number"
@@ -460,7 +460,7 @@ export default function PromotionForm({
             />
           </div>
           <div>
-            <Label htmlFor="bogo-disc">Get % off</Label>
+            <Label htmlFor="bogo-disc">Descuento recibido (%)</Label>
             <Input
               id="bogo-disc"
               type="number"
@@ -475,7 +475,7 @@ export default function PromotionForm({
 
       {/* Scope */}
       <div>
-        <Label className="mb-2 block">Scope *</Label>
+        <Label className="mb-2 block">Aplicar a *</Label>
         <RadioGroup
           value={form.scope}
           onValueChange={(v) => set('scope', v)}
@@ -503,7 +503,7 @@ export default function PromotionForm({
       {/* Qualifications */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <Label htmlFor="min-spend">Min spend ($)</Label>
+          <Label htmlFor="min-spend">Compra mínima ($)</Label>
           <Input
             id="min-spend"
             type="number"
@@ -515,7 +515,7 @@ export default function PromotionForm({
           />
         </div>
         <div>
-          <Label htmlFor="max-disc">Max discount ($)</Label>
+          <Label htmlFor="max-disc">Descuento máximo ($)</Label>
           <Input
             id="max-disc"
             type="number"
@@ -523,7 +523,7 @@ export default function PromotionForm({
             step="0.01"
             value={form.max_discount_dollars}
             onChange={(e) => set('max_discount_dollars', e.target.value)}
-            placeholder="Unlimited"
+            placeholder="Sin límite"
           />
         </div>
       </div>
@@ -531,12 +531,12 @@ export default function PromotionForm({
       {/* Validity window */}
       <div className="grid grid-cols-2 gap-3">
         <DateField
-          label="Starts at"
+          label="Comienza"
           value={form.active_from}
           onChange={(d) => set('active_from', d)}
         />
         <DateField
-          label="Ends at"
+          label="Finaliza"
           value={form.active_until}
           onChange={(d) => set('active_until', d)}
         />
@@ -545,7 +545,7 @@ export default function PromotionForm({
       {/* Dayparts */}
       <div>
         <Label htmlFor="dayparts">
-          Dayparts{' '}
+          Horarios{' '}
           <span className="text-muted-foreground font-normal text-xs">
             (JSON array, e.g. [{`{"day":"mon","from":"15:00","until":"18:00"}`}])
           </span>
@@ -555,14 +555,14 @@ export default function PromotionForm({
           value={form.dayparts_raw}
           onChange={(e) => set('dayparts_raw', e.target.value)}
           rows={3}
-          placeholder='Leave blank for any time'
+          placeholder='Dejalo vacío para cualquier horario'
           className="font-mono text-xs"
         />
       </div>
 
       {/* Customer segment */}
       <div>
-        <Label className="mb-2 block">Customer segment</Label>
+        <Label className="mb-2 block">Segmento de clientes</Label>
         <div className="flex flex-wrap gap-2">
           {SEGMENTS.map(({ value, label }) => (
             <Badge
@@ -580,18 +580,18 @@ export default function PromotionForm({
       {/* Usage caps */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <Label htmlFor="usage-total">Total usage limit</Label>
+          <Label htmlFor="usage-total">Límite total de usos</Label>
           <Input
             id="usage-total"
             type="number"
             min="1"
             value={form.usage_limit_total}
             onChange={(e) => set('usage_limit_total', e.target.value)}
-            placeholder="Unlimited"
+            placeholder="Sin límite"
           />
         </div>
         <div>
-          <Label htmlFor="usage-per">Per-customer limit</Label>
+          <Label htmlFor="usage-per">Límite por cliente</Label>
           <Input
             id="usage-per"
             type="number"
@@ -605,7 +605,7 @@ export default function PromotionForm({
 
       {/* Priority */}
       <div>
-        <Label htmlFor="priority">Priority (higher = wins when non-stackable)</Label>
+        <Label htmlFor="priority">Prioridad (el valor más alto prevalece si no se acumula)</Label>
         <Input
           id="priority"
           type="number"
@@ -623,7 +623,7 @@ export default function PromotionForm({
             checked={form.is_active}
             onCheckedChange={(v) => set('is_active', v)}
           />
-          <Label htmlFor="is-active">Active</Label>
+          <Label htmlFor="is-active">Activo</Label>
         </div>
 
         <div className="flex items-center gap-2">
@@ -632,7 +632,7 @@ export default function PromotionForm({
             checked={form.stackable}
             onCheckedChange={(v) => set('stackable', !!v)}
           />
-          <Label htmlFor="stackable">Stackable</Label>
+          <Label htmlFor="stackable">Acumulable</Label>
         </div>
 
         <div className="flex items-center gap-2">
@@ -641,7 +641,7 @@ export default function PromotionForm({
             checked={form.requires_coupon_code}
             onCheckedChange={(v) => set('requires_coupon_code', !!v)}
           />
-          <Label htmlFor="requires-coupon">Requires coupon code</Label>
+          <Label htmlFor="requires-coupon">Requiere código de cupón</Label>
         </div>
       </div>
 
@@ -658,10 +658,10 @@ export default function PromotionForm({
           disabled={saving}
           className="flex-1"
         >
-          Cancel
+          Cancelar
         </Button>
         <Button type="submit" disabled={saving} className="flex-1">
-          {saving ? 'Saving…' : isEdit ? 'Update promotion' : 'Create promotion'}
+          {saving ? 'Guardando…' : isEdit ? 'Actualizar promoción' : 'Crear promoción'}
         </Button>
       </div>
     </form>

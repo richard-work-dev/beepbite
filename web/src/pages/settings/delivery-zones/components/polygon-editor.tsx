@@ -157,7 +157,7 @@ export default function PolygonEditor({ value, onChange, center }: PolygonEditor
     <div className="space-y-3">
       {/* Instructions */}
       <p className="text-xs text-muted-foreground">
-        Click on the map to add polygon vertices. The polygon closes automatically
+        Hacé clic en el mapa para agregar los puntos del área. El polígono se cierra automáticamente
         when you have 3 or more points.
       </p>
 
@@ -211,7 +211,7 @@ export default function PolygonEditor({ value, onChange, center }: PolygonEditor
           <Badge variant="outline" className="text-xs ml-auto">
             <MapPin className="h-3 w-3 mr-1" />
             {positions.length} vertex{positions.length !== 1 ? 'es' : ''}
-            {positions.length >= 3 ? ' — polygon ready' : ' — need at least 3'}
+            {positions.length >= 3 ? ' — área lista' : ' — se necesitan al menos 3'}
           </Badge>
         )}
       </div>

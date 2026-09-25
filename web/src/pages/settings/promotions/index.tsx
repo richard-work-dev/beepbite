@@ -48,7 +48,7 @@ import CouponManager from './components/coupon-manager';
 
 const TYPE_LABELS: Record<string, string> = {
   percent_off:      'Percent off',
-  fixed_off:        'Fixed off',
+  fixed_off:        'Descuento fijo',
   bogo:             'BOGO',
   free_item:        'Free item',
   happy_hour_price: 'Happy-hour price',
@@ -56,9 +56,9 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const SCOPE_LABELS: Record<string, string> = {
-  order:    'Order',
+  order:    'Orden',
   item:     'Item',
-  category: 'Category',
+  category: 'Categoría',
   delivery: 'Delivery',
 };
 
@@ -68,13 +68,13 @@ function fmtDate(iso?: string | null) {
 }
 
 function statusBadge(promo: Promotion) {
-  if (!promo.is_active) return <Badge variant="secondary">Inactive</Badge>;
+  if (!promo.is_active) return <Badge variant="secondary">Inactivo</Badge>;
   const now = new Date();
   if (promo.active_from && parseISO(promo.active_from) > now)
-    return <Badge variant="outline" className="text-yellow-600 border-yellow-400">Scheduled</Badge>;
+    return <Badge variant="outline" className="text-yellow-600 border-yellow-400">Programada</Badge>;
   if (promo.active_until && parseISO(promo.active_until) < now)
     return <Badge variant="destructive">Expired</Badge>;
-  return <Badge className="bg-green-100 text-green-800 border-green-200" variant="outline">Live</Badge>;
+  return <Badge className="bg-green-100 text-green-800 border-green-200" variant="outline">Vigente</Badge>;
 }
 
 // ---- page component ----
@@ -114,9 +114,9 @@ export default function PromotionsPage() {
         await createPromotion(payload);
       }
       closeSheet();
-      toast({ title: editing?.id ? 'Promotion updated.' : 'Promotion created.' });
+      toast({ title: editing?.id ? 'Promoción actualizada.' : 'Promoción creada.' });
     } catch (err) {
-      toast({ variant: 'destructive', title: 'Save failed', description: err instanceof Error ? err.message : 'Unknown error' });
+      toast({ variant: 'destructive', title: 'No se pudo guardar', description: err instanceof Error ? err.message : 'Error desconocido' });
     } finally {
       setSaving(false);
     }
@@ -128,9 +128,9 @@ export default function PromotionsPage() {
     if (!toDelete) return;
     try {
       await deletePromotion(toDelete.id);
-      toast({ title: 'Promotion deleted.' });
+      toast({ title: 'Promoción eliminada.' });
     } catch (err) {
-      toast({ variant: 'destructive', title: 'Delete failed', description: err instanceof Error ? err.message : 'Unknown error' });
+      toast({ variant: 'destructive', title: 'No se pudo eliminar', description: err instanceof Error ? err.message : 'Error desconocido' });
     } finally {
       setToDelete(null);
     }
@@ -153,7 +153,7 @@ export default function PromotionsPage() {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-        <h2 className="text-xl font-semibold mb-1">No location selected</h2>
+        <h2 className="text-xl font-semibold mb-1">No hay un local seleccionado</h2>
         <p className="text-muted-foreground">
           Please select a location to manage promotions.
         </p>
@@ -166,8 +166,8 @@ export default function PromotionsPage() {
 
       {/* Header */}
       <PageHeader
-        eyebrow="Settings"
-        title="Promotions"
+        eyebrow="Configuración"
+        title="Promociones"
         description={`Manage discounts and coupon campaigns for ${activeLocation.name}.`}
         icon={Tag}
         actions={
@@ -198,9 +198,9 @@ export default function PromotionsPage() {
       {!loading && promotions.length === 0 && (
         <div className="rounded-lg border border-dashed p-10 text-center">
           <Tag className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-          <p className="font-medium">No promotions yet</p>
+          <p className="font-medium">Todavía no hay promociones</p>
           <p className="text-sm text-muted-foreground mb-4">
-            Create your first promotion to start offering discounts.
+            Creá la primera promoción para comenzar a ofrecer descuentos.
           </p>
           <Button variant="outline" onClick={openNew} className="gap-2">
             <Plus className="h-4 w-4" />
@@ -215,13 +215,13 @@ export default function PromotionsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[220px]">Name</TableHead>
-                <TableHead>Type</TableHead>
+                <TableHead className="w-[220px]">Nombre</TableHead>
+                <TableHead>Tipo</TableHead>
                 <TableHead>Scope</TableHead>
-                <TableHead>Active window</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-center">Active</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>Vigencia</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead className="text-center">Activo</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -233,13 +233,13 @@ export default function PromotionsPage() {
                         variant="link"
                         className="h-auto p-0 text-left font-medium text-foreground"
                         onClick={() => toggleCoupons(promo.id)}
-                        title="Toggle coupon codes"
+                        title="Mostrar u ocultar códigos de cupón"
                       >
                         {promo.name}
                       </Button>
                       {promo.requires_coupon_code && (
                         <Badge variant="outline" className="ml-2 text-xs">
-                          Coupon required
+                          Requiere cupón
                         </Badge>
                       )}
                     </TableCell>
@@ -259,7 +259,7 @@ export default function PromotionsPage() {
                       <Switch
                         checked={promo.is_active}
                         onCheckedChange={() => toggleActive(promo)}
-                        aria-label="Toggle active"
+                        aria-label="Cambiar estado activo"
                       />
                     </TableCell>
                     <TableCell className="text-right">
@@ -269,7 +269,7 @@ export default function PromotionsPage() {
                           size="sm"
                           className="h-8 w-8 p-0"
                           onClick={() => openEdit(promo)}
-                          title="Edit"
+                          title="Editar"
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -278,7 +278,7 @@ export default function PromotionsPage() {
                           size="sm"
                           className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                           onClick={() => setToDelete(promo)}
-                          title="Delete"
+                          title="Eliminar"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -309,11 +309,11 @@ export default function PromotionsPage() {
         <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
           <SheetHeader className="mb-4">
             <SheetTitle>
-              {editing ? 'Edit promotion' : 'New promotion'}
+              {editing ? 'Editar promoción' : 'Nueva promoción'}
             </SheetTitle>
             <SheetDescription>
               {editing
-                ? `Update "${editing.name}"`
+                ? `Actualizá “${editing.name}”`
                 : 'Fill in the details for your new promotion.'}
             </SheetDescription>
           </SheetHeader>
@@ -333,18 +333,18 @@ export default function PromotionsPage() {
       <AlertDialog open={Boolean(toDelete)} onOpenChange={(v) => !v && setToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete promotion?</AlertDialogTitle>
+            <AlertDialogTitle>¿Eliminar promoción?</AlertDialogTitle>
             <AlertDialogDescription>
-              "{toDelete?.name}" will be permanently deleted. This cannot be undone.
+              “{toDelete?.name}” se eliminará definitivamente. Esta acción no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              Eliminar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

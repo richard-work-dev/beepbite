@@ -167,10 +167,10 @@ function CopyButton({ text, className }: { text: string; className?: string }) {
           : 'bg-muted text-muted-foreground hover:bg-muted',
         className,
       )}
-      title="Copy to clipboard"
+      title="Copiar al portapapeles"
     >
       {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-      {copied ? 'Copied' : 'Copy'}
+      {copied ? 'Copiado' : 'Copiar'}
     </button>
   );
 }
@@ -183,7 +183,7 @@ function SecretRevealBox({ label, value }: { label: string; value: string }) {
       <div className="flex items-start gap-2">
         <AlertTriangle className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
         <p className="text-sm font-medium text-primary">
-          Save this {label} — you won&apos;t see it again
+          Guardá este {label}; no se volverá a mostrar
         </p>
       </div>
       <div className="flex items-center gap-2 rounded-md bg-card border border-primary/20 px-3 py-2">
@@ -193,7 +193,7 @@ function SecretRevealBox({ label, value }: { label: string; value: string }) {
         <CopyButton text={value} />
       </div>
       <p className="text-xs text-primary">
-        Copy it now and store it securely. It cannot be retrieved after you close this dialog.
+        Copialo ahora y guardalo de forma segura. No se puede recuperar después de cerrar esta ventana.
       </p>
     </div>
   );
@@ -273,11 +273,11 @@ function CreateKeyDialog({ open, onClose, onCreated }: {
 
   async function handleCreate() {
     if (!name.trim()) {
-      setError('Key name is required.');
+      setError('El nombre de la clave es obligatorio.');
       return;
     }
     if (scopes.length === 0) {
-      setError('Select at least one scope.');
+      setError('Seleccioná al menos un permiso.');
       return;
     }
     setError('');
@@ -289,7 +289,7 @@ function CreateKeyDialog({ open, onClose, onCreated }: {
     });
     setLoading(false);
     if (apiErr) {
-      setError(apiErr.message || 'Failed to create key.');
+      setError(apiErr.message || 'No se pudo crear la clave.');
       return;
     }
     setCreatedKey(data);
@@ -301,24 +301,24 @@ function CreateKeyDialog({ open, onClose, onCreated }: {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Key className="h-5 w-5 text-primary" />
-            {createdKey ? 'API Key Created' : 'Create API Key'}
+            {createdKey ? 'Clave API creada' : 'Crear clave API'}
           </DialogTitle>
           <DialogDescription>
             {createdKey
-              ? 'Your new API key has been created. Copy it now — it will not be shown again.'
-              : 'Give the key a name, choose its scopes, and select the environment.'}
+              ? 'La nueva clave API fue creada. Copiala ahora; no se volverá a mostrar.'
+              : 'Asignale un nombre, elegí sus permisos y seleccioná el entorno.'}
           </DialogDescription>
         </DialogHeader>
 
         {createdKey ? (
           <div className="space-y-4">
-            <SecretRevealBox label="API key" value={createdKey.key} />
+            <SecretRevealBox label="clave API" value={createdKey.key} />
             <div className="text-sm text-muted-foreground space-y-1">
               <p>
-                <span className="font-medium">Name:</span> {createdKey.name}
+                <span className="font-medium">Nombre:</span> {createdKey.name}
               </p>
               <p>
-                <span className="font-medium">Environment:</span>{' '}
+                <span className="font-medium">Entorno:</span>{' '}
                 <Badge
                   className={cn(
                     'text-xs',
@@ -328,11 +328,11 @@ function CreateKeyDialog({ open, onClose, onCreated }: {
                   )}
                   variant="outline"
                 >
-                  {createdKey.environment}
+                  {createdKey.environment === 'live' ? 'Producción' : 'Prueba'}
                 </Badge>
               </p>
               <p>
-                <span className="font-medium">Scopes:</span>{' '}
+                <span className="font-medium">Permisos:</span>{' '}
                 {(createdKey.scopes || []).join(', ')}
               </p>
             </div>
@@ -340,17 +340,17 @@ function CreateKeyDialog({ open, onClose, onCreated }: {
         ) : (
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="key-name">Key name</Label>
+              <Label htmlFor="key-name">Nombre de la clave</Label>
               <Input
                 id="key-name"
-                placeholder="e.g. Production integration"
+                placeholder="Por ejemplo, integración de producción"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
             </div>
 
             <div className="space-y-2">
-              <Label>Environment</Label>
+              <Label>Entorno</Label>
               <div className="flex items-center gap-3">
                 <Switch
                   checked={environment === 'live'}
@@ -359,16 +359,16 @@ function CreateKeyDialog({ open, onClose, onCreated }: {
                 />
                 <span className="text-sm">
                   {environment === 'live' ? (
-                    <span className="font-medium text-success">Live</span>
+                    <span className="font-medium text-success">Producción</span>
                   ) : (
-                    <span className="font-medium text-muted-foreground">Test</span>
+                    <span className="font-medium text-muted-foreground">Prueba</span>
                   )}
                 </span>
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label>Scopes</Label>
+              <Label>Permisos</Label>
               <CheckboxGrid
                 items={ALL_SCOPES}
                 selected={scopes}
@@ -388,19 +388,19 @@ function CreateKeyDialog({ open, onClose, onCreated }: {
         <DialogFooter>
           {createdKey ? (
             <Button onClick={handleClose}>
-              Done
+              Listo
             </Button>
           ) : (
             <>
               <Button variant="outline" onClick={handleClose} disabled={loading}>
-                Cancel
+                Cancelar
               </Button>
               <Button
                 onClick={handleCreate}
                 disabled={loading}
               >
                 {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                Create key
+                Crear clave
               </Button>
             </>
           )}
@@ -425,7 +425,7 @@ function RevokeKeyDialog({ apiKey, open, onClose, onRevoked }: {
     const { error: apiErr } = await revokeKey(apiKey.id);
     setLoading(false);
     if (apiErr) {
-      setError(apiErr.message || 'Failed to revoke key.');
+      setError(apiErr.message || 'No se pudo revocar la clave.');
       return;
     }
     onRevoked(apiKey.id);
@@ -437,26 +437,26 @@ function RevokeKeyDialog({ apiKey, open, onClose, onRevoked }: {
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-            <ShieldOff className="h-5 w-5" /> Revoke API key?
+            <ShieldOff className="h-5 w-5" /> ¿Revocar clave API?
           </AlertDialogTitle>
           <AlertDialogDescription>
             <span className="font-mono font-medium">{apiKey?.prefix_visible}</span>
-            {apiKey?.name && ` (${apiKey.name})`} will be immediately disabled. Any
-            integrations using this key will stop working. This action cannot be undone.
+            {apiKey?.name && ` (${apiKey.name})`} se desactivará inmediatamente. Las
+            integraciones que la usen dejarán de funcionar. Esta acción no se puede deshacer.
           </AlertDialogDescription>
         </AlertDialogHeader>
         {error && (
           <p className="text-sm text-destructive px-1">{error}</p>
         )}
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={loading}>Cancelar</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleRevoke}
             disabled={loading}
             variant="destructive"
           >
             {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-            Revoke key
+            Revocar clave
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -495,7 +495,7 @@ function ApiKeyRow({ apiKey, onRevoked }: { apiKey: ApiKeySummary; onRevoked: (i
           )}
           {isRevoked && (
             <Badge variant="outline" className="text-xs bg-destructive/10 text-destructive border-destructive/20">
-              Revoked
+              Revocada
             </Badge>
           )}
         </div>
@@ -515,7 +515,7 @@ function ApiKeyRow({ apiKey, onRevoked }: { apiKey: ApiKeySummary; onRevoked: (i
       <div className="flex items-center gap-4 text-xs text-muted-foreground shrink-0">
         <span className="flex items-center gap-1">
           <Clock className="h-3 w-3" />
-          {apiKey.last_used_at ? `Used ${fmtDate(apiKey.last_used_at)}` : 'Never used'}
+          {apiKey.last_used_at ? `Usada ${fmtDate(apiKey.last_used_at)}` : 'Nunca se usó'}
         </span>
         {!isRevoked && (
           <Button
@@ -525,7 +525,7 @@ function ApiKeyRow({ apiKey, onRevoked }: { apiKey: ApiKeySummary; onRevoked: (i
             className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 px-2"
           >
             <ShieldOff className="h-3.5 w-3.5 mr-1" />
-            Revoke
+            Revocar
           </Button>
         )}
       </div>
@@ -559,13 +559,13 @@ function ApiKeysSection() {
     try {
       const { data, error: apiErr } = await listKeys();
       if (apiErr) {
-        setError(apiErr.message || 'Failed to load API keys.');
+        setError(apiErr.message || 'No se pudieron cargar las claves API.');
         return;
       }
       setKeys(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Error loading API keys:', err);
-      setError('Failed to load API keys.');
+      setError('No se pudieron cargar las claves API.');
     } finally {
       setLoading(false);
     }
@@ -604,11 +604,11 @@ function ApiKeysSection() {
         <div>
           <CardTitle className="flex items-center gap-2 text-base">
             <Key className="h-5 w-5 text-primary" />
-            API Keys
+            Claves API
           </CardTitle>
           <CardDescription className="mt-1">
-            Programmatic access to your organisation&apos;s data. The full key is shown only once at
-            creation.
+            Acceso programático a los datos de tu organización. La clave completa se muestra
+            una sola vez al crearla.
           </CardDescription>
         </div>
         <Button
@@ -617,7 +617,7 @@ function ApiKeysSection() {
           className="shrink-0"
         >
           <Plus className="h-4 w-4 mr-1" />
-          Create key
+          Crear clave
         </Button>
       </CardHeader>
 
@@ -625,26 +625,26 @@ function ApiKeysSection() {
         {loading ? (
           <div className="flex items-center justify-center py-10 text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin mr-2" />
-            Loading keys…
+            Cargando claves…
           </div>
         ) : error ? (
           <div className="flex items-center gap-2 py-6 text-destructive text-sm">
             <AlertTriangle className="h-4 w-4" /> {error}
             <Button variant="ghost" size="sm" onClick={load} className="ml-auto">
-              Retry
+              Reintentar
             </Button>
           </div>
         ) : keys.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 text-muted-foreground text-sm gap-2">
             <Key className="h-8 w-8 opacity-30" />
-            <p>No API keys yet.</p>
+            <p>Todavía no hay claves API.</p>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setCreateOpen(true)}
               className="mt-1"
             >
-              <Plus className="h-4 w-4 mr-1" /> Create your first key
+              <Plus className="h-4 w-4 mr-1" /> Crear la primera clave
             </Button>
           </div>
         ) : (
@@ -724,11 +724,11 @@ function AddEndpointDialog({ open, onClose, onCreated, editEndpoint }: {
 
   async function handleSave() {
     if (!validateUrl(url)) {
-      setError('URL must be a valid https:// address.');
+      setError('La URL debe ser una dirección https:// válida.');
       return;
     }
     if (events.length === 0) {
-      setError('Select at least one event.');
+      setError('Seleccioná al menos un evento.');
       return;
     }
     setError('');
@@ -741,19 +741,19 @@ function AddEndpointDialog({ open, onClose, onCreated, editEndpoint }: {
         description,
       });
       setLoading(false);
-      if (apiErr) { setError(apiErr.message || 'Update failed.'); return; }
+      if (apiErr) { setError(apiErr.message || 'No se pudo actualizar.'); return; }
       onCreated(data!);
       reset();
       onClose();
     } else {
       const { data, error: apiErr } = await createEndpoint({ url, events, description });
       setLoading(false);
-      if (apiErr) { setError(apiErr.message || 'Failed to create endpoint.'); return; }
+      if (apiErr) { setError(apiErr.message || 'No se pudo crear el endpoint.'); return; }
       setCreatedSecret({ endpoint: data!, secret: data!.signing_secret });
     }
   }
 
-  const title = isEdit ? 'Edit webhook endpoint' : 'Add webhook endpoint';
+  const title = isEdit ? 'Editar endpoint de webhook' : 'Agregar endpoint de webhook';
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
@@ -761,44 +761,44 @@ function AddEndpointDialog({ open, onClose, onCreated, editEndpoint }: {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Webhook className="h-5 w-5 text-primary" />
-            {createdSecret ? 'Webhook endpoint created' : title}
+            {createdSecret ? 'Endpoint de webhook creado' : title}
           </DialogTitle>
           <DialogDescription>
             {createdSecret
-              ? 'Save the signing secret below — it will not be shown again.'
+              ? 'Guardá el secreto de firma; no se volverá a mostrar.'
               : isEdit
-              ? 'Update the endpoint URL, subscribed events, or description.'
-              : 'We will POST a signed JSON payload to your HTTPS endpoint when events occur.'}
+              ? 'Actualizá la URL, los eventos suscriptos o la descripción.'
+              : 'Enviaremos una solicitud POST con JSON firmado a tu endpoint HTTPS cuando ocurran eventos.'}
           </DialogDescription>
         </DialogHeader>
 
         {createdSecret ? (
           <div className="space-y-4">
-            <SecretRevealBox label="signing secret" value={createdSecret.secret} />
+            <SecretRevealBox label="secreto de firma" value={createdSecret.secret} />
             <p className="text-sm text-muted-foreground">
-              The{' '}
+              El encabezado{' '}
               <code className="text-xs bg-muted px-1 py-0.5 rounded">X-BeepBite-Signature</code>{' '}
-              header is{' '}
+              contiene{' '}
               <code className="text-xs bg-muted px-1 py-0.5 rounded">t=&lt;unix&gt;,v1=&lt;hex&gt;</code>
-              , where the hex is{' '}
+              , donde el valor hexadecimal es{' '}
               <code className="text-xs bg-muted px-1 py-0.5 rounded">
                 HMAC-SHA256(&quot;&lt;t&gt;.&lt;delivery-id&gt;.&lt;raw_body&gt;&quot;, secret)
               </code>{' '}
-              and the delivery id is the{' '}
+              y el identificador de entrega se envía en el encabezado{' '}
               <code className="text-xs bg-muted px-1 py-0.5 rounded">X-BeepBite-Delivery</code>{' '}
-              header.
+              .
             </p>
             <p className="text-sm text-muted-foreground">
-              Recompute it over the raw body and compare in constant time. Also reject a{' '}
-              <code className="text-xs bg-muted px-1 py-0.5 rounded">t</code> more than five minutes
-              from your own clock, and ignore a delivery id you have already accepted — the
-              signature alone does not stop a captured request being replayed.
+              Volvé a calcularlo sobre el cuerpo sin procesar y comparalo en tiempo constante. Rechazá un{' '}
+              <code className="text-xs bg-muted px-1 py-0.5 rounded">t</code> con más de cinco minutos
+              de diferencia respecto de tu reloj, e ignorá los identificadores
+              ya aceptados. La firma por sí sola no evita que se repita una solicitud capturada.
             </p>
           </div>
         ) : (
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="webhook-url">Endpoint URL</Label>
+              <Label htmlFor="webhook-url">URL del endpoint</Label>
               <Input
                 id="webhook-url"
                 type="url"
@@ -806,21 +806,21 @@ function AddEndpointDialog({ open, onClose, onCreated, editEndpoint }: {
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">Must use HTTPS.</p>
+              <p className="text-xs text-muted-foreground">Debe usar HTTPS.</p>
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="webhook-desc">Description (optional)</Label>
+              <Label htmlFor="webhook-desc">Descripción (opcional)</Label>
               <Input
                 id="webhook-desc"
-                placeholder="e.g. Sync orders to ERP"
+                placeholder="Por ejemplo, sincronizar pedidos con el ERP"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
             </div>
 
             <div className="space-y-2">
-              <Label>Events to subscribe</Label>
+              <Label>Eventos a suscribir</Label>
               <CheckboxGrid
                 items={ALL_EVENTS}
                 selected={events}
@@ -840,19 +840,19 @@ function AddEndpointDialog({ open, onClose, onCreated, editEndpoint }: {
         <DialogFooter>
           {createdSecret ? (
             <Button onClick={handleClose}>
-              Done
+              Listo
             </Button>
           ) : (
             <>
               <Button variant="outline" onClick={handleClose} disabled={loading}>
-                Cancel
+                Cancelar
               </Button>
               <Button
                 onClick={handleSave}
                 disabled={loading}
               >
                 {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                {isEdit ? 'Save changes' : 'Add endpoint'}
+                {isEdit ? 'Guardar cambios' : 'Agregar endpoint'}
               </Button>
             </>
           )}
@@ -874,7 +874,7 @@ function DeliveriesPanel({ endpointId }: { endpointId: string }) {
     listDeliveries(endpointId).then(({ data, error: apiErr }) => {
       if (cancelled) return;
       setLoading(false);
-      if (apiErr) { setError(apiErr.message || 'Failed to load deliveries.'); return; }
+      if (apiErr) { setError(apiErr.message || 'No se pudieron cargar las entregas.'); return; }
       setDeliveries(Array.isArray(data) ? data : []);
     }).catch((err: unknown) => {
       // listDeliveries()'s promise rejects on a network-level failure
@@ -883,7 +883,7 @@ function DeliveriesPanel({ endpointId }: { endpointId: string }) {
       if (!cancelled) {
         console.error('Error loading webhook deliveries:', err);
         setLoading(false);
-        setError('Failed to load deliveries.');
+        setError('No se pudieron cargar las entregas.');
       }
     });
     return () => { cancelled = true; };
@@ -892,7 +892,7 @@ function DeliveriesPanel({ endpointId }: { endpointId: string }) {
   if (loading) {
     return (
       <div className="flex items-center gap-2 py-4 pl-4 text-muted-foreground text-sm">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading deliveries…
+        <Loader2 className="h-4 w-4 animate-spin" /> Cargando entregas…
       </div>
     );
   }
@@ -905,7 +905,7 @@ function DeliveriesPanel({ endpointId }: { endpointId: string }) {
   }
   if (deliveries.length === 0) {
     return (
-      <p className="pl-4 py-3 text-sm text-muted-foreground">No deliveries recorded yet.</p>
+      <p className="pl-4 py-3 text-sm text-muted-foreground">Todavía no hay entregas registradas.</p>
     );
   }
 
@@ -1003,7 +1003,7 @@ function WebhookEndpointRow({ endpoint, onUpdated, onDeleted }: {
               className="data-[state=checked]:bg-primary"
             />
             <span className="text-xs text-muted-foreground">
-              {endpoint.is_active ? 'Active' : 'Paused'}
+              {endpoint.is_active ? 'Activo' : 'Pausado'}
             </span>
           </div>
 
@@ -1012,7 +1012,7 @@ function WebhookEndpointRow({ endpoint, onUpdated, onDeleted }: {
             size="sm"
             onClick={() => setEditOpen(true)}
             className="h-7 w-7 p-0 text-muted-foreground hover:text-primary"
-            title="Edit"
+            title="Editar"
           >
             <Pencil className="h-3.5 w-3.5" />
           </Button>
@@ -1022,7 +1022,7 @@ function WebhookEndpointRow({ endpoint, onUpdated, onDeleted }: {
             size="sm"
             onClick={() => setDeleteOpen(true)}
             className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-            title="Delete"
+            title="Eliminar"
           >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
@@ -1032,10 +1032,10 @@ function WebhookEndpointRow({ endpoint, onUpdated, onDeleted }: {
             size="sm"
             onClick={() => setDeliveriesOpen((v) => !v)}
             className="h-7 px-2 text-muted-foreground hover:text-foreground"
-            title="Recent deliveries"
+            title="Entregas recientes"
           >
             <Activity className="h-3.5 w-3.5 mr-1" />
-            <span className="text-xs">Deliveries</span>
+            <span className="text-xs">Entregas</span>
             {deliveriesOpen ? (
               <ChevronDown className="h-3.5 w-3.5 ml-0.5" />
             ) : (
@@ -1065,20 +1065,20 @@ function WebhookEndpointRow({ endpoint, onUpdated, onDeleted }: {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-              <Trash2 className="h-4 w-4" /> Delete endpoint?
+              <Trash2 className="h-4 w-4" /> ¿Eliminar endpoint?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              <span className="font-mono">{endpoint.url}</span> will be permanently removed.
-              No further events will be delivered.
+              <span className="font-mono">{endpoint.url}</span> se eliminará definitivamente.
+              No se enviarán más eventos.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               variant="destructive"
             >
-              Delete endpoint
+              Eliminar endpoint
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1101,11 +1101,11 @@ function WebhooksSection() {
     // rejection left this stuck loading forever.
     try {
       const { data, error: apiErr } = await listEndpoints();
-      if (apiErr) { setError(apiErr.message || 'Failed to load endpoints.'); return; }
+      if (apiErr) { setError(apiErr.message || 'No se pudieron cargar los endpoints.'); return; }
       setEndpoints(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Error loading webhook endpoints:', err);
-      setError('Failed to load endpoints.');
+      setError('No se pudieron cargar los endpoints.');
     } finally {
       setLoading(false);
     }
@@ -1136,8 +1136,8 @@ function WebhooksSection() {
             Webhooks
           </CardTitle>
           <CardDescription className="mt-1">
-            Receive real-time event notifications at your HTTPS endpoint. Each endpoint gets a
-            unique signing secret shown once on creation.
+            Recibí notificaciones de eventos en tiempo real en tu endpoint HTTPS. Cada endpoint
+            recibe un secreto de firma único que se muestra una sola vez.
           </CardDescription>
         </div>
         <Button
@@ -1146,7 +1146,7 @@ function WebhooksSection() {
           className="shrink-0"
         >
           <Plus className="h-4 w-4 mr-1" />
-          Add endpoint
+          Agregar endpoint
         </Button>
       </CardHeader>
 
@@ -1154,26 +1154,26 @@ function WebhooksSection() {
         {loading ? (
           <div className="flex items-center justify-center py-10 text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin mr-2" />
-            Loading endpoints…
+            Cargando endpoints…
           </div>
         ) : error ? (
           <div className="flex items-center gap-2 py-6 text-destructive text-sm">
             <AlertTriangle className="h-4 w-4" /> {error}
             <Button variant="ghost" size="sm" onClick={load} className="ml-auto">
-              Retry
+              Reintentar
             </Button>
           </div>
         ) : endpoints.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 text-muted-foreground text-sm gap-2">
             <Webhook className="h-8 w-8 opacity-30" />
-            <p>No webhook endpoints configured.</p>
+            <p>No hay endpoints de webhook configurados.</p>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setAddOpen(true)}
               className="mt-1"
             >
-              <Plus className="h-4 w-4 mr-1" /> Add first endpoint
+              <Plus className="h-4 w-4 mr-1" /> Agregar el primer endpoint
             </Button>
           </div>
         ) : (
@@ -1208,9 +1208,9 @@ export default function ApiKeysPage() {
     <PageContainer className="max-w-3xl">
       {/* Page header */}
       <PageHeader
-        eyebrow="Settings"
-        title="API Keys & Webhooks"
-        description="Manage programmatic access and real-time integrations for your organisation."
+        eyebrow="Configuración"
+        title="Claves API y webhooks"
+        description="Administrá el acceso programático y las integraciones en tiempo real de tu organización."
         icon={Key}
       />
 

@@ -41,10 +41,10 @@ export function OnDeliverySection({ locationId, initialMethods = [], onMethodsCh
         body: { on_delivery_payment_methods: methods },
       });
       if (error) {
-        toast({ variant: 'destructive', title: 'Save failed', description: error.message });
+        toast({ variant: 'destructive', title: 'No se pudo guardar', description: error.message });
         return;
       }
-      toast({ title: 'On-delivery payment settings saved.' });
+      toast({ title: 'Configuración de pago al recibir guardada.' });
       onMethodsChange?.(methods);
     } finally {
       setSaving(false);
@@ -58,10 +58,10 @@ export function OnDeliverySection({ locationId, initialMethods = [], onMethodsCh
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base">Payment on delivery</CardTitle>
+        <CardTitle className="text-base">Pago al recibir</CardTitle>
         <p className="text-sm text-muted-foreground">
-          Use this if your customers pay when their order arrives (cash or a portable card machine
-          carried by the driver).
+          Usá esta opción si el cliente paga cuando recibe su pedido, en efectivo o con el lector
+          de tarjetas que lleva el repartidor.
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -73,7 +73,7 @@ export function OnDeliverySection({ locationId, initialMethods = [], onMethodsCh
               onCheckedChange={(v) => setAcceptCash(Boolean(v))}
             />
             <Label htmlFor="accept-cash" className="cursor-pointer text-sm font-normal">
-              Accept cash on delivery
+              Aceptar efectivo al entregar
             </Label>
           </div>
 
@@ -84,8 +84,8 @@ export function OnDeliverySection({ locationId, initialMethods = [], onMethodsCh
               onCheckedChange={(v) => setAcceptCard(Boolean(v))}
             />
             <Label htmlFor="accept-card" className="cursor-pointer text-sm font-normal">
-              Accept card payment on delivery{' '}
-              <span className="text-muted-foreground">(I have a card machine)</span>
+              Aceptar tarjeta al entregar{' '}
+              <span className="text-muted-foreground">(tengo un lector de tarjetas)</span>
             </Label>
           </div>
         </div>
@@ -97,7 +97,7 @@ export function OnDeliverySection({ locationId, initialMethods = [], onMethodsCh
           disabled={saving || !dirty}
         >
           {saving && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
-          Save
+          Guardar
         </Button>
       </CardContent>
     </Card>

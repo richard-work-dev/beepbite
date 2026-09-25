@@ -247,7 +247,7 @@ const LocationSettings = () => {
 
       // Check if location belongs to active organization
       if (activeOrganization && location.organization_id !== activeOrganization.id) {
-        console.error('Location does not belong to active organization');
+        console.error('El local no pertenece a la organización activa');
         void navigate('/settings/organization');
         return;
       }
@@ -307,7 +307,7 @@ const LocationSettings = () => {
     try {
       // Validate required fields
       if (!formData.name.trim()) {
-        throw new Error('Location name is required');
+        throw new Error('El nombre del local es obligatorio');
       }
 
       const taxRate = formData.tax_rate === '' ? 0 : Number(formData.tax_rate);
@@ -365,7 +365,7 @@ const LocationSettings = () => {
       // Persist service style to localStorage
       setServiceStyleLS(locationId, serviceStyle);
 
-      setSaveMessage('Location settings saved successfully!');
+      setSaveMessage('Configuración guardada correctamente.');
 
       // Refresh locations in auth context
       await fetchLocations();
@@ -379,7 +379,7 @@ const LocationSettings = () => {
 
     } catch (error) {
       console.error('Error saving location settings:', error);
-      setSaveMessage(error instanceof Error ? error.message : 'Failed to save location settings. Please try again.');
+      setSaveMessage(error instanceof Error ? error.message : 'No se pudo guardar la configuración. Intentá nuevamente.');
 
       setTimeout(() => {
         setSaveMessage('');
@@ -413,13 +413,14 @@ const LocationSettings = () => {
           <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted mb-4">
             <AlertCircle className="w-7 h-7 text-muted-foreground" />
           </span>
-          <h2 className="font-display text-xl font-semibold text-foreground mb-2">Location not found</h2>
+          <h2 className="font-display text-xl font-semibold text-foreground mb-2">No se encontró el local</h2>
           <p className="text-sm text-muted-foreground mb-6 max-w-sm">
             The location you're looking for doesn't exist or you don't have access to it.
           </p>
           <Button onClick={() => navigate('/settings/organization')} variant="outline" className="rounded-xl">
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Organization Settings
+
+            Volver a la configuración de la organización
           </Button>
         </div>
       </PageContainer>
@@ -445,8 +446,8 @@ const LocationSettings = () => {
 
           <PageHeader
             eyebrow="Location"
-            title={locationData?.name || 'Location Settings'}
-            description={`Manage address, delivery rules, and status for this location.`}
+            title={locationData?.name || 'Configuración del local'}
+            description={`Administrá la dirección, las entregas y el estado de este local.`}
             icon={MapPin}
             actions={
               <Button
@@ -457,12 +458,14 @@ const LocationSettings = () => {
                 {saving ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Saving…
+
+                    Guardando…
                   </>
                 ) : (
                   <>
                     <Save className="w-4 h-4 mr-2" />
-                    Save changes
+
+                    Guardar cambios
                   </>
                 )}
               </Button>
@@ -503,14 +506,14 @@ const LocationSettings = () => {
               <div className="min-w-0 flex-1">
                 <p className="font-semibold text-foreground truncate">{locationData?.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  {formData.is_active ? 'Active' : 'Inactive'} ·{' '}
+                  {formData.is_active ? 'Activo' : 'Inactivo'} ·{' '}
                   {formData.accepts_delivery && formData.accepts_pickup
-                    ? 'Delivery & pickup'
+                    ? 'Entrega y retiro'
                     : formData.accepts_delivery
-                    ? 'Delivery only'
+                    ? 'Solo entrega'
                     : formData.accepts_pickup
-                    ? 'Pickup only'
-                    : 'No fulfilment methods'}
+                    ? 'Solo retiro'
+                    : 'Sin modalidades habilitadas'}
                 </p>
               </div>
             </div>
@@ -534,7 +537,7 @@ const LocationSettings = () => {
               className="flex items-center gap-2 text-xs sm:text-sm py-2.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary"
             >
               <Globe className="w-4 h-4" />
-              <span>Regional</span>
+              <span>Configuración regional</span>
             </TabsTrigger>
             <TabsTrigger
               value="delivery"
@@ -548,7 +551,7 @@ const LocationSettings = () => {
               className="flex items-center gap-2 text-xs sm:text-sm py-2.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary"
             >
               <SettingsIcon className="w-4 h-4" />
-              <span>Status</span>
+              <span>Estado</span>
             </TabsTrigger>
           </TabsList>
 
@@ -562,8 +565,8 @@ const LocationSettings = () => {
                       <MapPin className="h-4 w-4" />
                     </span>
                     <div>
-                      <CardTitle>Location details</CardTitle>
-                      <CardDescription className="mt-0.5">Name, contact, address and map coordinates.</CardDescription>
+                      <CardTitle>Datos del local</CardTitle>
+                      <CardDescription className="mt-0.5">Nombre, contacto, dirección y coordenadas.</CardDescription>
                     </div>
                   </div>
                 </CardHeader>
@@ -571,11 +574,12 @@ const LocationSettings = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="space-y-1.5">
                       <label htmlFor="loc-name" className="block text-sm font-medium text-foreground">
-                        Location name <span className="text-destructive">*</span>
+
+                        Nombre del local <span className="text-destructive">*</span>
                       </label>
                       <Input
                         id="loc-name"
-                        placeholder="Main Branch, Downtown, etc."
+                        placeholder="Sucursal principal, centro, etc."
                         value={formData.name}
                         onChange={(e) => handleInputChange('name', e.target.value)}
                         className="rounded-xl h-10"
@@ -585,7 +589,8 @@ const LocationSettings = () => {
 
                     <div className="space-y-1.5">
                       <label htmlFor="whatsapp" className="block text-sm font-medium text-foreground">
-                        WhatsApp number
+
+                        Número de WhatsApp
                       </label>
                       <Input
                         id="whatsapp"
@@ -607,11 +612,12 @@ const LocationSettings = () => {
 
                   <div className="space-y-1.5">
                     <label htmlFor="description" className="block text-sm font-medium text-foreground">
-                      Description
+
+                      Descripción
                     </label>
                     <Textarea
                       id="description"
-                      placeholder="Describe this location…"
+                      placeholder="Describí este local…"
                       value={formData.description}
                       onChange={(e) => handleInputChange('description', e.target.value)}
                       rows={3}
@@ -621,10 +627,11 @@ const LocationSettings = () => {
 
                   <div className="space-y-1.5">
                     <label className="block text-sm font-medium text-foreground">
-                      Address
+
+                      Dirección
                     </label>
                     <AddressAutocomplete
-                      placeholder="Start typing an address…"
+                      placeholder="Comenzá a escribir una dirección…"
                       value={formData.address}
                       onChange={(text) => handleInputChange('address', text)}
                       onSelect={(s) => {
@@ -635,14 +642,16 @@ const LocationSettings = () => {
                       className="rounded-xl"
                     />
                     <p className="text-xs text-muted-foreground">
-                      Pick a suggestion to auto-fill the map coordinates below.
+
+                      Elegí una sugerencia para completar las coordenadas.
                     </p>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="space-y-1.5">
                       <label htmlFor="latitude" className="block text-sm font-medium text-foreground">
-                        Latitude
+
+                        Latitud
                       </label>
                       <Input
                         id="latitude"
@@ -659,7 +668,8 @@ const LocationSettings = () => {
 
                     <div className="space-y-1.5">
                       <label htmlFor="longitude" className="block text-sm font-medium text-foreground">
-                        Longitude
+
+                        Longitud
                       </label>
                       <Input
                         id="longitude"
@@ -684,9 +694,9 @@ const LocationSettings = () => {
                 className="w-full rounded-xl h-11"
               >
                 {saving ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving…</>
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Guardando…</>
                 ) : (
-                  <><Save className="w-4 h-4 mr-2" />Save Location Settings</>
+                  <><Save className="w-4 h-4 mr-2" />Guardar configuración del local</>
                 )}
               </Button>
             </div>
@@ -713,14 +723,15 @@ const LocationSettings = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="space-y-1.5">
                       <label className="block text-sm font-medium text-foreground">
-                        Country
+
+                        País
                       </label>
                       <Select
                         value={formData.country || undefined}
                         onValueChange={(v) => handleInputChange('country', v)}
                       >
                         <SelectTrigger className="rounded-xl h-10">
-                          <SelectValue placeholder="Select a country…" />
+                          <SelectValue placeholder="Seleccionar país…" />
                         </SelectTrigger>
                         <SelectContent className="max-h-72">
                           {countries.map((c) => (
@@ -738,14 +749,15 @@ const LocationSettings = () => {
 
                     <div className="space-y-1.5">
                       <label className="block text-sm font-medium text-foreground">
-                        Currency
+
+                        Moneda
                       </label>
                       <Select
                         value={formData.currency_code || undefined}
                         onValueChange={(v) => handleInputChange('currency_code', v)}
                       >
                         <SelectTrigger className="rounded-xl h-10">
-                          <SelectValue placeholder="Select a currency…" />
+                          <SelectValue placeholder="Seleccionar moneda…" />
                         </SelectTrigger>
                         <SelectContent className="max-h-72">
                           {currencies.map((c) => (
@@ -765,14 +777,15 @@ const LocationSettings = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="space-y-1.5">
                       <label className="block text-sm font-medium text-foreground">
-                        Timezone
+
+                        Zona horaria
                       </label>
                       <Select
                         value={formData.timezone || undefined}
                         onValueChange={(v) => handleInputChange('timezone', v)}
                       >
                         <SelectTrigger className="rounded-xl h-10">
-                          <SelectValue placeholder="Select a timezone…" />
+                          <SelectValue placeholder="Seleccionar zona horaria…" />
                         </SelectTrigger>
                         <SelectContent className="max-h-72">
                           {timezones.map((z) => (
@@ -800,11 +813,12 @@ const LocationSettings = () => {
 
                     <div className="space-y-1.5">
                       <label htmlFor="loc-locale" className="block text-sm font-medium text-foreground">
-                        Locale
+
+                        Formato regional
                       </label>
                       <Input
                         id="loc-locale"
-                        placeholder="Leave blank to follow each reader’s browser"
+                        placeholder="Dejá vacío para usar la configuración del navegador"
                         value={formData.locale}
                         onChange={(e) => handleInputChange('locale', e.target.value)}
                         className="rounded-xl h-10"
@@ -826,7 +840,7 @@ const LocationSettings = () => {
                       </p>
                     </div>
                     <p className="font-display text-xl font-bold text-primary">
-                      {formData.currency_code ? moneyPreview : 'No currency selected'}
+                      {formData.currency_code ? moneyPreview : 'No hay una moneda seleccionada'}
                     </p>
                   </div>
                 </CardContent>
@@ -841,7 +855,7 @@ const LocationSettings = () => {
                       <SettingsIcon className="h-4 w-4" />
                     </span>
                     <div>
-                      <CardTitle>Tax</CardTitle>
+                      <CardTitle>Impuestos</CardTitle>
                       <CardDescription className="mt-0.5">
                         The rate, the convention and what it is called on receipts.
                       </CardDescription>
@@ -852,7 +866,8 @@ const LocationSettings = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="space-y-1.5">
                       <label htmlFor="tax_rate" className="block text-sm font-medium text-foreground">
-                        Tax rate (%)
+
+                        Impuesto (%)
                       </label>
                       <Input
                         id="tax_rate"
@@ -872,7 +887,8 @@ const LocationSettings = () => {
 
                     <div className="space-y-1.5">
                       <label htmlFor="tax_label" className="block text-sm font-medium text-foreground">
-                        Tax label
+
+                        Nombre del impuesto
                       </label>
                       <Input
                         id="tax_label"
@@ -890,7 +906,7 @@ const LocationSettings = () => {
 
                   <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl border border-border/50">
                     <div className="pr-4">
-                      <p className="text-sm font-medium text-foreground">Prices include tax</p>
+                      <p className="text-sm font-medium text-foreground">Los precios incluyen impuestos</p>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         On means menu prices already contain the tax — the VAT/GST convention
                         used across the EU, the UK, Australia, Japan and South Africa. Off
@@ -903,7 +919,7 @@ const LocationSettings = () => {
                       id="tax_inclusive"
                       checked={formData.tax_inclusive}
                       onCheckedChange={(checked) => handleInputChange('tax_inclusive', checked)}
-                      aria-label="Prices include tax"
+                      aria-label="Los precios incluyen impuestos"
                       className="shrink-0"
                     />
                   </div>
@@ -914,7 +930,7 @@ const LocationSettings = () => {
             <Reveal delay={0.1}>
               <Card variant="elevated">
                 <CardHeader className="pb-4">
-                  <CardTitle className="text-base">Phone numbers</CardTitle>
+                  <CardTitle className="text-base">Teléfonos</CardTitle>
                   <CardDescription className="mt-0.5">
                     The dial code used to read local numbers as international ones.
                   </CardDescription>
@@ -922,7 +938,8 @@ const LocationSettings = () => {
                 <CardContent>
                   <div className="space-y-1.5 md:max-w-xs">
                     <label htmlFor="phone_country_code" className="block text-sm font-medium text-foreground">
-                      Phone country code
+
+                      Código telefónico del país
                     </label>
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">+</span>
@@ -954,9 +971,9 @@ const LocationSettings = () => {
                 className="w-full rounded-xl h-11"
               >
                 {saving ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving…</>
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Guardando…</>
                 ) : (
-                  <><Save className="w-4 h-4 mr-2" />Save Location Settings</>
+                  <><Save className="w-4 h-4 mr-2" />Guardar configuración del local</>
                 )}
               </Button>
             </div>
@@ -972,7 +989,7 @@ const LocationSettings = () => {
                       <Truck className="h-4 w-4" />
                     </span>
                     <div>
-                      <CardTitle>Delivery settings</CardTitle>
+                      <CardTitle>Configuración de entregas</CardTitle>
                       <CardDescription className="mt-0.5">Fees, thresholds, distances and prep times for this location.</CardDescription>
                     </div>
                   </div>
@@ -981,7 +998,8 @@ const LocationSettings = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="space-y-1.5">
                       <label htmlFor="delivery_fee" className="block text-sm font-medium text-foreground">
-                        Delivery fee{symbolPreview ? ` (${symbolPreview})` : ''}
+
+                        Costo de entrega{symbolPreview ? ` (${symbolPreview})` : ''}
                       </label>
                       <Input
                         id="delivery_fee"
@@ -998,7 +1016,8 @@ const LocationSettings = () => {
 
                     <div className="space-y-1.5">
                       <label htmlFor="free_delivery_threshold" className="block text-sm font-medium text-foreground">
-                        Free delivery threshold{symbolPreview ? ` (${symbolPreview})` : ''}
+
+                        Monto mínimo para entrega gratuita{symbolPreview ? ` (${symbolPreview})` : ''}
                       </label>
                       <Input
                         id="free_delivery_threshold"
@@ -1017,7 +1036,8 @@ const LocationSettings = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="space-y-1.5">
                       <label htmlFor="max_delivery_distance_km" className="block text-sm font-medium text-foreground">
-                        Max delivery distance (km)
+
+                        Distancia máxima de entrega (km)
                       </label>
                       <Input
                         id="max_delivery_distance_km"
@@ -1034,7 +1054,8 @@ const LocationSettings = () => {
 
                     <div className="space-y-1.5">
                       <label htmlFor="estimated_prep_time" className="block text-sm font-medium text-foreground">
-                        Estimated prep time (minutes)
+
+                        Tiempo estimado de preparación (minutos)
                       </label>
                       <Input
                         id="estimated_prep_time"
@@ -1053,27 +1074,27 @@ const LocationSettings = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl border border-border/50">
                       <div>
-                        <p className="text-sm font-medium text-foreground">Accept delivery</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">Receive delivery orders</p>
+                        <p className="text-sm font-medium text-foreground">Aceptar entregas</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">Recibir pedidos con entrega</p>
                       </div>
                       <Switch
                         id="accepts_delivery"
                         checked={formData.accepts_delivery}
                         onCheckedChange={(checked) => handleInputChange('accepts_delivery', checked)}
-                        aria-label="Accept delivery"
+                        aria-label="Aceptar entregas"
                       />
                     </div>
 
                     <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl border border-border/50">
                       <div>
-                        <p className="text-sm font-medium text-foreground">Accept pickup</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">Receive collection orders</p>
+                        <p className="text-sm font-medium text-foreground">Aceptar retiros</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">Recibir pedidos para retirar</p>
                       </div>
                       <Switch
                         id="accepts_pickup"
                         checked={formData.accepts_pickup}
                         onCheckedChange={(checked) => handleInputChange('accepts_pickup', checked)}
-                        aria-label="Accept pickup"
+                        aria-label="Aceptar retiros"
                       />
                     </div>
                   </div>
@@ -1089,9 +1110,9 @@ const LocationSettings = () => {
                 className="w-full rounded-xl h-11"
               >
                 {saving ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving…</>
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Guardando…</>
                 ) : (
-                  <><Save className="w-4 h-4 mr-2" />Save Location Settings</>
+                  <><Save className="w-4 h-4 mr-2" />Guardar configuración del local</>
                 )}
               </Button>
             </div>
@@ -1109,8 +1130,8 @@ const LocationSettings = () => {
                       <UtensilsCrossed className="h-4 w-4" />
                     </span>
                     <div>
-                      <CardTitle>Service style</CardTitle>
-                      <CardDescription className="mt-0.5">Tell BeepBite how this location serves customers so it shows the right features in the POS.</CardDescription>
+                      <CardTitle>Modalidad de atención</CardTitle>
+                      <CardDescription className="mt-0.5">Indicá cómo atiende este local para mostrar las funciones adecuadas en el punto de venta.</CardDescription>
                     </div>
                   </div>
                 </CardHeader>
@@ -1134,7 +1155,7 @@ const LocationSettings = () => {
                         <UtensilsCrossed className="h-4 w-4" />
                       </span>
                       <div>
-                        <p className="text-sm font-semibold text-foreground">Dine-in</p>
+                        <p className="text-sm font-semibold text-foreground">Consumo en el local</p>
                         <p className="mt-0.5 text-xs text-muted-foreground">Restaurant or café with tables. Shows the floor plan, seat selection and dine-in flow.</p>
                       </div>
                     </button>
@@ -1157,7 +1178,7 @@ const LocationSettings = () => {
                         <ShoppingBag className="h-4 w-4" />
                       </span>
                       <div>
-                        <p className="text-sm font-semibold text-foreground">Takeaway / counter</p>
+                        <p className="text-sm font-semibold text-foreground">Para llevar / mostrador</p>
                         <p className="mt-0.5 text-xs text-muted-foreground">Market stall, food truck, counter service or delivery-only. No floor plan or table selection needed.</p>
                       </div>
                     </button>
@@ -1177,24 +1198,25 @@ const LocationSettings = () => {
                       <Activity className="h-4 w-4" />
                     </span>
                     <div>
-                      <CardTitle>Location status</CardTitle>
-                      <CardDescription className="mt-0.5">Control whether this location is visible and accepting orders.</CardDescription>
+                      <CardTitle>Estado del local</CardTitle>
+                      <CardDescription className="mt-0.5">Controlá si el local está visible y acepta pedidos.</CardDescription>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-5">
                   <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl border border-border/50">
                     <div>
-                      <p className="text-sm font-medium text-foreground">Location active</p>
+                      <p className="text-sm font-medium text-foreground">Local activo</p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        Inactive locations won't appear in customer searches
+
+                        Los locales inactivos no aparecen en las búsquedas de clientes
                       </p>
                     </div>
                     <Switch
                       id="is_active"
                       checked={formData.is_active}
                       onCheckedChange={(checked) => handleInputChange('is_active', checked)}
-                      aria-label="Location active"
+                      aria-label="Local activo"
                       className="shrink-0"
                     />
                   </div>
@@ -1205,7 +1227,7 @@ const LocationSettings = () => {
                       <p className={cn('text-xl font-bold font-display', formData.is_active ? 'text-primary' : 'text-muted-foreground')}>
                         {formData.is_active ? 'On' : 'Off'}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Status</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Estado</p>
                     </div>
                     <div className="text-center border-x border-primary/15">
                       <p className={cn('text-xl font-bold font-display', formData.accepts_delivery ? 'text-primary' : 'text-muted-foreground')}>
@@ -1224,9 +1246,9 @@ const LocationSettings = () => {
                   <div className="p-4 bg-muted/40 rounded-xl border border-border/40 space-y-1.5">
                     <p className="text-xs font-semibold text-foreground">Tips</p>
                     <ul className="space-y-1 text-xs text-muted-foreground list-disc list-inside">
-                      <li>Inactive locations won't appear in customer searches</li>
+                      <li>Los locales inactivos no aparecen en las búsquedas de clientes</li>
                       <li>You can disable delivery or pickup individually</li>
-                      <li>Set realistic prep times for better customer satisfaction</li>
+                      <li>Configurá tiempos de preparación realistas</li>
                     </ul>
                   </div>
                 </CardContent>
@@ -1241,9 +1263,9 @@ const LocationSettings = () => {
                 className="w-full rounded-xl h-11"
               >
                 {saving ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving…</>
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Guardando…</>
                 ) : (
-                  <><Save className="w-4 h-4 mr-2" />Save Location Settings</>
+                  <><Save className="w-4 h-4 mr-2" />Guardar configuración del local</>
                 )}
               </Button>
             </div>

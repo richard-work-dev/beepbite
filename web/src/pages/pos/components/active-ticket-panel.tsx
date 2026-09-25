@@ -117,8 +117,8 @@ function TicketHeader({ ticket, onAdjustGuests }: TicketHeaderProps) {
   if (!ticket) {
     return (
       <div className="px-4 py-4 border-b border-border bg-muted/40">
-        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">No ticket selected</p>
-        <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Tap a table or add a walk-in to start.</p>
+        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">No hay una cuenta seleccionada</p>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Elegí una mesa o agregá una venta de mostrador.</p>
       </div>
     );
   }
@@ -127,8 +127,8 @@ function TicketHeader({ ticket, onAdjustGuests }: TicketHeaderProps) {
     return (
       <div className="px-4 py-3 border-b border-border bg-card flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-[10px] uppercase tracking-widest text-primary font-bold mb-0.5">Walk-in</p>
-          <p className="text-base font-bold text-gray-900 dark:text-white truncate">{ticket.label || `Walk-in #${ticket.id}`}</p>
+          <p className="text-[10px] uppercase tracking-widest text-primary font-bold mb-0.5">Mostrador</p>
+          <p className="text-base font-bold text-gray-900 dark:text-white truncate">{ticket.label || `Mostrador #${ticket.id}`}</p>
         </div>
         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 text-xs font-semibold shrink-0">
           <Receipt className="w-3 h-3" />
@@ -429,8 +429,8 @@ function NewSection({ newItems, onBumpQty, onRemove, courses, onSetCourse }: New
         <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-3">
           <ShoppingCart className="w-7 h-7 text-primary/40" />
         </div>
-        <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">Cart is empty</p>
-        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 max-w-[16ch] mx-auto">Tap any menu item to add it here.</p>
+        <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">El carrito está vacío</p>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 max-w-[16ch] mx-auto">Tocá un producto para agregarlo.</p>
       </div>
     );
   }
@@ -530,12 +530,12 @@ function TicketFooter({
           {sending ? (
             <span className="flex items-center gap-1.5">
               <Loader2 className="w-4 h-4 animate-spin" />
-              Sending…
+              Enviando…
             </span>
           ) : (
             <span className="flex items-center gap-1.5">
               <ChefHat className="w-4 h-4" />
-              Send
+              Enviar
               {newItemsCount > 0 && (
                 <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-white/25 text-[11px] font-bold leading-none">
                   {newItemsCount}
@@ -557,7 +557,7 @@ function TicketFooter({
         >
           <span className="flex items-center gap-1.5">
             <CreditCard className="w-4 h-4" />
-            Charge
+            Cobrar
           </span>
         </Button>
       </div>

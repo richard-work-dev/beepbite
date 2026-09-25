@@ -131,10 +131,10 @@ export default function MemberInvitesPanel() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Users className="w-5 h-5 text-blue-500" />
-          Team Members
+          Miembros del equipo
         </CardTitle>
         <CardDescription>
-          Invite a team member by email and assign their role. They get access automatically when they sign up with the invited address.
+          Invitá a una persona por correo y asignale un rol. Obtendrá acceso al registrarse con la dirección invitada.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -185,13 +185,13 @@ export default function MemberInvitesPanel() {
 
         {/* Pending invites */}
         <div>
-          <h4 className="text-sm font-semibold text-foreground mb-2">Pending invites</h4>
+          <h4 className="text-sm font-semibold text-foreground mb-2">Invitaciones pendientes</h4>
           {loading ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="w-4 h-4 animate-spin" /> Loading…
             </div>
           ) : invites.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No pending invites.</p>
+            <p className="text-sm text-muted-foreground">No hay invitaciones pendientes.</p>
           ) : (
             <ul className="divide-y divide-border rounded-lg border border-border">
               {invites.map((inv) => (
@@ -225,7 +225,7 @@ export default function MemberInvitesPanel() {
 
         {/* Active members */}
         <div>
-          <h4 className="text-sm font-semibold text-foreground mb-2">Active team members</h4>
+          <h4 className="text-sm font-semibold text-foreground mb-2">Miembros activos</h4>
           {loadingMembers ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="w-4 h-4 animate-spin" /> Loading…

@@ -179,12 +179,12 @@ function NoFloorPlanCard({ canDesignFloor, onDesignFloor }: NoFloorPlanCardProps
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold text-gray-900">
-          Set up tables when you're ready
+          Configurá las mesas cuando estés listo
         </p>
         <p className="mt-0.5 text-xs text-gray-500">
           {canDesignFloor
-            ? "Design a floor plan to seat dine-in guests. Takeaway always works without one."
-            : "Ask your manager to set up the floor plan for dine-in seating. Takeaway orders work right now."}
+            ? "Diseñá el plano del salón para atender en mesa. Los pedidos para llevar ya funcionan."
+            : "Pedile al encargado que configure el plano del salón. Los pedidos para llevar ya funcionan."}
         </p>
       </div>
       {canDesignFloor && (
@@ -195,7 +195,7 @@ function NoFloorPlanCard({ canDesignFloor, onDesignFloor }: NoFloorPlanCardProps
           className="flex-shrink-0 border-orange-300 text-orange-700 hover:bg-orange-50 focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-1"
         >
           <PencilRuler className="mr-1.5 h-3.5 w-3.5" />
-          Set up tables
+          Configurar mesas
         </Button>
       )}
     </div>
@@ -254,7 +254,7 @@ export function TablesStrip({
             )}
           >
             <Plus className="w-5 h-5" />
-            <span className="text-[10px] leading-none font-medium">New tab</span>
+            <span className="text-[10px] leading-none font-medium">Nueva cuenta</span>
           </Button>
         </div>
       </div>
@@ -311,7 +311,7 @@ export function TablesStrip({
               )}
             >
               <Plus className="w-5 h-5" />
-              <span className="text-[10px] leading-none font-medium">New tab</span>
+              <span className="text-[10px] leading-none font-medium">Nueva cuenta</span>
             </Button>
           </>
         )}

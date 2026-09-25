@@ -145,7 +145,7 @@ const Categories = () => {
 
   const addCategory = async () => {
     if (!activeLocation || !formData.name.trim()) {
-      alert('Please fill in all required fields');
+      alert('Completá todos los campos obligatorios');
       return;
     }
 
@@ -173,7 +173,7 @@ const Categories = () => {
         // dead before the migration (ApiError never carries `code`); typed
         // via a defensive cast to preserve exact existing behavior.
         if ((error as { code?: string }).code === '23505') {
-          throw new Error('A category with this name already exists');
+          throw new Error('Ya existe una categoría con este nombre');
         }
         throw error;
       }
@@ -183,7 +183,7 @@ const Categories = () => {
       void fetchCategories();
     } catch (error) {
       console.error('Error adding category:', error);
-      alert(error instanceof Error ? error.message : 'Failed to add category');
+      alert(error instanceof Error ? error.message : 'No se pudo agregar la categoría');
     } finally {
       setSaving(false);
     }
@@ -209,7 +209,7 @@ const Categories = () => {
 
   const editCategory = async () => {
     if (!editingCategory || !formData.name.trim()) {
-      alert('Please fill in all required fields');
+      alert('Completá todos los campos obligatorios');
       return;
     }
 
@@ -228,7 +228,7 @@ const Categories = () => {
       resetForm();
     } catch (error) {
       console.error('Error updating category:', error);
-      alert(error instanceof Error ? error.message : 'Failed to update category');
+      alert(error instanceof Error ? error.message : 'No se pudo actualizar la categoría');
     } finally {
       setSaving(false);
     }
@@ -238,7 +238,7 @@ const Categories = () => {
     const hasSubcategories = categories.some(cat => cat.parent_id === categoryId);
 
     if (hasSubcategories) {
-      alert('Cannot delete category with subcategories. Please delete or move subcategories first.');
+      alert('No se puede eliminar una categoría con subcategorías. Primero eliminá o mové las subcategorías.');
       return;
     }
 
@@ -255,7 +255,7 @@ const Categories = () => {
       void fetchCategories();
     } catch (error) {
       console.error('Error deleting category:', error);
-      alert('Failed to delete category. It may have items associated with it.');
+      alert('No se pudo eliminar la categoría. Puede tener productos asociados.');
     } finally {
       setActionLoading('');
     }
@@ -267,7 +267,7 @@ const Categories = () => {
       await updateCategory(categoryId, { is_active: !currentStatus });
     } catch (error) {
       console.error('Error updating category status:', error);
-      alert('Failed to update category status');
+      alert('No se pudo actualizar el estado de la categoría');
     } finally {
       setActionLoading('');
     }
@@ -279,7 +279,7 @@ const Categories = () => {
       await updateCategory(categoryId, { sort_order: newSortOrder });
     } catch (error) {
       console.error('Error updating sort order:', error);
-      alert('Failed to update sort order');
+      alert('No se pudo actualizar el orden');
     } finally {
       setActionLoading('');
     }
@@ -328,7 +328,7 @@ const Categories = () => {
       setEditingInline(null);
     } catch (error) {
       console.error('Error saving inline edit:', error);
-      alert('Failed to save changes');
+      alert('No se pudieron guardar los cambios');
     }
   };
 
@@ -355,8 +355,8 @@ const Categories = () => {
           <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted mb-5">
             <AlertCircle className="w-8 h-8 text-muted-foreground" />
           </span>
-          <h2 className="font-display text-xl font-semibold text-foreground mb-2">No Location Selected</h2>
-          <p className="text-muted-foreground">Please select a location to manage categories.</p>
+          <h2 className="font-display text-xl font-semibold text-foreground mb-2">No hay un local seleccionado</h2>
+          <p className="text-muted-foreground">Seleccioná un local para administrar las categorías.</p>
         </div>
       </PageContainer>
     );
@@ -390,10 +390,11 @@ const Categories = () => {
     <div className="space-y-6 mt-6">
       <div className="space-y-2">
         <label className="text-sm font-semibold text-foreground block">
-          Category Name <span className="text-primary">*</span>
+
+          Nombre de la categoría <span className="text-primary">*</span>
         </label>
         <Input
-          placeholder="Enter category name"
+          placeholder="Ingresá el nombre de la categoría"
           value={formData.name}
           onChange={(e) => handleInputChange('name', e.target.value)}
           className="w-full h-11 text-base rounded-xl"
@@ -403,10 +404,11 @@ const Categories = () => {
 
       <div className="space-y-2">
         <label className="text-sm font-semibold text-foreground block">
-          Description
+
+          Descripción
         </label>
         <Textarea
-          placeholder="Enter category description…"
+          placeholder="Ingresá la descripción de la categoría…"
           value={formData.description}
           onChange={(e) => handleInputChange('description', e.target.value)}
           rows={4}
@@ -417,14 +419,15 @@ const Categories = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-2">
           <label className="text-sm font-semibold text-foreground block">
-            Parent Category
+
+            Categoría superior
           </label>
           <Select value={formData.parent_id || 'none'} onValueChange={(value) => handleInputChange('parent_id', value)}>
             <SelectTrigger className="h-11 text-base rounded-xl">
-              <SelectValue placeholder="Select parent category (optional)" />
+              <SelectValue placeholder="Seleccionar categoría superior (opcional)" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">None (Main Category)</SelectItem>
+              <SelectItem value="none">Ninguna (categoría principal)</SelectItem>
               {mainCategories
                 .filter(cat => !isEdit || cat.id !== editingCategory?.id)
                 .filter(cat => cat.id && cat.id.trim() !== '') // Filter out empty/null IDs
@@ -442,7 +445,8 @@ const Categories = () => {
 
         <div className="space-y-2">
           <label className="text-sm font-semibold text-foreground block">
-            Sort Order
+
+            Orden
           </label>
           <Input
             type="number"
@@ -463,7 +467,8 @@ const Categories = () => {
           className="w-5 h-5 text-primary border-border rounded focus:ring-primary"
         />
         <label htmlFor="is_active" className="text-base font-medium text-foreground">
-          Active Category
+
+          Categoría activa
         </label>
       </div>
     </div>
@@ -541,7 +546,8 @@ const Categories = () => {
                           className="rounded-xl px-4"
                         >
                           <Save className="w-3.5 h-3.5 mr-2" />
-                          Save
+
+                          Guardar
                         </Button>
                         <Button
                           size="sm"
@@ -550,7 +556,8 @@ const Categories = () => {
                           className="rounded-xl px-4"
                         >
                           <X className="w-3.5 h-3.5 mr-2" />
-                          Cancel
+
+                          Cancelar
                         </Button>
                       </div>
                     </div>
@@ -569,7 +576,7 @@ const Categories = () => {
                               : "bg-muted text-muted-foreground border-border"
                           )}
                         >
-                          {category.is_active ? 'Active' : 'Inactive'}
+                          {category.is_active ? 'Activo' : 'Inactivo'}
                         </Badge>
                         {hasSubcategories && (
                           <Badge variant="outline" className="text-xs text-muted-foreground">
@@ -592,7 +599,8 @@ const Categories = () => {
                         </span>
                         <span className="flex items-center gap-1">
                           <Settings className="w-3 h-3" />
-                          Order: {category.sort_order}
+
+                          Orden: {category.sort_order}
                         </span>
                       </div>
                     </>
@@ -639,14 +647,16 @@ const Categories = () => {
                         className="flex items-center gap-2"
                       >
                         <Edit className="w-4 h-4" />
-                        Quick Edit
+
+                        Edición rápida
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => openEditModal(category)}
                         className="flex items-center gap-2"
                       >
                         <Settings className="w-4 h-4" />
-                        Full Edit
+
+                        Edición completa
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
@@ -656,12 +666,14 @@ const Categories = () => {
                         {category.is_active ? (
                           <>
                             <EyeOff className="w-4 h-4" />
-                            Deactivate
+
+                            Desactivar
                           </>
                         ) : (
                           <>
                             <Eye className="w-4 h-4" />
-                            Activate
+
+                            Activar
                           </>
                         )}
                       </DropdownMenuItem>
@@ -671,7 +683,8 @@ const Categories = () => {
                         className="flex items-center gap-2 text-destructive hover:text-destructive"
                       >
                         <Trash2 className="w-4 h-4" />
-                        Delete
+
+                        Eliminar
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -702,8 +715,8 @@ const Categories = () => {
       {/* Page Header */}
       <Reveal>
         <PageHeader
-          eyebrow="Menu"
-          title="Categories"
+          eyebrow="Menú"
+          title="Categorías"
           icon={LayoutGrid}
           description={`Organize your menu items into categories for ${activeLocation?.name}`}
           actions={
@@ -715,7 +728,8 @@ const Categories = () => {
               className="gap-2"
             >
               <Plus className="w-4 h-4" />
-              New Category
+
+              Nueva categoría
             </Button>
           }
         />
@@ -725,34 +739,34 @@ const Categories = () => {
       <Stagger className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StaggerItem>
           <StatCard
-            label="Total Categories"
+            label="Total de categorías"
             value={categories.length}
             icon={Folder}
-            hint="across this location"
+            hint="en este local"
           />
         </StaggerItem>
         <StaggerItem>
           <StatCard
-            label="Main Categories"
+            label="Categorías principales"
             value={mainCategories.length}
             icon={FolderOpen}
-            hint="top-level groups"
+            hint="grupos principales"
           />
         </StaggerItem>
         <StaggerItem>
           <StatCard
-            label="Subcategories"
+            label="Subcategorías"
             value={categories.filter(cat => cat.parent_id).length}
             icon={Tag}
-            hint="nested categories"
+            hint="categorías anidadas"
           />
         </StaggerItem>
         <StaggerItem>
           <StatCard
-            label="Active"
+            label="Activo"
             value={categories.filter(cat => cat.is_active).length}
             icon={CheckCircle}
-            hint="visible on menu"
+            hint="visibles en el menú"
           />
         </StaggerItem>
       </Stagger>
@@ -763,7 +777,7 @@ const Categories = () => {
           <div className="relative flex-1 w-full sm:max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4 pointer-events-none" />
             <Input
-              placeholder="Search categories…"
+              placeholder="Buscar categorías…"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-9 rounded-xl h-10 w-full"
@@ -771,7 +785,7 @@ const Categories = () => {
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Settings className="w-3.5 h-3.5" />
-            <span>Use arrows to reorder</span>
+            <span>Usá las flechas para cambiar el orden</span>
           </div>
         </div>
       </Reveal>
@@ -785,12 +799,12 @@ const Categories = () => {
                 <Folder className="w-8 h-8 text-primary" />
               </span>
               <h3 className="font-display text-xl font-semibold text-foreground mb-2">
-                {searchTerm ? 'No categories found' : 'No categories yet'}
+                {searchTerm ? 'No se encontraron categorías' : 'Todavía no hay categorías'}
               </h3>
               <p className="text-muted-foreground mb-8 max-w-xs mx-auto">
                 {searchTerm
-                  ? 'Try adjusting your search terms'
-                  : 'Create categories to organize your menu items'
+                  ? 'Probá con otra búsqueda'
+                  : 'Creá categorías para organizar los productos del menú'
                 }
               </p>
               {!searchTerm && (
@@ -802,7 +816,8 @@ const Categories = () => {
                   className="gap-2"
                 >
                   <Plus className="w-4 h-4" />
-                  Create First Category
+
+                  Crear primera categoría
                 </Button>
               )}
             </CardContent>
@@ -839,10 +854,12 @@ const Categories = () => {
                 <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
                   <Plus className="w-4 h-4" />
                 </span>
-                Add New Category
+
+                Agregar categoría nueva
               </DialogTitle>
               <DialogDescription className="text-sm text-muted-foreground">
-                Create a new category for organizing menu items in {activeLocation?.name}.
+
+                Creá una categoría para organizar el menú de {activeLocation?.name}.
               </DialogDescription>
             </DialogHeader>
           </div>
@@ -858,7 +875,8 @@ const Categories = () => {
               className="rounded-xl"
               disabled={saving}
             >
-              Cancel
+
+              Cancelar
             </Button>
             <Button
               onClick={addCategory}
@@ -870,7 +888,8 @@ const Categories = () => {
               ) : (
                 <Plus className="w-4 h-4" />
               )}
-              Add Category
+
+              Agregar categoría
             </Button>
           </div>
         </DialogContent>
@@ -885,7 +904,8 @@ const Categories = () => {
                 <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
                   <Edit className="w-4 h-4" />
                 </span>
-                Edit Category
+
+                Editar categoría
               </DialogTitle>
               <DialogDescription className="text-sm text-muted-foreground">
                 Update category information for "{editingCategory?.name}".
@@ -904,7 +924,8 @@ const Categories = () => {
               className="rounded-xl"
               disabled={saving}
             >
-              Cancel
+
+              Cancelar
             </Button>
             <Button
               onClick={editCategory}
@@ -916,7 +937,8 @@ const Categories = () => {
               ) : (
                 <Edit className="w-4 h-4" />
               )}
-              Update Category
+
+              Actualizar categoría
             </Button>
           </div>
         </DialogContent>

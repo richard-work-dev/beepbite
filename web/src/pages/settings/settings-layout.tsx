@@ -31,40 +31,40 @@ interface SettingsSection {
 
 const SECTIONS: SettingsSection[] = [
   {
-    title: 'Business',
+    title: 'Negocio',
     items: [
-      { label: 'Organization', to: '/settings/organization', icon: Building2 },
+      { label: 'Organización', to: '/settings/organization', icon: Building2 },
       {
-        label: 'Locations',
+        label: 'Locales',
         to: '/settings/organization?tab=locations',
         icon: MapPin,
         // Drill-down pages for a specific location (e.g. payments, settings)
         // are owned by this entry — they're navigated into FROM Locations.
         matchPaths: ['/settings/location/'],
       },
-      { label: 'Domains', to: '/settings/domains', icon: Globe },
+      { label: 'Dominios', to: '/settings/domains', icon: Globe },
     ],
   },
   {
-    title: 'Storefront',
+    title: 'Tienda',
     items: [
-      { label: 'Promotions', to: '/settings/promotions', icon: Tag },
-      { label: 'Delivery zones', to: '/settings/delivery-zones', icon: Truck },
-      { label: 'Loyalty', to: '/settings/loyalty', icon: Heart },
+      { label: 'Promociones', to: '/settings/promotions', icon: Tag },
+      { label: 'Zonas de entrega', to: '/settings/delivery-zones', icon: Truck },
+      { label: 'Fidelización', to: '/settings/loyalty', icon: Heart },
     ],
   },
   {
-    title: 'System',
+    title: 'Sistema',
     items: [
-      { label: 'API keys', to: '/settings/api-keys', icon: Key },
+      { label: 'Claves de API', to: '/settings/api-keys', icon: Key },
       { label: 'Hardware', to: '/settings/hardware', icon: Printer },
-      { label: 'Kitchen routing', to: '/settings/kitchen', icon: ChefHat },
+      { label: 'Rutas de cocina', to: '/settings/kitchen', icon: ChefHat },
     ],
   },
   {
-    title: 'You',
+    title: 'Tu perfil',
     items: [
-      { label: 'Account', to: '/account', icon: UserCircle },
+      { label: 'Cuenta', to: '/account', icon: UserCircle },
     ],
   },
 ];
@@ -102,8 +102,8 @@ export default function SettingsLayout() {
     <PageContainer>
       <PageHeader
         icon={Settings2}
-        title="Settings"
-        description="Configure your organization, storefront, and system integrations."
+        title="Configuración"
+        description="Configurá tu organización, la tienda y las integraciones del sistema."
       />
 
       <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] lg:grid-cols-[240px_1fr] gap-6">
@@ -111,7 +111,7 @@ export default function SettingsLayout() {
         <aside className="md:sticky md:top-20 md:self-start">
           <nav
             className="rounded-2xl border border-border/60 bg-card shadow-card p-3 space-y-1"
-            aria-label="Settings navigation"
+            aria-label="Navegación de configuración"
           >
             {SECTIONS.map((section, sIdx) => (
               <div key={section.title} className={cn(sIdx > 0 && 'pt-3')}>

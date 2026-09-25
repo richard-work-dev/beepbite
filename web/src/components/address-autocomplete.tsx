@@ -201,7 +201,7 @@ export default function AddressAutocomplete({
               aria-selected="false"
               className="px-3 py-2.5 text-muted-foreground"
             >
-              No matches — keep typing or enter the address manually.
+              No hay coincidencias. Seguí escribiendo o ingresá la dirección manualmente.
             </li>
           )}
 

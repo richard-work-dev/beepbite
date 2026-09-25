@@ -1412,7 +1412,7 @@ const Staff = () => {
                   inputMode="numeric"
                   pattern="\d{4,6}"
                   maxLength={6}
-                  placeholder="4–6 digits"
+                placeholder="4–6 dígitos"
                   value={newPin}
                   onChange={(e) => {
                     setNewPin(e.target.value.replace(/\D/g, ''));

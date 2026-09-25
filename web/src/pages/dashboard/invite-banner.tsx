@@ -23,10 +23,10 @@ const InviteBanner = ({ pendingInvites, onOpenInviteDialog }: InviteBannerProps)
             </div>
             <div>
               <h3 className="font-semibold text-orange-900">
-                {pendingInvites.length} Pending Invitation{pendingInvites.length > 1 ? 's' : ''}
+                {pendingInvites.length} {pendingInvites.length > 1 ? 'invitaciones pendientes' : 'invitación pendiente'}
               </h3>
               <p className="text-sm text-orange-700">
-                You've been invited to join {pendingInvites.length > 1 ? 'bistros' : 'a bistro'}. Review and respond to your invitations.
+                Te invitaron a unirte {pendingInvites.length > 1 ? 'a varios negocios' : 'a un negocio'}. Revisá y respondé las invitaciones.
               </p>
             </div>
           </div>
@@ -35,7 +35,7 @@ const InviteBanner = ({ pendingInvites, onOpenInviteDialog }: InviteBannerProps)
             className="bg-orange-500 hover:bg-orange-600 text-white"
           >
             <UserPlus className="w-4 h-4 mr-2" />
-            Review Invites
+            Revisar invitaciones
           </Button>
         </div>
       </CardContent>
@@ -43,4 +43,4 @@ const InviteBanner = ({ pendingInvites, onOpenInviteDialog }: InviteBannerProps)
   );
 };
 
-export default InviteBanner; 
+export default InviteBanner;

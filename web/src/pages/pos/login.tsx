@@ -509,13 +509,13 @@ const PosLoginPage = () => {
               onClick={() => navigate('/signin?next=/pos/workspace')}
               className="font-semibold text-primary hover:text-primary/80 hover:underline"
             >
-              Sign in with email &amp; password →
+              Ingresar con correo y contraseña →
             </button>
           </p>
         </div>
 
         <p className="text-center text-xs text-muted-foreground">
-          &copy; {new Date().getFullYear()} BeepBite &mdash; POS Terminal
+          &copy; {new Date().getFullYear()} RikoPollo &mdash; Punto de venta
         </p>
       </div>
     </div>

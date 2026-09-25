@@ -218,7 +218,7 @@ const Staff = () => {
     e.preventDefault();
     const trimmed = newPin.trim();
     if (trimmed.length < 4 || trimmed.length > 6 || !/^\d+$/.test(trimmed)) {
-      setPinError('PIN must be 4–6 digits.');
+      setPinError('El PIN debe tener entre 4 y 6 dígitos.');
       return;
     }
     setSavingPin(true);
@@ -228,7 +228,7 @@ const Staff = () => {
         body: { pin: trimmed },
       });
       if (error) {
-        setPinError(error.message || 'Failed to set PIN. Please try again.');
+        setPinError(error.message || 'No se pudo guardar el PIN. Intentá nuevamente.');
         return;
       }
       setPinSuccess(true);
@@ -239,7 +239,7 @@ const Staff = () => {
 
   const addStaff = async () => {
     if (!activeLocation || !formData.first_name || !formData.last_name || !formData.email || !formData.password) {
-      toast({ variant: 'destructive', title: 'Missing information', description: 'Please fill in all required fields.' });
+      toast({ variant: 'destructive', title: 'Falta información', description: 'Completá todos los campos obligatorios.' });
       return;
     }
 
@@ -267,9 +267,9 @@ const Staff = () => {
       if (error) {
         if ((error as { code?: string }).code === '23505') {
           if (error.message.includes('email')) {
-            throw new Error('This email is already in use');
+            throw new Error('Este correo ya está en uso');
           } else if (error.message.includes('employee_id')) {
-            throw new Error('This employee ID is already in use');
+            throw new Error('Esta identificación ya está en uso');
           }
         }
         throw error;
@@ -278,11 +278,11 @@ const Staff = () => {
       setIsAddModalOpen(false);
       resetForm();
       void fetchStaff();
-      toast({ title: 'Staff member added successfully.' });
+      toast({ title: 'Empleado agregado correctamente.' });
     } catch (error) {
       console.error('Error adding staff:', error);
       const message = error instanceof Error ? error.message : undefined;
-      toast({ variant: 'destructive', title: 'Failed to add staff member', description: message });
+      toast({ variant: 'destructive', title: 'No se pudo agregar el empleado', description: message });
     } finally {
       setSaving(false);
     }
@@ -290,7 +290,7 @@ const Staff = () => {
 
   const editStaff = async () => {
     if (!editingStaff || !formData.first_name || !formData.last_name || !formData.email) {
-      toast({ variant: 'destructive', title: 'Missing information', description: 'Please fill in all required fields.' });
+      toast({ variant: 'destructive', title: 'Falta información', description: 'Completá todos los campos obligatorios.' });
       return;
     }
 
@@ -334,9 +334,9 @@ const Staff = () => {
       if (error) {
         if ((error as { code?: string }).code === '23505') {
           if (error.message.includes('email')) {
-            throw new Error('This email is already in use');
+            throw new Error('Este correo ya está en uso');
           } else if (error.message.includes('employee_id')) {
-            throw new Error('This employee ID is already in use');
+            throw new Error('Esta identificación ya está en uso');
           }
         }
         throw error;
@@ -346,11 +346,11 @@ const Staff = () => {
       setEditingStaff(null);
       resetForm();
       void fetchStaff();
-      toast({ title: 'Staff member updated successfully.' });
+      toast({ title: 'Empleado actualizado correctamente.' });
     } catch (error) {
       console.error('Error updating staff:', error);
       const message = error instanceof Error ? error.message : undefined;
-      toast({ variant: 'destructive', title: 'Failed to update staff member', description: message });
+      toast({ variant: 'destructive', title: 'No se pudo actualizar el empleado', description: message });
     } finally {
       setSaving(false);
     }
@@ -374,12 +374,12 @@ const Staff = () => {
 
       if (error) throw error;
       void fetchStaff();
-      toast({ title: 'Staff member deleted successfully.' });
+      toast({ title: 'Empleado eliminado correctamente.' });
       setDeleteTarget(null);
     } catch (error) {
       console.error('Error deleting staff:', error);
       const message = error instanceof Error ? error.message : undefined;
-      toast({ variant: 'destructive', title: 'Failed to delete staff member', description: message });
+      toast({ variant: 'destructive', title: 'No se pudo eliminar el empleado', description: message });
     } finally {
       setActionLoading('');
       setDeleting(false);
@@ -402,7 +402,7 @@ const Staff = () => {
     } catch (error) {
       console.error('Error updating staff status:', error);
       const message = error instanceof Error ? error.message : undefined;
-      toast({ variant: 'destructive', title: 'Failed to update staff status', description: message });
+      toast({ variant: 'destructive', title: 'No se pudo actualizar el estado del empleado', description: message });
     } finally {
       setActionLoading('');
     }
@@ -518,7 +518,7 @@ const Staff = () => {
     } catch (error) {
       console.error('Error recording time entry:', error);
       const message = error instanceof Error ? error.message : undefined;
-      toast({ variant: 'destructive', title: 'Failed to record time entry', description: message });
+      toast({ variant: 'destructive', title: 'No se pudo registrar el horario', description: message });
     } finally {
       setActionLoading('');
     }
@@ -552,21 +552,24 @@ const Staff = () => {
         return (
           <Badge className="bg-success/10 text-success border-success/20">
             <Clock className="w-3 h-3 mr-1" />
-            Clocked In
+
+            Entrada registrada
           </Badge>
         );
       case 'break':
         return (
           <Badge className="bg-primary/10 text-primary border-primary/25">
             <Coffee className="w-3 h-3 mr-1" />
-            On Break
+
+            En descanso
           </Badge>
         );
       case 'out':
         return (
           <Badge className="bg-muted text-muted-foreground border-border">
             <StopCircle className="w-3 h-3 mr-1" />
-            Clocked Out
+
+            Salida registrada
           </Badge>
         );
       default:
@@ -578,8 +581,8 @@ const Staff = () => {
     return (
       <div className="flex flex-col items-center justify-center py-12">
         <AlertCircle className="w-16 h-16 text-muted-foreground mb-4" />
-        <h2 className="text-xl font-semibold text-foreground mb-2">No Location Selected</h2>
-        <p className="text-muted-foreground">Please select a location to manage staff members.</p>
+        <h2 className="text-xl font-semibold text-foreground mb-2">No hay un local seleccionado</h2>
+        <p className="text-muted-foreground">Seleccioná un local para administrar el personal.</p>
       </div>
     );
   }
@@ -602,10 +605,11 @@ const Staff = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="text-sm font-medium text-foreground block mb-2">
-            First Name <span className="text-destructive">*</span>
+
+            Nombre <span className="text-destructive">*</span>
           </label>
           <Input
-            placeholder="Enter first name"
+            placeholder="Ingresá el nombre"
             value={formData.first_name}
             onChange={(e) => handleInputChange('first_name', e.target.value)}
             className="w-full"
@@ -615,10 +619,11 @@ const Staff = () => {
 
         <div>
           <label className="text-sm font-medium text-foreground block mb-2">
-            Last Name <span className="text-destructive">*</span>
+
+            Apellido <span className="text-destructive">*</span>
           </label>
           <Input
-            placeholder="Enter last name"
+            placeholder="Ingresá el apellido"
             value={formData.last_name}
             onChange={(e) => handleInputChange('last_name', e.target.value)}
             className="w-full"
@@ -630,11 +635,12 @@ const Staff = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="text-sm font-medium text-foreground block mb-2">
-            Email <span className="text-destructive">*</span>
+
+            Correo <span className="text-destructive">*</span>
           </label>
           <Input
             type="email"
-            placeholder="Enter email address"
+            placeholder="Ingresá el correo electrónico"
             value={formData.email}
             onChange={(e) => handleInputChange('email', e.target.value)}
             className="w-full"
@@ -644,11 +650,12 @@ const Staff = () => {
 
         <div>
           <label className="text-sm font-medium text-foreground block mb-2">
-            Phone
+
+            Teléfono
           </label>
           <Input
             type="tel"
-            placeholder="Enter phone number"
+            placeholder="Ingresá el teléfono"
             value={formData.phone}
             onChange={(e) => handleInputChange('phone', e.target.value)}
             className="w-full"
@@ -659,10 +666,11 @@ const Staff = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="text-sm font-medium text-foreground block mb-2">
-            Employee ID
+
+            Identificación del empleado
           </label>
           <Input
-            placeholder="Enter employee ID"
+            placeholder="Ingresá la identificación del empleado"
             value={formData.employee_id}
             onChange={(e) => handleInputChange('employee_id', e.target.value)}
             className="w-full"
@@ -671,7 +679,8 @@ const Staff = () => {
 
         <div>
           <label className="text-sm font-medium text-foreground block mb-2">
-            Role <span className="text-destructive">*</span>
+
+            Rol <span className="text-destructive">*</span>
           </label>
           <Select value={formData.role} onValueChange={(value) => handleInputChange('role', value)}>
             <SelectTrigger>
@@ -681,19 +690,22 @@ const Staff = () => {
               <SelectItem value="cashier">
                 <div className="flex items-center gap-2">
                   <CreditCard className="w-4 h-4" />
-                  Cashier
+
+                  Cajero
                 </div>
               </SelectItem>
               <SelectItem value="kitchen">
                 <div className="flex items-center gap-2">
                   <User className="w-4 h-4" />
-                  Kitchen Staff
+
+                  Personal de cocina
                 </div>
               </SelectItem>
               <SelectItem value="manager">
                 <div className="flex items-center gap-2">
                   <ChefHat className="w-4 h-4" />
-                  Manager
+
+                  Encargado
                 </div>
               </SelectItem>
               <SelectItem value="admin">
@@ -705,7 +717,8 @@ const Staff = () => {
               <SelectItem value="owner">
                 <div className="flex items-center gap-2">
                   <Crown className="w-4 h-4" />
-                  Owner
+
+                  Propietario
                 </div>
               </SelectItem>
             </SelectContent>
@@ -716,11 +729,12 @@ const Staff = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="text-sm font-medium text-foreground block mb-2">
-            Password {isEdit ? '' : <span className="text-destructive">*</span>}
+
+            Contraseña {isEdit ? '' : <span className="text-destructive">*</span>}
           </label>
           <Input
             type="password"
-            placeholder={isEdit ? "Leave blank to keep current password" : "Enter password"}
+            placeholder={isEdit ? "Dejá vacío para conservar la contraseña actual" : "Ingresá la contraseña"}
             value={formData.password}
             onChange={(e) => handleInputChange('password', e.target.value)}
             className="w-full"
@@ -730,7 +744,8 @@ const Staff = () => {
 
         <div>
           <label className="text-sm font-medium text-foreground block mb-2">
-            Hire Date
+
+            Fecha de ingreso
           </label>
           <Input
             type="date"
@@ -743,10 +758,11 @@ const Staff = () => {
 
       <div>
         <label className="text-sm font-medium text-foreground block mb-2">
-          Notes
+
+          Notas
         </label>
         <Textarea
-          placeholder="Enter any additional notes..."
+          placeholder="Ingresá notas adicionales…"
           value={formData.notes}
           onChange={(e) => handleInputChange('notes', e.target.value)}
           rows={3}
@@ -763,7 +779,8 @@ const Staff = () => {
           className="w-4 h-4 text-primary border-border rounded focus:ring-primary"
         />
         <label htmlFor="is_active" className="text-sm font-medium text-foreground">
-          Active Employee
+
+          Empleado activo
         </label>
       </div>
     </div>
@@ -775,8 +792,8 @@ const Staff = () => {
       <div className="flex flex-col gap-4">
         <PageHeader
           icon={Users}
-          title="Staff Management"
-          description={`Manage staff members for ${activeLocation?.name}`}
+          title="Administración de personal"
+          description={`Administrá el personal de ${activeLocation?.name}`}
           actions={
             <Link to="/staff/manage">
               <Button
@@ -784,7 +801,8 @@ const Staff = () => {
                 className="border-primary/25 text-primary hover:bg-primary/5 hover:border-primary/35"
               >
                 <KeyRound className="w-4 h-4 mr-2" />
-                Manage Staff (detailed)
+
+                Administración detallada
               </Button>
             </Link>
           }
@@ -798,7 +816,8 @@ const Staff = () => {
               className="flex items-center gap-2 data-[state=active]:bg-primary/5 data-[state=active]:text-primary data-[state=active]:border-primary"
             >
               <Users className="w-4 h-4" />
-              Staff List
+
+              Lista de personal
             </TabsTrigger>
             <TabsTrigger
               value="attendance"
@@ -806,7 +825,8 @@ const Staff = () => {
               onClick={() => fetchTimeEntries(selectedStaffId)}
             >
               <Timer className="w-4 h-4" />
-              Time & Attendance
+
+              Asistencia y horarios
             </TabsTrigger>
           </TabsList>
 
@@ -815,7 +835,7 @@ const Staff = () => {
             <div className="relative max-w-2xl">
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-primary/70 w-5 h-5" />
               <Input
-                placeholder="Search staff by name, email, or employee ID..."
+                placeholder="Buscar por nombre, correo o identificación…"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-12 h-12 text-base font-medium border-primary/25 focus:border-primary/35 focus:ring-primary/20 bg-background"
@@ -844,7 +864,8 @@ const Staff = () => {
                 className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-200"
               >
                 <UserPlus className="w-4 h-4 mr-2" />
-                Add Staff Member
+
+                Agregar empleado
               </Button>
             </div>
 
@@ -855,7 +876,7 @@ const Staff = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-3xl font-bold text-foreground tabular-nums">{staff.length}</p>
-                      <p className="text-sm text-muted-foreground mt-1">Total Staff</p>
+                      <p className="text-sm text-muted-foreground mt-1">Total de empleados</p>
                     </div>
                     <div className="w-12 h-12 rounded-lg bg-primary/5 flex items-center justify-center">
                       <Users className="w-6 h-6 text-primary" />
@@ -871,7 +892,7 @@ const Staff = () => {
                       <p className="text-3xl font-bold text-primary tabular-nums">
                         {staff.filter(s => s.is_active).length}
                       </p>
-                      <p className="text-sm text-muted-foreground mt-1">Active</p>
+                      <p className="text-sm text-muted-foreground mt-1">Activo</p>
                     </div>
                     <div className="w-12 h-12 rounded-lg bg-primary/5 flex items-center justify-center">
                       <CheckCircle className="w-6 h-6 text-primary" />
@@ -887,7 +908,7 @@ const Staff = () => {
                       <p className="text-3xl font-bold text-primary tabular-nums">
                         {staff.filter(s => !s.is_active).length}
                       </p>
-                      <p className="text-sm text-muted-foreground mt-1">Inactive</p>
+                      <p className="text-sm text-muted-foreground mt-1">Inactivo</p>
                     </div>
                     <div className="w-12 h-12 rounded-lg bg-primary/5 flex items-center justify-center">
                       <XCircle className="w-6 h-6 text-primary" />
@@ -901,7 +922,7 @@ const Staff = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-lg font-semibold text-foreground truncate">{activeLocation?.name}</p>
-                      <p className="text-sm text-muted-foreground mt-1">Current Location</p>
+                      <p className="text-sm text-muted-foreground mt-1">Local actual</p>
                     </div>
                     <div className="w-12 h-12 rounded-lg bg-primary/5 flex items-center justify-center">
                       <MapPin className="w-6 h-6 text-primary" />
@@ -913,7 +934,7 @@ const Staff = () => {
 
             {/* Staff Grid */}
             <div className="space-y-6">
-              <h2 className="font-display text-xl font-semibold text-foreground">Staff Members</h2>
+              <h2 className="font-display text-xl font-semibold text-foreground">Empleados</h2>
 
               {filteredStaff.length === 0 ? (
                 <Card className="border-primary/15 bg-card">
@@ -922,12 +943,12 @@ const Staff = () => {
                       <Users className="w-8 h-8 text-primary/70" />
                     </div>
                     <h3 className="font-display text-lg font-semibold text-foreground mb-2">
-                      {searchTerm ? 'No staff found' : 'No staff members yet'}
+                      {searchTerm ? 'No se encontró personal' : 'Todavía no hay empleados'}
                     </h3>
                     <p className="text-muted-foreground mb-6">
                       {searchTerm
-                        ? 'Try adjusting your search terms'
-                        : 'Add staff members to manage your team'
+                        ? 'Probá con otra búsqueda'
+                        : 'Agregá empleados para administrar tu equipo'
                       }
                     </p>
                     {!searchTerm && (
@@ -939,7 +960,8 @@ const Staff = () => {
                         className="bg-primary hover:bg-primary/90 text-primary-foreground"
                       >
                         <UserPlus className="w-4 h-4 mr-2" />
-                        Add First Staff Member
+
+                        Agregar primer empleado
                       </Button>
                     )}
                   </CardContent>
@@ -995,7 +1017,7 @@ const Staff = () => {
                                         : "bg-muted text-muted-foreground border-border"
                                     )}
                                   >
-                                    {staffMember.is_active ? 'Active' : 'Inactive'}
+                                    {staffMember.is_active ? 'Activo' : 'Inactivo'}
                                   </Badge>
                                 </div>
 
@@ -1022,7 +1044,8 @@ const Staff = () => {
                                   className="text-xs hover:bg-primary/5 border-primary/25 text-primary"
                                 >
                                   <Edit className="w-3 h-3 mr-1" />
-                                  Edit
+
+                                  Editar
                                 </Button>
 
                                 <Button
@@ -1040,12 +1063,14 @@ const Staff = () => {
                                   {staffMember.is_active ? (
                                     <>
                                       <EyeOff className="w-3 h-3 mr-1" />
-                                      Deactivate
+
+                                      Desactivar
                                     </>
                                   ) : (
                                     <>
                                       <Eye className="w-3 h-3 mr-1" />
-                                      Activate
+
+                                      Activar
                                     </>
                                   )}
                                 </Button>
@@ -1060,7 +1085,7 @@ const Staff = () => {
                                 className="w-full text-xs text-primary hover:text-primary hover:bg-primary/5 border-primary/25"
                               >
                                 <Hash className="w-3 h-3 mr-1" />
-                                {staffMember.pin_hash ? 'Reset PIN' : 'Set PIN'}
+                                {staffMember.pin_hash ? 'Restablecer PIN' : 'Establecer PIN'}
                               </Button>
 
                               <Button
@@ -1071,7 +1096,8 @@ const Staff = () => {
                                 className="w-full text-xs text-primary hover:text-primary hover:bg-primary/5 border-primary/25"
                               >
                                 <Trash2 className="w-3 h-3 mr-1" />
-                                Delete
+
+                                Eliminar
                               </Button>
                             </div>
                           </div>
@@ -1098,10 +1124,10 @@ const Staff = () => {
                     }}
                   >
                     <SelectTrigger className="border-primary/25 focus:ring-primary/20 focus:border-primary/35">
-                      <SelectValue placeholder="Filter by staff member" />
+                      <SelectValue placeholder="Filtrar por empleado" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Staff Members</SelectItem>
+                      <SelectItem value="all">Todo el personal</SelectItem>
                       {staff.map((member) => (
                         <SelectItem key={member.id} value={member.id}>
                           {member.first_name} {member.last_name}
@@ -1155,7 +1181,8 @@ const Staff = () => {
                                 className="text-xs bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm hover:shadow"
                               >
                                 <PlayCircle className="w-3 h-3 mr-1" />
-                                Clock In
+
+                                Registrar entrada
                               </Button>
                             )}
 
@@ -1168,7 +1195,8 @@ const Staff = () => {
                                   className="text-xs bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm hover:shadow"
                                 >
                                   <Coffee className="w-3 h-3 mr-1" />
-                                  Start Break
+
+                                  Iniciar descanso
                                 </Button>
 
                                 <Button
@@ -1178,7 +1206,8 @@ const Staff = () => {
                                   className="text-xs bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm hover:shadow"
                                 >
                                   <StopCircle className="w-3 h-3 mr-1" />
-                                  Clock Out
+
+                                  Registrar salida
                                 </Button>
                               </>
                             )}
@@ -1191,7 +1220,8 @@ const Staff = () => {
                                 className="text-xs bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm hover:shadow"
                               >
                                 <ArrowLeftCircle className="w-3 h-3 mr-1" />
-                                End Break
+
+                                Finalizar descanso
                               </Button>
                             )}
                           </div>
@@ -1204,7 +1234,7 @@ const Staff = () => {
 
               {/* Time Entry History */}
               <div className="space-y-4">
-                <h3 className="font-display text-lg font-semibold text-foreground">Recent Time Entries</h3>
+                <h3 className="font-display text-lg font-semibold text-foreground">Registros horarios recientes</h3>
 
                 {loadingTimeEntries ? (
                   <div className="space-y-4">
@@ -1216,7 +1246,7 @@ const Staff = () => {
                   <Card className="border-primary/15 bg-card">
                     <CardContent className="p-6 text-center">
                       <Clock className="w-12 h-12 text-primary/70 mx-auto mb-4" />
-                      <p className="text-muted-foreground">No time entries found</p>
+                      <p className="text-muted-foreground">No se encontraron registros horarios</p>
                     </CardContent>
                   </Card>
                 ) : (
@@ -1262,10 +1292,12 @@ const Staff = () => {
           <DialogHeader>
             <DialogTitle className="font-display flex items-center gap-2">
               <UserPlus className="w-5 h-5 text-primary" />
-              Add New Staff Member
+
+              Agregar empleado nuevo
             </DialogTitle>
             <DialogDescription>
-              Add a new staff member to {activeLocation?.name}.
+
+              Agregá un empleado a {activeLocation?.name}.
             </DialogDescription>
           </DialogHeader>
 
@@ -1278,7 +1310,8 @@ const Staff = () => {
               className="flex-1 border-primary/25 text-primary hover:bg-primary/5"
               disabled={saving}
             >
-              Cancel
+
+              Cancelar
             </Button>
             <Button
               onClick={addStaff}
@@ -1290,7 +1323,8 @@ const Staff = () => {
               ) : (
                 <UserPlus className="w-4 h-4 mr-2" />
               )}
-              Add Staff Member
+
+              Agregar empleado
             </Button>
           </div>
         </DialogContent>
@@ -1302,10 +1336,11 @@ const Staff = () => {
           <DialogHeader>
             <DialogTitle className="font-display flex items-center gap-2">
               <Edit className="w-5 h-5 text-primary" />
-              Edit Staff Member
+
+              Editar empleado
             </DialogTitle>
             <DialogDescription>
-              Update information for {editingStaff?.first_name} {editingStaff?.last_name}.
+              Actualizá la información de {editingStaff?.first_name} {editingStaff?.last_name}.
             </DialogDescription>
           </DialogHeader>
 
@@ -1318,7 +1353,8 @@ const Staff = () => {
               className="flex-1 border-primary/25 text-primary hover:bg-primary/5"
               disabled={saving}
             >
-              Cancel
+
+              Cancelar
             </Button>
             <Button
               onClick={editStaff}
@@ -1330,7 +1366,8 @@ const Staff = () => {
               ) : (
                 <Edit className="w-4 h-4 mr-2" />
               )}
-              Update Staff Member
+
+              Actualizar empleado
             </Button>
           </div>
         </DialogContent>
@@ -1342,7 +1379,7 @@ const Staff = () => {
           <DialogHeader>
             <DialogTitle className="font-display flex items-center gap-2">
               <Hash className="w-5 h-5 text-primary" />
-              {pinTargetStaff?.pin_hash ? 'Reset PIN' : 'Set PIN'}
+              {pinTargetStaff?.pin_hash ? 'Restablecer PIN' : 'Establecer PIN'}
             </DialogTitle>
             <DialogDescription>
               Set a 4–6 digit PIN for{' '}
@@ -1356,18 +1393,19 @@ const Staff = () => {
           {pinSuccess ? (
             <div className="py-4 text-center space-y-3">
               <CheckCircle className="w-10 h-10 text-success mx-auto" />
-              <p className="text-sm text-success font-medium">PIN updated successfully.</p>
+              <p className="text-sm text-success font-medium">PIN actualizado correctamente.</p>
               <Button
                 className="bg-primary hover:bg-primary/90 text-primary-foreground"
                 onClick={closePinDialog}
               >
-                Done
+
+                Listo
               </Button>
             </div>
           ) : (
             <form onSubmit={handleSetPin} className="space-y-4 mt-2">
               <div className="space-y-1.5">
-                <Label htmlFor="staff_pin">New PIN</Label>
+                <Label htmlFor="staff_pin">PIN nuevo</Label>
                 <Input
                   id="staff_pin"
                   type="password"
@@ -1400,7 +1438,8 @@ const Staff = () => {
                   onClick={closePinDialog}
                   disabled={savingPin}
                 >
-                  Cancel
+
+                  Cancelar
                 </Button>
                 <Button
                   type="submit"
@@ -1408,9 +1447,9 @@ const Staff = () => {
                   className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
                 >
                   {savingPin ? (
-                    <><Clock className="w-4 h-4 mr-1 animate-spin" /> Saving…</>
+                    <><Clock className="w-4 h-4 mr-1 animate-spin" />  Guardando…</>
                   ) : (
-                    'Set PIN'
+                    'Establecer PIN'
                   )}
                 </Button>
               </div>
@@ -1429,19 +1468,19 @@ const Staff = () => {
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete {deleteTarget?.name}?</AlertDialogTitle>
+            <AlertDialogTitle>Eliminar {deleteTarget?.name}?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently remove {deleteTarget?.name} from your staff list. This action cannot be undone.
+              Se eliminará permanentemente a {deleteTarget?.name} de la lista de personal. Esta acción no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDeleteStaff}
               disabled={deleting}
               variant="destructive"
             >
-              {deleting ? 'Deleting…' : 'Delete staff member'}
+              {deleting ? 'Eliminando…' : 'Eliminar empleado'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

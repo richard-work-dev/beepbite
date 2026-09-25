@@ -126,10 +126,10 @@ const Reports = () => {
       setError(error instanceof Error ? error.message : String(error));
 
       const mockAnalytics: AnalyticsData = {
-        averageResponseTime: { minutes: 0, seconds: 0, trend: 'No data', trendDirection: 'up' },
-        totalOrders: { count: 0, trend: 'No data', trendDirection: 'up' },
-        averageRating: { rating: 0, trend: 'No data', trendDirection: 'up' },
-        completionRate: { percentage: 0, trend: 'No data', trendDirection: 'up' },
+        averageResponseTime: { minutes: 0, seconds: 0, trend: 'Sin datos', trendDirection: 'up' },
+        totalOrders: { count: 0, trend: 'Sin datos', trendDirection: 'up' },
+        averageRating: { rating: 0, trend: 'Sin datos', trendDirection: 'up' },
+        completionRate: { percentage: 0, trend: 'Sin datos', trendDirection: 'up' },
         recentOrders: [],
         performanceByHour: [],
         responseTimeTrend: [],
@@ -193,7 +193,7 @@ const Reports = () => {
       insights.working.push(`Fast response times averaging ${avgResponseTime} minutes`);
     }
     if (totalOrders === 0) {
-      insights.improvements.push('No orders found for the selected period');
+      insights.improvements.push('No se encontraron pedidos en el período seleccionado');
     }
     if (completionRate < 80) {
       insights.improvements.push(`Completion rate could be improved (currently ${completionRate}%)`);
@@ -205,13 +205,13 @@ const Reports = () => {
       insights.improvements.push(`Response times could be faster (currently ${avgResponseTime} minutes)`);
     }
     if (analyticsData.performanceByHour?.length === 0) {
-      insights.improvements.push('No hourly performance data available');
+      insights.improvements.push('No hay datos de rendimiento por hora');
     }
     if (insights.working.length === 0) {
-      insights.working.push('System is operational and collecting data');
+      insights.working.push('El sistema está funcionando y recopilando datos');
     }
     if (insights.improvements.length === 0) {
-      insights.improvements.push('Continue monitoring for optimization opportunities');
+      insights.improvements.push('Continuá monitoreando para detectar oportunidades de mejora');
     }
 
     return insights;
@@ -226,11 +226,11 @@ const Reports = () => {
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="1d">Last 24 hours</SelectItem>
-          <SelectItem value="7d">Last 7 days</SelectItem>
-          <SelectItem value="30d">Last 30 days</SelectItem>
-          <SelectItem value="90d">Last 3 months</SelectItem>
-          <SelectItem value="custom">Custom Range</SelectItem>
+          <SelectItem value="1d">Últimas 24 horas</SelectItem>
+          <SelectItem value="7d">Últimos 7 días</SelectItem>
+          <SelectItem value="30d">Últimos 30 días</SelectItem>
+          <SelectItem value="90d">Últimos 3 meses</SelectItem>
+          <SelectItem value="custom">Período personalizado</SelectItem>
         </SelectContent>
       </Select>
 
@@ -239,13 +239,14 @@ const Reports = () => {
           date={customDateRange ?? undefined}
           setDate={handleCustomDateRangeChange}
           className="w-full sm:w-80"
-          placeholder="Select date range"
+          placeholder="Seleccionar período"
         />
       )}
 
       <Button variant="outline" className="flex items-center gap-2 whitespace-nowrap">
         <Download className="h-4 w-4 shrink-0" />
-        Export
+
+        Exportar
       </Button>
     </div>
   );
@@ -256,8 +257,8 @@ const Reports = () => {
       <PageContainer>
         <PageHeader
           icon={BarChart3}
-          title="Reports"
-          description="Track your restaurant's performance and response times"
+          title="Reportes"
+          description="Consultá el rendimiento del local y los tiempos de respuesta"
           actions={headerActions}
         />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
@@ -290,20 +291,22 @@ const Reports = () => {
       <PageContainer>
         <PageHeader
           icon={BarChart3}
-          title="Reports"
-          description="Track your restaurant's performance and response times"
+          title="Reportes"
+          description="Consultá el rendimiento del local y los tiempos de respuesta"
           actions={headerActions}
         />
         <Card className="rounded-2xl shadow-card">
           <CardContent className="p-12 text-center">
             <Activity className="mx-auto mb-4 h-12 w-12 text-muted-foreground/40" />
             <h2 className="font-display text-xl font-semibold text-foreground mb-2">
-              No Analytics Data Available
+
+              No hay datos de análisis disponibles
             </h2>
             <p className="text-sm text-muted-foreground mb-6">
-              Please check your data connection and try again.
+
+              Revisá la conexión e intentá nuevamente.
             </p>
-            <Button onClick={fetchAnalytics}>Retry</Button>
+            <Button onClick={fetchAnalytics}>Reintentar</Button>
           </CardContent>
         </Card>
       </PageContainer>
@@ -318,8 +321,8 @@ const Reports = () => {
       <Reveal delay={0}>
         <PageHeader
           icon={BarChart3}
-          title="Reports"
-          description="Track your restaurant's performance and response times"
+          title="Reportes"
+          description="Consultá el rendimiento del local y los tiempos de respuesta"
           actions={headerActions}
         />
         {error && (
@@ -334,7 +337,7 @@ const Reports = () => {
       <Stagger className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <StaggerItem>
           <StatCard
-            label="Avg Response Time"
+            label="Tiempo promedio de respuesta"
             value={
               <span>
                 {analyticsData.averageResponseTime.minutes}
@@ -350,7 +353,7 @@ const Reports = () => {
 
         <StaggerItem>
           <StatCard
-            label="Total Orders"
+            label="Total de pedidos"
             value={analyticsData.totalOrders.count.toLocaleString()}
             icon={BarChart3}
             hint={analyticsData.totalOrders.trend}
@@ -359,7 +362,7 @@ const Reports = () => {
 
         <StaggerItem>
           <StatCard
-            label="Average Rating"
+            label="Calificación promedio"
             value={
               <span className="flex items-baseline gap-2">
                 {analyticsData.averageRating.rating}
@@ -384,7 +387,7 @@ const Reports = () => {
 
         <StaggerItem>
           <StatCard
-            label="Completion Rate"
+            label="Tasa de finalización"
             value={`${analyticsData.completionRate.percentage}%`}
             icon={TrendingUp}
             hint={analyticsData.completionRate.trend}
@@ -402,7 +405,8 @@ const Reports = () => {
                 <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
                   <LineChart className="h-4 w-4" />
                 </span>
-                Response Time Trends
+
+                Tendencia del tiempo de respuesta
               </CardTitle>
             </CardHeader>
             <CardContent className="p-5 sm:p-6 pt-4">
@@ -418,7 +422,7 @@ const Reports = () => {
                       <YAxis tick={axisStyle} axisLine={false} tickLine={false} width={36}
                         label={{ value: 'Min', angle: -90, position: 'insideLeft', style: { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } }}
                       />
-                      <Tooltip contentStyle={tooltipStyle} formatter={(v) => [`${String(v)} min`, 'Avg Response Time']} />
+                      <Tooltip contentStyle={tooltipStyle} formatter={(v) => [`${String(v)} min`, 'Tiempo promedio de respuesta']} />
                       <Line
                         type="monotone"
                         dataKey="avgResponse"
@@ -430,7 +434,7 @@ const Reports = () => {
                     </ReLineChart>
                   </ResponsiveContainer>
                 ) : (
-                  <ChartEmpty message="No response time data available" />
+                  <ChartEmpty message="No hay datos de tiempos de respuesta" />
                 )}
               </div>
             </CardContent>
@@ -445,7 +449,8 @@ const Reports = () => {
                 <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
                   <PieChart className="h-4 w-4" />
                 </span>
-                Order Status Distribution
+
+                Distribución por estado
               </CardTitle>
             </CardHeader>
             <CardContent className="p-5 sm:p-6 pt-4">
@@ -473,7 +478,7 @@ const Reports = () => {
                     </RePieChart>
                   </ResponsiveContainer>
                 ) : (
-                  <ChartEmpty message="No order status data available" />
+                  <ChartEmpty message="No hay datos de estados de pedidos" />
                 )}
               </div>
             </CardContent>
@@ -488,7 +493,8 @@ const Reports = () => {
                 <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
                   <BarChart3 className="h-4 w-4" />
                 </span>
-                Orders by Hour
+
+                Pedidos por hora
               </CardTitle>
             </CardHeader>
             <CardContent className="p-5 sm:p-6 pt-4">
@@ -502,14 +508,14 @@ const Reports = () => {
                       <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} strokeOpacity={0.5} />
                       <XAxis dataKey="hour" tick={axisStyle} axisLine={false} tickLine={false} />
                       <YAxis tick={axisStyle} axisLine={false} tickLine={false} width={36}
-                        label={{ value: 'Orders', angle: -90, position: 'insideLeft', style: { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } }}
+                        label={{ value: 'Pedidos', angle: -90, position: 'insideLeft', style: { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } }}
                       />
-                      <Tooltip contentStyle={tooltipStyle} formatter={(v, n) => [v, n === 'orders' ? 'Orders' : 'Avg Response (min)']} />
+                      <Tooltip contentStyle={tooltipStyle} formatter={(v, n) => [v, n === 'orders' ? 'Pedidos' : 'Respuesta promedio (min)']} />
                       <Bar dataKey="orders" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
-                  <ChartEmpty message="No hourly order data available" />
+                  <ChartEmpty message="No hay datos de pedidos por hora" />
                 )}
               </div>
             </CardContent>
@@ -524,7 +530,8 @@ const Reports = () => {
                 <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
                   <TrendingUp className="h-4 w-4" />
                 </span>
-                Weekly Order Volume
+
+                Volumen semanal de pedidos
               </CardTitle>
             </CardHeader>
             <CardContent className="p-5 sm:p-6 pt-4">
@@ -544,9 +551,9 @@ const Reports = () => {
                       <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} strokeOpacity={0.5} />
                       <XAxis dataKey="day" tick={axisStyle} axisLine={false} tickLine={false} />
                       <YAxis tick={axisStyle} axisLine={false} tickLine={false} width={36}
-                        label={{ value: 'Orders', angle: -90, position: 'insideLeft', style: { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } }}
+                        label={{ value: 'Pedidos', angle: -90, position: 'insideLeft', style: { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } }}
                       />
-                      <Tooltip contentStyle={tooltipStyle} formatter={(v, n) => [v, n === 'orders' ? 'Orders' : 'Revenue']} />
+                      <Tooltip contentStyle={tooltipStyle} formatter={(v, n) => [v, n === 'orders' ? 'Pedidos' : 'Ventas']} />
                       <Area
                         type="monotone"
                         dataKey="orders"
@@ -559,7 +566,7 @@ const Reports = () => {
                     </AreaChart>
                   </ResponsiveContainer>
                 ) : (
-                  <ChartEmpty message="No weekly volume data available" />
+                  <ChartEmpty message="No hay datos de volumen semanal" />
                 )}
               </div>
             </CardContent>
@@ -575,7 +582,8 @@ const Reports = () => {
               <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <BarChart3 className="h-4 w-4" />
               </span>
-              Orders vs Response Time by Hour
+
+              Pedidos y tiempo de respuesta por hora
             </CardTitle>
           </CardHeader>
           <CardContent className="p-5 sm:p-6 pt-4">
@@ -594,7 +602,7 @@ const Reports = () => {
                       axisLine={false}
                       tickLine={false}
                       width={36}
-                      label={{ value: 'Orders', angle: -90, position: 'insideLeft', style: { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } }}
+                      label={{ value: 'Pedidos', angle: -90, position: 'insideLeft', style: { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } }}
                     />
                     <YAxis
                       yAxisId="right"
@@ -603,17 +611,17 @@ const Reports = () => {
                       axisLine={false}
                       tickLine={false}
                       width={40}
-                      label={{ value: 'Time (min)', angle: 90, position: 'insideRight', style: { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } }}
+                      label={{ value: 'Tiempo (min)', angle: 90, position: 'insideRight', style: { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } }}
                     />
                     <Tooltip
                       contentStyle={tooltipStyle}
                       formatter={(v, n) => [
                         n === 'orders' ? v : `${String(v)} min`,
-                        n === 'orders' ? 'Orders' : 'Avg Response Time',
+                        n === 'orders' ? 'Pedidos' : 'Tiempo promedio de respuesta',
                       ]}
                     />
                     <Legend wrapperStyle={{ fontSize: 12 }} />
-                    <Bar yAxisId="left" dataKey="orders" fill="hsl(var(--chart-4))" radius={[4, 4, 0, 0]} name="Orders" />
+                    <Bar yAxisId="left" dataKey="orders" fill="hsl(var(--chart-4))" radius={[4, 4, 0, 0]} name="Pedidos" />
                     <Line
                       yAxisId="right"
                       type="monotone"
@@ -622,12 +630,12 @@ const Reports = () => {
                       strokeWidth={2.5}
                       dot={{ fill: 'hsl(var(--chart-1))', strokeWidth: 0, r: 4 }}
                       activeDot={{ r: 6, fill: 'hsl(var(--chart-1))', strokeWidth: 0 }}
-                      name="Avg Response Time"
+                      name="Tiempo promedio de respuesta"
                     />
                   </ComposedChart>
                 </ResponsiveContainer>
               ) : (
-                <ChartEmpty message="No correlation data available" />
+                <ChartEmpty message="No hay datos de relación disponibles" />
               )}
             </div>
           </CardContent>
@@ -642,7 +650,8 @@ const Reports = () => {
               <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <MessageSquare className="h-4 w-4" />
               </span>
-              Recent Order Response Times
+
+              Tiempos de respuesta recientes
             </CardTitle>
           </CardHeader>
 
@@ -652,16 +661,20 @@ const Reports = () => {
                 <thead>
                   <tr className="border-y border-border/60 bg-muted/40">
                     <th className="px-5 sm:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Order
+
+                      Pedido
                     </th>
                     <th className="px-5 sm:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Status
+
+                      Estado
                     </th>
                     <th className="px-5 sm:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Created
+
+                      Creado
                     </th>
                     <th className="px-5 sm:px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Response Time
+
+                      Tiempo de respuesta
                     </th>
                   </tr>
                 </thead>
@@ -689,7 +702,7 @@ const Reports = () => {
                       <td className="px-5 sm:px-6 py-3.5 text-muted-foreground">
                         {order.created_at
                           ? formatDistanceToNow(new Date(order.created_at), { addSuffix: true })
-                          : 'Unknown'}
+                          : 'Desconocido'}
                       </td>
                       <td className="px-5 sm:px-6 py-3.5 text-right font-semibold text-primary tabular-nums">
                         {order.response_time || '—'}
@@ -701,7 +714,7 @@ const Reports = () => {
             ) : (
               <div className="flex flex-col items-center justify-center gap-2 py-14 text-muted-foreground">
                 <MessageSquare className="h-8 w-8 opacity-25" />
-                <p className="text-sm">No recent orders found</p>
+                <p className="text-sm">No se encontraron pedidos recientes</p>
               </div>
             )}
           </div>
@@ -716,7 +729,8 @@ const Reports = () => {
               <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <Activity className="h-4 w-4" />
               </span>
-              Performance Insights
+
+              Análisis de rendimiento
             </CardTitle>
           </CardHeader>
           <CardContent className="p-5 sm:p-6 pt-0">
@@ -725,7 +739,7 @@ const Reports = () => {
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                  <h4 className="font-semibold text-sm text-foreground">What's Working Well</h4>
+                  <h4 className="font-semibold text-sm text-foreground">Qué funciona bien</h4>
                 </div>
                 <ul className="space-y-2">
                   {insights.working.map((insight, index) => (
@@ -746,7 +760,7 @@ const Reports = () => {
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
-                  <h4 className="font-semibold text-sm text-foreground">Areas for Improvement</h4>
+                  <h4 className="font-semibold text-sm text-foreground">Áreas para mejorar</h4>
                 </div>
                 <ul className="space-y-2">
                   {insights.improvements.map((insight, index) => (

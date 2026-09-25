@@ -240,7 +240,7 @@ function makeWalkInTicket(n: number): WorkspaceTicket {
   return {
     id: `walkin-${uuid()}`,
     kind: 'walkin',
-    label: `Walk-in #${n}`,
+    label: `Mostrador #${n}`,
     newItems: [],
     sentOrders: [],
   };
@@ -472,7 +472,7 @@ export default function PosWorkspacePage() {
       toast({
         title: 'No tables set up yet',
         description: isOwnerManager
-          ? 'Set up a floor plan to start seating dine-in guests. Takeaway always works without one.'
+          ? 'Configurá el plano de mesas para atender en el local. Los pedidos para llevar funcionan sin plano.'
           : 'Ask your manager to set up the floor plan when you need dine-in seating. You can still take takeaway orders.',
       });
       return;
@@ -943,7 +943,7 @@ export default function PosWorkspacePage() {
       });
     } catch (err) {
       console.error('Send failed:', err);
-      toast({ variant: 'destructive', title: 'Send failed', description: err instanceof Error ? err.message : 'Unknown error' });
+      toast({ variant: 'destructive', title: 'No se pudo enviar', description: err instanceof Error ? err.message : 'Error desconocido' });
     } finally {
       setSending(false);
     }
@@ -985,7 +985,7 @@ export default function PosWorkspacePage() {
       // session_closed is documented in that route's response shape.
       const sessionClosed = (results as Array<{ session_closed?: boolean }>).some((r) => r.session_closed);
       toast({
-        title: 'Payment received ✓',
+        title: 'Pago recibido ✓',
         description: sessionClosed ? 'Table closed.' : 'Order marked paid.',
       });
       // Close tender modal first, then open receipt after a brief delay so the
@@ -1018,7 +1018,7 @@ export default function PosWorkspacePage() {
       setChargeMethod(null);
     } catch (err) {
       console.error('Charge failed:', err);
-      setTenderError(err instanceof Error ? err.message : 'Charge failed');
+      setTenderError(err instanceof Error ? err.message : 'No se pudo cobrar');
     } finally {
       setChargeBusy(false);
     }
@@ -1171,7 +1171,7 @@ export default function PosWorkspacePage() {
               <Receipt className="w-5 h-5 text-primary-foreground" />
             </div>
             <div className="flex flex-col leading-tight min-w-0">
-              <span className="text-sm font-bold text-foreground truncate">POS Workspace</span>
+              <span className="text-sm font-bold text-foreground truncate">Punto de venta</span>
               <span className="text-[11px] text-muted-foreground truncate flex items-center gap-1">
                 <UserIcon className="w-3 h-3" />
                 {displayName}
@@ -1255,28 +1255,28 @@ export default function PosWorkspacePage() {
               aria-label="Process a return"
               className="h-9 focus-visible:ring-2 focus-visible:ring-ring">
               <RotateCcw className="w-3.5 h-3.5 mr-1.5" aria-hidden="true" />
-              <span className="hidden md:inline">Return</span>
+              <span className="hidden md:inline">Devolución</span>
             </Button>
             <Button size="sm" variant="outline" onClick={() => navigate('/kds/expo')}
-              aria-label="Open Kitchen Display System"
+              aria-label="Abrir pantalla de cocina"
               className="h-9 focus-visible:ring-2 focus-visible:ring-ring">
               <ChefHat className="w-3.5 h-3.5 mr-1.5" aria-hidden="true" />
-              <span className="hidden md:inline">Kitchen</span>
+              <span className="hidden md:inline">Cocina</span>
             </Button>
             {/* End shift / Switch user — shown when an actor overlay is active. */}
             {actor && (
               <Button size="sm" variant="outline" onClick={handleEndShift}
-                aria-label="End shift and return to PIN screen"
+                aria-label="Finalizar turno y volver al acceso con PIN"
                 className="h-9 focus-visible:ring-2 focus-visible:ring-ring">
                 <UserCheck className="w-3.5 h-3.5 mr-1.5" aria-hidden="true" />
-                <span className="hidden md:inline">End shift</span>
+                <span className="hidden md:inline">Finalizar turno</span>
               </Button>
             )}
             <Button size="sm" variant="ghost" onClick={handleSignOut}
               aria-label="Sign out"
               className="text-muted-foreground hover:text-foreground h-9 focus-visible:ring-2 focus-visible:ring-ring">
               <LogOut className="w-3.5 h-3.5 mr-1.5" aria-hidden="true" />
-              <span className="hidden md:inline">Sign Out</span>
+              <span className="hidden md:inline">Cerrar sesión</span>
             </Button>
           </div>
         </div>
@@ -1366,7 +1366,7 @@ export default function PosWorkspacePage() {
             {!activeTicket && (
               <div className="mb-4 rounded-2xl border border-border bg-gradient-to-br from-primary/5 to-accent/50 dark:from-primary/10 dark:to-accent/15 p-4 shadow-sm">
                 <p className="font-display text-xs uppercase tracking-widest text-primary mb-3 text-center">
-                  How will the customer be ordering?
+                  ¿Cómo hará el pedido el cliente?
                 </p>
                 {isDineInMode ? (
                   <div className="grid grid-cols-2 gap-3">
@@ -1381,9 +1381,9 @@ export default function PosWorkspacePage() {
                       className="flex flex-col items-center justify-center gap-2 py-7 rounded-2xl border-2 border-primary/30 bg-card hover:bg-primary/10 hover:border-primary/50 active:bg-primary/15 transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     >
                       <Utensils className="w-10 h-10 text-primary" />
-                      <span className="text-base font-bold text-foreground">Eat-in</span>
+                      <span className="text-base font-bold text-foreground">Consumo en el local</span>
                       <span className="text-[11px] text-muted-foreground">
-                        {hasFloorPlan ? 'Select a table' : 'Set up tables first'}
+                        {hasFloorPlan ? 'Seleccionar una mesa' : 'Primero configurá las mesas'}
                       </span>
                     </button>
                     {/* Takeaway */}
@@ -1394,8 +1394,8 @@ export default function PosWorkspacePage() {
                       className="flex flex-col items-center justify-center gap-2 py-7 rounded-2xl border-2 border-border bg-card hover:bg-accent hover:border-secondary/40 active:bg-accent/70 transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <ShoppingBag className="w-10 h-10 text-secondary dark:text-foreground/80" />
-                      <span className="text-base font-bold text-foreground">Takeaway</span>
-                      <span className="text-[11px] text-muted-foreground">Walk-in / counter</span>
+                      <span className="text-base font-bold text-foreground">Para llevar</span>
+                      <span className="text-[11px] text-muted-foreground">Mostrador</span>
                     </button>
                   </div>
                 ) : (
@@ -1555,7 +1555,7 @@ export default function PosWorkspacePage() {
         open={isReturnOpen}
         onOpenChange={setIsReturnOpen}
         locationId={activeLocation?.id || ''}
-        onSuccess={() => toast({ title: 'Return processed' })}
+        onSuccess={() => toast({ title: 'Devolución procesada' })}
       />
 
       {/* Charge — method picker. Cash/Card are two equal payment rails, not a
@@ -1579,7 +1579,7 @@ export default function PosWorkspacePage() {
               className="flex flex-col items-center justify-center gap-2 py-7 rounded-2xl border-2 border-primary/30 bg-primary/10 hover:bg-primary/15 hover:border-primary/50 active:bg-primary/20 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               <Banknote className="w-9 h-9 text-primary" />
-              <span className="text-base font-bold text-foreground">Cash</span>
+              <span className="text-base font-bold text-foreground">Efectivo</span>
               <span className="text-[11px] text-muted-foreground">Numpad + change calc</span>
             </button>
             <button
@@ -1589,7 +1589,7 @@ export default function PosWorkspacePage() {
               className="flex flex-col items-center justify-center gap-2 py-7 rounded-2xl border-2 border-border bg-accent/40 hover:bg-accent/70 hover:border-secondary/40 active:bg-accent transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <CreditCard className="w-9 h-9 text-accent-foreground" />
-              <span className="text-base font-bold text-foreground">Card</span>
+              <span className="text-base font-bold text-foreground">Tarjeta</span>
               <span className="text-[11px] text-muted-foreground">External terminal</span>
             </button>
           </div>

@@ -362,7 +362,7 @@ const Menu = () => {
       handleInputChange('category_id', data.id);
       setNewCategoryName('');
     } catch (e) {
-      toast({ variant: 'destructive', title: 'Failed to create category', description: e instanceof Error ? e.message : 'Unknown error' });
+      toast({ variant: 'destructive', title: 'No se pudo crear la categoría', description: e instanceof Error ? e.message : 'Error desconocido' });
     } finally {
       setCreatingCategory(false);
     }
@@ -370,7 +370,7 @@ const Menu = () => {
 
   const addItem = async () => {
     if (!activeLocation || !formData.name.trim() || !formData.price || !formData.category_id) {
-      toast({ variant: 'destructive', title: 'Please fill in all required fields' });
+      toast({ variant: 'destructive', title: 'Completá todos los campos obligatorios' });
       return;
     }
 
@@ -405,10 +405,10 @@ const Menu = () => {
       setIsAddModalOpen(false);
       resetForm();
       await fetchData();
-      toast({ title: 'Menu item added successfully!' });
+      toast({ title: 'Producto agregado correctamente.' });
     } catch (error) {
       console.error('Error adding item:', error);
-      toast({ variant: 'destructive', title: 'Failed to add menu item', description: error instanceof Error ? error.message : 'Unknown error' });
+      toast({ variant: 'destructive', title: 'No se pudo agregar el producto', description: error instanceof Error ? error.message : 'Error desconocido' });
     } finally {
       setSaving(false);
     }
@@ -416,7 +416,7 @@ const Menu = () => {
 
   const editItem = async () => {
     if (!editingItem || !formData.name.trim() || !formData.price || !formData.category_id) {
-      toast({ variant: 'destructive', title: 'Please fill in all required fields' });
+      toast({ variant: 'destructive', title: 'Completá todos los campos obligatorios' });
       return;
     }
 
@@ -451,10 +451,10 @@ const Menu = () => {
       setEditingItem(null);
       resetForm();
       await fetchData();
-      toast({ title: 'Menu item updated successfully!' });
+      toast({ title: 'Producto actualizado correctamente.' });
     } catch (error) {
       console.error('Error updating item:', error);
-      toast({ variant: 'destructive', title: 'Failed to update menu item', description: error instanceof Error ? error.message : 'Unknown error' });
+      toast({ variant: 'destructive', title: 'No se pudo actualizar el producto', description: error instanceof Error ? error.message : 'Error desconocido' });
     } finally {
       setSaving(false);
     }
@@ -473,10 +473,10 @@ const Menu = () => {
 
       if (error) throw error;
       await fetchData();
-      toast({ title: 'Menu item deleted successfully' });
+      toast({ title: 'Producto eliminado correctamente.' });
     } catch (error) {
       console.error('Error deleting item:', error);
-      toast({ variant: 'destructive', title: 'Failed to delete menu item', description: error instanceof Error ? error.message : 'Unknown error' });
+      toast({ variant: 'destructive', title: 'No se pudo eliminar el producto', description: error instanceof Error ? error.message : 'Error desconocido' });
     } finally {
       setActionLoading('');
       setDeleteTarget(null);
@@ -498,7 +498,7 @@ const Menu = () => {
       await fetchData();
     } catch (error) {
       console.error('Error updating item status:', error);
-      toast({ variant: 'destructive', title: 'Failed to update item status', description: error instanceof Error ? error.message : 'Unknown error' });
+      toast({ variant: 'destructive', title: 'No se pudo actualizar el estado del producto', description: error instanceof Error ? error.message : 'Error desconocido' });
     } finally {
       setActionLoading('');
     }
@@ -519,7 +519,7 @@ const Menu = () => {
       await fetchData();
     } catch (error) {
       console.error('Error updating sort order:', error);
-      toast({ variant: 'destructive', title: 'Failed to update sort order', description: error instanceof Error ? error.message : 'Unknown error' });
+      toast({ variant: 'destructive', title: 'No se pudo actualizar el orden', description: error instanceof Error ? error.message : 'Error desconocido' });
     } finally {
       setActionLoading('');
     }
@@ -543,7 +543,7 @@ const Menu = () => {
       await fetchData();
     } catch (error) {
       console.error('Error updating recipe metadata:', error);
-      alert('Failed to update recipe metadata');
+      alert('No se pudieron actualizar los datos de la receta');
     } finally {
       setActionLoading('');
     }
@@ -589,7 +589,7 @@ const Menu = () => {
 
   const getCategoryName = (categoryId?: string | null) => {
     const category = categories.find(cat => cat.id === categoryId);
-    return category?.name || 'Unknown Category';
+    return category?.name || 'Categoría desconocida';
   };
 
   const getRecipeTypeIcon = (type?: string) => {
@@ -641,8 +641,8 @@ const Menu = () => {
           <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted mb-5">
             <AlertCircle className="w-8 h-8 text-muted-foreground" />
           </span>
-          <h2 className="font-display text-xl font-semibold text-foreground mb-2">No Location Selected</h2>
-          <p className="text-muted-foreground">Please select a location to manage menu items.</p>
+          <h2 className="font-display text-xl font-semibold text-foreground mb-2">No hay un local seleccionado</h2>
+          <p className="text-muted-foreground">Seleccioná un local para administrar el menú.</p>
         </div>
       </PageContainer>
     );
@@ -677,25 +677,25 @@ const Menu = () => {
     <div className="space-y-4 mt-4 max-h-96 overflow-y-auto">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="name">Name *</Label>
+          <Label htmlFor="name">Nombre *</Label>
           <Input
             id="name"
             value={formData.name}
             onChange={(e) => handleInputChange('name', e.target.value)}
-            placeholder="Enter item name"
+            placeholder="Ingresá el nombre del producto"
             required
           />
         </div>
 
         <div>
-          <Label htmlFor="category_id">Category *</Label>
+          <Label htmlFor="category_id">Categoría *</Label>
           <Select
             value={formData.category_id}
             onValueChange={(value) => handleInputChange('category_id', value)}
             required
           >
             <SelectTrigger>
-              <SelectValue placeholder="Select category" />
+              <SelectValue placeholder="Seleccionar categoría" />
             </SelectTrigger>
             <SelectContent>
               {categories.map((category) => (
@@ -708,7 +708,7 @@ const Menu = () => {
           {/* Inline category creation — no category? make one here. */}
           <div className="mt-2 flex items-center gap-2">
             <Input
-              placeholder={categories.length === 0 ? 'Create your first category (e.g. Burgers)' : '…or add a new category'}
+              placeholder={categories.length === 0 ? 'Creá tu primera categoría (ej.: Pollos)' : '…o agregá una categoría nueva'}
               value={newCategoryName}
               onChange={(e) => setNewCategoryName(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void createCategoryInline(); } }}
@@ -722,16 +722,16 @@ const Menu = () => {
               disabled={creatingCategory || !newCategoryName.trim()}
               className="border-primary/25 text-primary hover:bg-primary/10 whitespace-nowrap"
             >
-              {creatingCategory ? '…' : '+ Add'}
+              {creatingCategory ? '…' : '+ Agregar'}
             </Button>
           </div>
           {categories.length === 0 && (
-            <p className="mt-1 text-xs text-warning">No categories yet — add one above to enable creating your first item.</p>
+            <p className="mt-1 text-xs text-warning">Todavía no hay categorías. Agregá una arriba para crear el primer producto.</p>
           )}
         </div>
 
         <div>
-          <Label htmlFor="price">Selling Price *</Label>
+          <Label htmlFor="price">Precio de venta *</Label>
           <Input
             id="price"
             type="number"
@@ -745,7 +745,7 @@ const Menu = () => {
         </div>
 
         <div>
-          <Label htmlFor="cost_price">Cost Price</Label>
+          <Label htmlFor="cost_price">Precio de costo</Label>
           <Input
             id="cost_price"
             type="number"
@@ -758,7 +758,7 @@ const Menu = () => {
         </div>
 
         <div>
-          <Label htmlFor="recipe_type">Recipe Type</Label>
+          <Label htmlFor="recipe_type">Tipo de receta</Label>
           <Select
             value={formData.recipe_type}
             onValueChange={(value) => handleInputChange('recipe_type', value)}
@@ -767,15 +767,15 @@ const Menu = () => {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="simple">Simple Item</SelectItem>
-              <SelectItem value="component">Component (Used in recipes)</SelectItem>
-              <SelectItem value="recipe">Recipe (Made from other items)</SelectItem>
+              <SelectItem value="simple">Producto simple</SelectItem>
+              <SelectItem value="component">Componente (usado en recetas)</SelectItem>
+              <SelectItem value="recipe">Receta (preparada con otros productos)</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         <div>
-          <Label htmlFor="preparation_time">Prep Time (minutes)</Label>
+          <Label htmlFor="preparation_time">Tiempo de preparación (minutos)</Label>
           <Input
             id="preparation_time"
             type="number"
@@ -788,12 +788,12 @@ const Menu = () => {
       </div>
 
       <div>
-        <Label htmlFor="description">Description</Label>
+        <Label htmlFor="description">Descripción</Label>
         <Textarea
           id="description"
           value={formData.description}
           onChange={(e) => handleInputChange('description', e.target.value)}
-          placeholder="Enter item description"
+          placeholder="Ingresá la descripción del producto"
           rows={3}
         />
       </div>
@@ -805,7 +805,7 @@ const Menu = () => {
             checked={formData.is_active}
             onCheckedChange={(checked) => handleInputChange('is_active', checked)}
           />
-          <Label htmlFor="is_active">Active</Label>
+          <Label htmlFor="is_active">Activo</Label>
         </div>
 
         <div className="flex items-center space-x-2">
@@ -814,7 +814,7 @@ const Menu = () => {
             checked={formData.auto_calculate_cost}
             onCheckedChange={(checked) => handleInputChange('auto_calculate_cost', checked)}
           />
-          <Label htmlFor="auto_calculate_cost">Auto-calculate cost from recipe</Label>
+          <Label htmlFor="auto_calculate_cost">Calcular el costo automáticamente desde la receta</Label>
         </div>
 
         <div className="flex items-center space-x-2">
@@ -823,7 +823,7 @@ const Menu = () => {
             checked={formData.track_inventory}
             onCheckedChange={(checked) => handleInputChange('track_inventory', checked)}
           />
-          <Label htmlFor="track_inventory">Track inventory</Label>
+          <Label htmlFor="track_inventory">Controlar inventario</Label>
         </div>
 
         <div className="flex items-center space-x-2">
@@ -832,14 +832,14 @@ const Menu = () => {
             checked={formData.is_recipe_ingredient}
             onCheckedChange={(checked) => handleInputChange('is_recipe_ingredient', checked)}
           />
-          <Label htmlFor="is_recipe_ingredient">Recipe ingredient</Label>
+          <Label htmlFor="is_recipe_ingredient">Ingrediente de receta</Label>
         </div>
       </div>
 
       {formData.track_inventory && (
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="current_stock">Current Stock</Label>
+            <Label htmlFor="current_stock">Stock actual</Label>
             <Input
               id="current_stock"
               type="number"
@@ -851,7 +851,7 @@ const Menu = () => {
           </div>
 
           <div>
-            <Label htmlFor="low_stock_threshold">Low Stock Alert</Label>
+            <Label htmlFor="low_stock_threshold">Alerta de stock bajo</Label>
             <Input
               id="low_stock_threshold"
               type="number"
@@ -871,14 +871,15 @@ const Menu = () => {
       {/* Page Header */}
       <Reveal>
         <PageHeader
-          eyebrow="Kitchen"
-          title="Menu & Recipes"
+          eyebrow="Cocina"
+          title="Menú y recetas"
           icon={UtensilsCrossed}
           description={`Manage menu items, recipes and their components for ${activeLocation?.name}`}
           actions={
             <Button onClick={() => { resetForm(); setIsAddModalOpen(true); }} className="gap-2">
               <Plus className="h-4 w-4" />
-              Add Item
+
+              Agregar producto
             </Button>
           }
         />
@@ -888,26 +889,26 @@ const Menu = () => {
       <Stagger className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StaggerItem>
           <StatCard
-            label="Total Items"
+            label="Total de productos"
             value={items.length}
             icon={Utensils}
-            hint="across all categories"
+            hint="en todas las categorías"
           />
         </StaggerItem>
         <StaggerItem>
           <StatCard
-            label="Recipes"
+            label="Recetas"
             value={items.filter(i => i.recipe_type === 'recipe').length}
             icon={ChefHat}
-            hint="with full ingredients"
+            hint="con ingredientes completos"
           />
         </StaggerItem>
         <StaggerItem>
           <StatCard
-            label="Components"
+            label="Componentes"
             value={items.filter(i => i.recipe_type === 'component').length}
             icon={Package}
-            hint="reusable sub-items"
+            hint="componentes reutilizables"
           />
         </StaggerItem>
         <StaggerItem>
@@ -915,7 +916,7 @@ const Menu = () => {
             label="Active Items"
             value={items.filter(i => i.is_active).length}
             icon={CheckCircle}
-            hint="visible on menu"
+            hint="visibles en el menú"
           />
         </StaggerItem>
       </Stagger>
@@ -928,7 +929,7 @@ const Menu = () => {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4 pointer-events-none" />
                 <Input
-                  placeholder="Search items by name, description or category…"
+                  placeholder="Buscar por nombre, descripción o categoría…"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-9 rounded-xl h-10"
@@ -937,10 +938,10 @@ const Menu = () => {
 
               <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                 <SelectTrigger className="w-full sm:w-44 rounded-xl h-10">
-                  <SelectValue placeholder="All Categories" />
+                  <SelectValue placeholder="Todas las categorías" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
+                  <SelectItem value="all">Todas las categorías</SelectItem>
                   {categories.map((category) => (
                     <SelectItem key={category.id} value={category.id}>
                       {category.name}
@@ -951,36 +952,36 @@ const Menu = () => {
 
               <Select value={recipeTypeFilter} onValueChange={setRecipeTypeFilter}>
                 <SelectTrigger className="w-full sm:w-40 rounded-xl h-10">
-                  <SelectValue placeholder="Recipe Type" />
+                  <SelectValue placeholder="Tipo de receta" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="simple">Simple Items</SelectItem>
-                  <SelectItem value="component">Components</SelectItem>
-                  <SelectItem value="recipe">Recipes</SelectItem>
+                  <SelectItem value="all">Todos los tipos</SelectItem>
+                  <SelectItem value="simple">Productos simples</SelectItem>
+                  <SelectItem value="component">Componentes</SelectItem>
+                  <SelectItem value="recipe">Recetas</SelectItem>
                 </SelectContent>
               </Select>
 
               <Select value={complexityFilter} onValueChange={setComplexityFilter}>
                 <SelectTrigger className="w-full sm:w-40 rounded-xl h-10">
-                  <SelectValue placeholder="Complexity" />
+                  <SelectValue placeholder="Complejidad" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Complexity</SelectItem>
+                  <SelectItem value="all">Todas las complejidades</SelectItem>
                   <SelectItem value="simple">Simple</SelectItem>
-                  <SelectItem value="moderate">Moderate</SelectItem>
-                  <SelectItem value="complex">Complex</SelectItem>
+                  <SelectItem value="moderate">Moderado</SelectItem>
+                  <SelectItem value="complex">Complejo</SelectItem>
                 </SelectContent>
               </Select>
 
               <Select value={itemUsageFilter} onValueChange={setItemUsageFilter}>
                 <SelectTrigger className="w-full sm:w-44 rounded-xl h-10">
-                  <SelectValue placeholder="Item Usage" />
+                  <SelectValue placeholder="Uso del producto" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Items</SelectItem>
-                  <SelectItem value="menu_item">Menu Items</SelectItem>
-                  <SelectItem value="recipe_ingredient">Recipe Ingredients</SelectItem>
+                  <SelectItem value="all">Todos los productos</SelectItem>
+                  <SelectItem value="menu_item">Productos del menú</SelectItem>
+                  <SelectItem value="recipe_ingredient">Ingredientes de la receta</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -991,9 +992,9 @@ const Menu = () => {
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-3 rounded-xl">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="breakdown">Recipe Breakdown</TabsTrigger>
-          <TabsTrigger value="analysis">Cost Analysis</TabsTrigger>
+          <TabsTrigger value="overview">Resumen</TabsTrigger>
+          <TabsTrigger value="breakdown">Detalle de recetas</TabsTrigger>
+          <TabsTrigger value="analysis">Análisis de costos</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-6 space-y-4">
@@ -1004,11 +1005,11 @@ const Menu = () => {
                   <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 mx-auto mb-5">
                     <ChefHat className="h-8 w-8 text-primary" />
                   </span>
-                  <h3 className="font-display text-xl font-semibold text-foreground mb-2">No items found</h3>
+                  <h3 className="font-display text-xl font-semibold text-foreground mb-2">No se encontraron productos</h3>
                   <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
                     {searchTerm || selectedCategory !== 'all' || recipeTypeFilter !== 'all' || complexityFilter !== 'all' || itemUsageFilter !== 'all'
-                      ? 'No items match your current filters. Try adjusting your search criteria.'
-                      : 'Get started by adding your first menu item or recipe.'
+                      ? 'Ningún producto coincide con los filtros. Probá con otra búsqueda.'
+                      : 'Comenzá agregando tu primer producto o receta.'
                     }
                   </p>
                   {(!searchTerm && selectedCategory === 'all' && recipeTypeFilter === 'all' && complexityFilter === 'all' && itemUsageFilter === 'all') && (
@@ -1023,7 +1024,8 @@ const Menu = () => {
                         className="border-primary/25 text-primary hover:bg-primary/10"
                       >
                         <Plus className="w-4 h-4 mr-2" />
-                        Add Items Manually
+
+                        Agregar productos manualmente
                       </Button>
                     </div>
                   )}
@@ -1071,7 +1073,7 @@ const Menu = () => {
                               </h3>
 
                               {!item.is_active && (
-                                <Badge variant="destructive" className="text-xs">Inactive</Badge>
+                                <Badge variant="destructive" className="text-xs">Inactivo</Badge>
                               )}
 
                               <Badge
@@ -1084,7 +1086,8 @@ const Menu = () => {
                               {item.max_recipe_level > 0 && (
                                 <Badge variant="outline" className="text-xs">
                                   <Layers className="h-3 w-3 mr-1" />
-                                  Level {item.max_recipe_level}
+
+                                  Nivel {item.max_recipe_level}
                                 </Badge>
                               )}
 
@@ -1098,14 +1101,16 @@ const Menu = () => {
                               {(item.recipe_type === 'recipe' || item.recipe_type === 'simple') && (
                                 <Badge variant="outline" className="text-xs">
                                   <Utensils className="h-3 w-3 mr-1" />
-                                  Menu Item
+
+                                  Producto del menú
                                 </Badge>
                               )}
 
                               {item.is_recipe_ingredient && (
                                 <Badge variant="outline" className="text-xs">
                                   <FlaskConical className="h-3 w-3 mr-1" />
-                                  Ingredient
+
+                                  Ingrediente
                                 </Badge>
                               )}
                             </div>
@@ -1126,7 +1131,8 @@ const Menu = () => {
                               {(item.cost_price ?? 0) > 0 && (
                                 <span className="flex items-center gap-1 text-muted-foreground tabular-nums">
                                   <Calculator className="h-3.5 w-3.5" />
-                                  Cost: {formatCurrency(item.cost_price)}
+
+                                  Costo: {formatCurrency(item.cost_price)}
                                   {profitMargin && (
                                     <span className={cn(
                                       "ml-1 text-xs font-medium",
@@ -1155,7 +1161,7 @@ const Menu = () => {
                               {isLowStock && (
                                 <span className="flex items-center gap-1 text-warning text-xs font-medium">
                                   <AlertCircle className="h-3.5 w-3.5" />
-                                  Low stock (<span className="tabular-nums">{item.current_stock}</span>)
+                                  Stock bajo (<span className="tabular-nums">{item.current_stock}</span>)
                                 </span>
                               )}
                             </div>
@@ -1177,7 +1183,7 @@ const Menu = () => {
                                     </Button>
                                   </TooltipTrigger>
                                   <TooltipContent>
-                                    <p>Recipe Builder</p>
+                                    <p>Editor de recetas</p>
                                   </TooltipContent>
                                 </Tooltip>
                               </TooltipProvider>
@@ -1201,19 +1207,22 @@ const Menu = () => {
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem onClick={() => openEditModal(item)}>
                                   <Edit className="h-4 w-4 mr-2" />
-                                  Edit
+
+                                  Editar
                                 </DropdownMenuItem>
 
                                 <DropdownMenuItem onClick={() => toggleItemStatus(item)}>
                                   {item.is_active ? (
                                     <>
                                       <EyeOff className="h-4 w-4 mr-2" />
-                                      Deactivate
+
+                                      Desactivar
                                     </>
                                   ) : (
                                     <>
                                       <Eye className="h-4 w-4 mr-2" />
-                                      Activate
+
+                                      Activar
                                     </>
                                   )}
                                 </DropdownMenuItem>
@@ -1221,7 +1230,8 @@ const Menu = () => {
                                 {item.recipe_type !== 'simple' && (
                                   <DropdownMenuItem onClick={() => updateRecipeMetadata(item.id)}>
                                     <Calculator className="h-4 w-4 mr-2" />
-                                    Update Recipe Data
+
+                                    Actualizar receta
                                   </DropdownMenuItem>
                                 )}
 
@@ -1232,7 +1242,8 @@ const Menu = () => {
                                   className="text-destructive hover:text-destructive"
                                 >
                                   <Trash2 className="h-4 w-4 mr-2" />
-                                  Delete
+
+                                  Eliminar
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
@@ -1262,10 +1273,12 @@ const Menu = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Plus className="w-5 h-5 text-primary" />
-              Add New Menu Item
+
+              Agregar producto nuevo
             </DialogTitle>
             <DialogDescription>
-              Add a new item to your menu for {activeLocation?.name}.
+
+              Agregá un producto nuevo al menú de {activeLocation?.name}.
             </DialogDescription>
           </DialogHeader>
 
@@ -1278,7 +1291,8 @@ const Menu = () => {
               className="flex-1"
               disabled={saving}
             >
-              Cancel
+
+              Cancelar
             </Button>
             <Button
               onClick={addItem}
@@ -1290,7 +1304,8 @@ const Menu = () => {
               ) : (
                 <Plus className="w-4 h-4 mr-2" />
               )}
-              Add Menu Item
+
+              Agregar producto al menú
             </Button>
           </div>
         </DialogContent>
@@ -1302,10 +1317,11 @@ const Menu = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Edit className="w-5 h-5 text-primary" />
-              Edit Menu Item
+
+              Editar producto del menú
             </DialogTitle>
             <DialogDescription>
-              Update information for "{editingItem?.name}".
+              Actualizá la información de “{editingItem?.name}”.
             </DialogDescription>
           </DialogHeader>
 
@@ -1318,7 +1334,8 @@ const Menu = () => {
               className="flex-1"
               disabled={saving}
             >
-              Cancel
+
+              Cancelar
             </Button>
             <Button
               onClick={editItem}
@@ -1330,7 +1347,8 @@ const Menu = () => {
               ) : (
                 <Edit className="w-4 h-4 mr-2" />
               )}
-              Update Menu Item
+
+              Actualizar producto
             </Button>
           </div>
         </DialogContent>
@@ -1342,19 +1360,19 @@ const Menu = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <TreePine className="h-5 w-5 text-primary" />
-              Recipe — {buildingRecipe?.name || 'Item'}
+              Receta — {buildingRecipe?.name || 'Producto'}
             </DialogTitle>
             <DialogDescription>
-              Define what goes into this item (ingredients) and how the kitchen makes it (prep steps).
-              Both feed straight onto the Kitchen Display when an order fires.
+
+              Definí los ingredientes y cómo debe prepararlo la cocina. Esta información aparece en la pantalla de cocina cuando ingresa un pedido.
             </DialogDescription>
           </DialogHeader>
 
           <Tabs defaultValue="ingredients" className="mt-2">
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="ingredients">Ingredients</TabsTrigger>
-              <TabsTrigger value="prep">Prep Steps</TabsTrigger>
-              <TabsTrigger value="modifiers">Modifiers</TabsTrigger>
+              <TabsTrigger value="ingredients">Ingredientes</TabsTrigger>
+              <TabsTrigger value="prep">Pasos de preparación</TabsTrigger>
+              <TabsTrigger value="modifiers">Modificadores</TabsTrigger>
             </TabsList>
 
             <TabsContent value="ingredients" className="mt-3">
@@ -1383,7 +1401,8 @@ const Menu = () => {
 
           <div className="flex justify-end pt-3 border-t mt-3">
             <Button variant="outline" onClick={() => setIsRecipeBuilderOpen(false)}>
-              Done
+
+              Listo
             </Button>
           </div>
         </DialogContent>

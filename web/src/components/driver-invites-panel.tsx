@@ -103,7 +103,7 @@ export default function DriverInvitesPanel() {
           Drivers
         </CardTitle>
         <CardDescription>
-          Invite a driver by email. They get the Driver Portal automatically when they sign up with the invited address.
+          Invitá a un repartidor por correo. Obtendrá acceso al portal de repartidores al registrarse con la dirección invitada.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -121,7 +121,7 @@ export default function DriverInvitesPanel() {
             />
           </div>
           <Button type="submit" disabled={submitting || !email.trim()}>
-            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Invite driver'}
+            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Invitar repartidor'}
           </Button>
         </form>
 
@@ -133,11 +133,11 @@ export default function DriverInvitesPanel() {
         )}
 
         <div>
-          <h4 className="text-sm font-semibold text-foreground mb-2">Pending invites</h4>
+          <h4 className="text-sm font-semibold text-foreground mb-2">Invitaciones pendientes</h4>
           {loading ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin" /> Loading…</div>
           ) : invites.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No pending driver invites.</p>
+            <p className="text-sm text-muted-foreground">No hay invitaciones pendientes para repartidores.</p>
           ) : (
             <ul className="divide-y divide-border rounded-lg border border-border">
               {invites.map((inv) => (
@@ -168,7 +168,7 @@ export default function DriverInvitesPanel() {
         </div>
 
         <div>
-          <h4 className="text-sm font-semibold text-foreground mb-2">Active drivers</h4>
+          <h4 className="text-sm font-semibold text-foreground mb-2">Repartidores activos</h4>
           {loadingDrivers ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin" /> Loading…</div>
           ) : drivers.length === 0 ? (

@@ -129,8 +129,8 @@ const PosLoginPage = () => {
   // ---- helpers ----
 
   const errorMessage = (status?: number) => {
-    if (status === 423) return 'Account is locked due to too many failed attempts. Please contact your manager.';
-    if (status === 429) return 'Too many login attempts. Please wait a moment and try again.';
+    if (status === 423) return 'La cuenta está bloqueada por demasiados intentos fallidos. Contactá al encargado.';
+    if (status === 429) return 'Demasiados intentos. Esperá un momento e intentá nuevamente.';
     return null;
   };
 
@@ -160,8 +160,8 @@ const PosLoginPage = () => {
 
   const validatePwForm = () => {
     const errs: PwErrors = {};
-    if (!pwForm.username.trim()) errs.username = 'Username is required';
-    if (!pwForm.password) errs.password = 'Password is required';
+    if (!pwForm.username.trim()) errs.username = 'El usuario es obligatorio';
+    if (!pwForm.password) errs.password = 'La contraseña es obligatoria';
     setPwErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -182,7 +182,7 @@ const PosLoginPage = () => {
 
       if (error) {
         const locked = errorMessage(error.status);
-        setPwErrors({ submit: locked || error.message || 'Invalid username or password.' });
+        setPwErrors({ submit: locked || error.message || 'El usuario o la contraseña no son válidos.' });
         return;
       }
 
@@ -226,8 +226,8 @@ const PosLoginPage = () => {
 
   const validatePinForm = () => {
     const errs: PinErrors = {};
-    if (!pinForm.username.trim()) errs.username = 'Username is required';
-    if (pinForm.pin.length < 4) errs.pin = 'PIN must be 4–6 digits';
+    if (!pinForm.username.trim()) errs.username = 'El usuario es obligatorio';
+    if (pinForm.pin.length < 4) errs.pin = 'El PIN debe tener entre 4 y 6 dígitos';
     setPinErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -247,7 +247,7 @@ const PosLoginPage = () => {
 
       if (error) {
         const locked = errorMessage(error.status);
-        setPinErrors({ submit: locked || error.message || 'Invalid username or PIN.' });
+        setPinErrors({ submit: locked || error.message || 'El usuario o PIN no es válido.' });
         clearPin();
         return;
       }
@@ -293,25 +293,26 @@ const PosLoginPage = () => {
               <div className="relative w-14 h-14 beepbite-gradient rounded-2xl flex items-center justify-center shadow-lg border-4 border-background">
                 <img
                   src="/icon.svg"
-                  alt="BeepBite"
+                  alt="RikoPollo"
                   className="w-8 h-8 filter brightness-0 invert"
                 />
                 <div className="absolute -top-1 -right-1 w-4 h-4 bg-destructive rounded-full animate-pulse shadow-lg" />
               </div>
             </div>
             <h1 className="text-3xl font-bold tracking-tight">
-              <span className="beepbite-gradient-text">Beep</span>
-              <span className="text-foreground">Bite</span>
+              <span className="beepbite-gradient-text">Riko</span>
+              <span className="text-foreground">Pollo</span>
             </h1>
-            <p className="text-sm text-muted-foreground font-medium">Staff Login</p>
+            <p className="text-sm text-muted-foreground font-medium">Acceso del personal</p>
           </div>
         </div>
 
         <Card className="border-2 border-border shadow-xl bg-card/95 backdrop-blur-sm">
           <CardHeader className="space-y-1 pb-3 text-center px-5 pt-5">
-            <CardTitle className="text-xl font-bold">Welcome</CardTitle>
+            <CardTitle className="text-xl font-bold">Bienvenido</CardTitle>
             <CardDescription>
-              Sign in to your POS terminal
+
+              Ingresá a la terminal del punto de venta
             </CardDescription>
           </CardHeader>
 
@@ -320,10 +321,12 @@ const PosLoginPage = () => {
               <TabsList className="w-full mb-4">
                 <TabsTrigger value="password" className="flex-1">
                   <Lock className="w-3.5 h-3.5 mr-1.5" />
-                  Password
+
+                  Contraseña
                 </TabsTrigger>
                 <TabsTrigger value="pin" className="flex-1">
                   <Hash className="w-3.5 h-3.5 mr-1.5" />
+
                   PIN
                 </TabsTrigger>
               </TabsList>
@@ -340,7 +343,8 @@ const PosLoginPage = () => {
                 <form onSubmit={handlePwSubmit} className="space-y-4">
                   <div className="space-y-1.5">
                     <Label htmlFor="pw-username" className="text-sm font-medium text-foreground">
-                      Username
+
+                      Usuario
                     </Label>
                     <div className="relative">
                       <User className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
@@ -349,7 +353,7 @@ const PosLoginPage = () => {
                         name="username"
                         type="text"
                         autoComplete="username"
-                        placeholder="Enter your username"
+                        placeholder="Ingresá tu usuario"
                         value={pwForm.username}
                         onChange={handlePwChange}
                         onKeyDown={(e) => {
@@ -369,7 +373,8 @@ const PosLoginPage = () => {
 
                   <div className="space-y-1.5">
                     <Label htmlFor="pw-password" className="text-sm font-medium text-foreground">
-                      Password
+
+                      Contraseña
                     </Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
@@ -379,7 +384,7 @@ const PosLoginPage = () => {
                         type="password"
                         ref={passwordRef}
                         autoComplete="current-password"
-                        placeholder="Enter your password"
+                        placeholder="Ingresá tu contraseña"
                         value={pwForm.password}
                         onChange={handlePwChange}
                         disabled={pwLoading}
@@ -399,10 +404,11 @@ const PosLoginPage = () => {
                     {pwLoading ? (
                       <span className="flex items-center gap-2">
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        Signing in...
+
+                        Ingresando…
                       </span>
                     ) : (
-                      'Sign In'
+                      'Ingresar'
                     )}
                   </Button>
                 </form>
@@ -419,7 +425,8 @@ const PosLoginPage = () => {
 
                 <div className="space-y-1.5 mb-4">
                   <Label htmlFor="pin-username" className="text-sm font-medium text-foreground">
-                    Username
+
+                    Usuario
                   </Label>
                   <div className="relative">
                     <User className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
@@ -428,7 +435,7 @@ const PosLoginPage = () => {
                       name="pin-username"
                       type="text"
                       autoComplete="username"
-                      placeholder="Enter your username"
+                      placeholder="Ingresá tu usuario"
                       value={pinForm.username}
                       onChange={handlePinUsernameChange}
                       onKeyDown={handlePinUsernameKeyDown}
@@ -480,10 +487,11 @@ const PosLoginPage = () => {
                   {pinLoading ? (
                     <span className="flex items-center gap-2">
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      Signing in...
+
+                      Ingresando…
                     </span>
                   ) : (
-                    'Sign In with PIN'
+                    'Ingresar con PIN'
                   )}
                 </Button>
               </TabsContent>
@@ -494,7 +502,8 @@ const PosLoginPage = () => {
         {/* Owner / admin escape hatch — Supabase email/password login. */}
         <div className="text-center">
           <p className="text-xs text-muted-foreground">
-            Owner or admin?{' '}
+
+            ¿Sos propietario o administrador?{' '}
             <button
               type="button"
               onClick={() => navigate('/signin?next=/pos/workspace')}

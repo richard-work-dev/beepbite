@@ -330,7 +330,7 @@ function AdjustmentFlow({
       toast({
         variant: 'destructive',
         title: 'Adjustment failed',
-        description: 'Unable to reach the server. Please try again.',
+        description: 'No se pudo conectar con el servidor. Intentá nuevamente.',
       });
     } finally {
       setSubmitting(false);
@@ -367,7 +367,7 @@ function AdjustmentFlow({
           type="button"
           onClick={onClose}
           className="p-0.5 rounded text-gray-400 hover:text-gray-600 transition"
-          aria-label="Close"
+          aria-label="Cerrar"
         >
           <X className="w-3.5 h-3.5" />
         </button>

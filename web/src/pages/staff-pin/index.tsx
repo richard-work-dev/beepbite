@@ -80,7 +80,7 @@ function LoadingScreen() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 px-4">
       <Loader2 className="w-8 h-8 text-primary animate-spin" />
-      <p className="mt-3 text-sm text-muted-foreground">Loading store…</p>
+      <p className="mt-3 text-sm text-muted-foreground">Cargando el local…</p>
     </div>
   );
 }
@@ -247,9 +247,9 @@ const StaffPinPage = () => {
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 px-4 py-8">
         <div className="w-full max-w-sm mx-auto text-center space-y-4">
           <AlertCircle className="w-10 h-10 text-destructive/70 mx-auto" />
-          <h1 className="text-xl font-bold text-foreground">Something went wrong</h1>
+          <h1 className="text-xl font-bold text-foreground">Ocurrió un problema</h1>
           <p className="text-sm text-muted-foreground">
-            We couldn&apos;t reach the server. Check your connection and refresh the page.
+            No pudimos conectarnos con el servidor. Revisá tu conexión y actualizá la página.
           </p>
           <Button
             type="button"
@@ -257,7 +257,7 @@ const StaffPinPage = () => {
             onClick={() => window.location.reload()}
             className="text-sm font-semibold text-primary hover:text-primary/80 h-auto p-0"
           >
-            Retry
+            Reintentar
           </Button>
         </div>
       </div>
@@ -292,12 +292,12 @@ const StaffPinPage = () => {
           <p className="text-sm font-semibold text-foreground/80 truncate px-2">
             {store?.display_name}
           </p>
-          <p className="text-xs text-muted-foreground">Staff PIN Login</p>
+          <p className="text-xs text-muted-foreground">Acceso del personal con PIN</p>
         </div>
 
         <Card className="border border-border shadow-xl bg-card/95 backdrop-blur-sm">
           <CardHeader className="space-y-0.5 pb-2 text-center px-5 pt-5">
-            <CardTitle className="text-lg font-bold text-foreground">Welcome</CardTitle>
+            <CardTitle className="text-lg font-bold text-foreground">Bienvenido</CardTitle>
             <CardDescription className="text-sm text-muted-foreground">
               Enter your username and PIN
             </CardDescription>
@@ -369,13 +369,13 @@ const StaffPinPage = () => {
               onClick={() => navigate('/signin?next=/pos/workspace')}
               className="font-semibold text-primary hover:text-primary/80 h-auto p-0 text-xs"
             >
-              Sign in with email &rarr;
+              Iniciar sesión con correo &rarr;
             </Button>
           </p>
         </div>
 
         <p className="text-center text-xs text-muted-foreground">
-          &copy; {new Date().getFullYear()} BeepBite &mdash; Staff Terminal
+          &copy; {new Date().getFullYear()} BeepBite &mdash; Terminal del personal
         </p>
       </div>
     </div>

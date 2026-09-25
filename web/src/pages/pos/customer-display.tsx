@@ -158,7 +158,7 @@ export default function CustomerDisplay() {
       <header className="bg-card border-b-2 border-primary/25 text-foreground px-6 py-4 flex items-center gap-3">
         <Receipt className="h-6 w-6 text-primary" />
         <span className="text-xl font-display">
-          {state.storeName || 'Your Order'}
+          {state.storeName || 'Tu pedido'}
         </span>
       </header>
 
@@ -166,7 +166,7 @@ export default function CustomerDisplay() {
         {/* Line items — a torn-ticket dashed rule between lines, like an
             actual receipt, rather than a solid divider. */}
         <section>
-          <h2 className="text-lg font-semibold mb-3">Order Summary</h2>
+          <h2 className="text-lg font-semibold mb-3">Resumen del pedido</h2>
           <div className="divide-y divide-dashed divide-border">
             {state.items.map((item, i) => (
               <div key={i} className="flex items-center justify-between py-2">
@@ -190,13 +190,13 @@ export default function CustomerDisplay() {
           </div>
           {state.tax > 0 && (
             <div className="flex justify-between text-sm">
-              <span>Tax</span>
+              <span>Impuesto</span>
               <span className="tabular-nums">{money(state.tax)}</span>
             </div>
           )}
           {(state.selectedTip ?? 0) > 0 && (
             <div className="flex justify-between text-sm text-success">
-              <span>Tip</span>
+              <span>Propina</span>
               <span className="tabular-nums">{money(state.selectedTip ?? 0)}</span>
             </div>
           )}
@@ -223,7 +223,7 @@ export default function CustomerDisplay() {
       </main>
 
       <footer className="text-center text-xs text-muted-foreground py-4">
-        Powered by BeepBite
+        Desarrollado con BeepBite
       </footer>
     </div>
   );
@@ -237,8 +237,8 @@ function IdleScreen() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background text-muted-foreground">
       <Monitor className="h-16 w-16 opacity-20" />
-      <p className="text-2xl font-light">Welcome</p>
-      <p className="text-sm">Waiting for order…</p>
+      <p className="text-2xl font-light">Bienvenido</p>
+      <p className="text-sm">Esperando un pedido…</p>
     </div>
   );
 }
@@ -277,7 +277,7 @@ function TipSelector({ options, selected, format, onSelect }: TipSelectorProps) 
           className="h-14 text-base"
           onClick={() => onSelect(0)}
         >
-          No tip
+          Sin propina
         </Button>
       </div>
     </section>

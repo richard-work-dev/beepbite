@@ -339,7 +339,7 @@ export default function ModifierPicker({ open, onOpenChange, item, onConfirm }: 
         {/* Footer */}
         <div className="px-5 py-4 border-t border-gray-100 shrink-0 flex gap-3">
           <Button variant="outline" className="flex-1 h-11" onClick={() => onOpenChange(false)}>
-            Cancel
+            Cancelar
           </Button>
           <Button
             className={cn(
@@ -349,7 +349,7 @@ export default function ModifierPicker({ open, onOpenChange, item, onConfirm }: 
             disabled={!isValid || loading}
             onClick={handleConfirm}
           >
-            Add to ticket — {format(linePriceCents)}
+            Agregar al pedido — {format(linePriceCents)}
           </Button>
         </div>
       </DialogContent>

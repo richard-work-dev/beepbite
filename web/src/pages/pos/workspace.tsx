@@ -736,7 +736,7 @@ export default function PosWorkspacePage() {
       setActiveTicketId(newTicket.id);
       // mark the table as occupied locally
       setTables((prev) => prev.map((t) => t.id === ticketId ? { ...t, status: 'occupied' as const } : t));
-      toast({ title: `Opened ${table?.label ? `Table ${table.label}` : 'table'}` });
+      toast({ title: `Se abrió ${table?.label ? `la mesa ${table.label}` : 'la mesa'}` });
     } catch (err) {
       console.error('Open session failed:', err);
       toast({
@@ -908,8 +908,8 @@ export default function PosWorkspacePage() {
         sentOrders: [...t.sentOrders, sentOrder],
       }));
       toast({
-        title: `Order #${sentOrder.order_number} sent to kitchen ✓`,
-        description: `${sentItems.length} item${sentItems.length === 1 ? '' : 's'} fired`,
+        title: `Pedido n.º ${sentOrder.order_number} enviado a cocina ✓`,
+        description: `${sentItems.length} ${sentItems.length === 1 ? 'producto enviado' : 'productos enviados'}`,
       });
     } catch (err) {
       console.error('Send failed:', err);
@@ -956,7 +956,7 @@ export default function PosWorkspacePage() {
       const sessionClosed = (results as Array<{ session_closed?: boolean }>).some((r) => r.session_closed);
       toast({
         title: 'Pago recibido ✓',
-        description: sessionClosed ? 'Table closed.' : 'Order marked paid.',
+        description: sessionClosed ? 'Mesa cerrada.' : 'Pedido marcado como pagado.',
       });
       // Close tender modal first, then open receipt after a brief delay so the
       // two dialogs don't stack on top of each other.
@@ -1040,7 +1040,7 @@ export default function PosWorkspacePage() {
         });
         setActiveTicketId(newTicket.id);
         setTables((prev) => prev.map((t) => t.id === table.id ? { ...t, status: 'occupied' as const } : t));
-        toast({ title: `Assigned to Table ${table.label}` });
+        toast({ title: `Asignado a la mesa ${table.label}` });
       } else if (activeTicket.kind === 'table') {
         if (table.id === activeTicket.tableId) {
           toast({ title: 'Already on this table' });
@@ -1068,7 +1068,7 @@ export default function PosWorkspacePage() {
         setActiveTicketId(newTicket.id);
         // refresh tables: old one frees up, new one occupies
         void refreshTables();
-        toast({ title: `Moved to Table ${table.label}` });
+        toast({ title: `Movido a la mesa ${table.label}` });
       }
       setShowTablePicker(false);
     } catch (err) {

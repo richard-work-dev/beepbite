@@ -64,13 +64,13 @@ export default function StampCard({ customerId, onReward, className }: StampCard
     try {
       const { data, error: err } = await getCustomerStamps(customerId);
       if (err) {
-        setError(err.message ?? 'Failed to load stamps');
+        setError(err.message ?? 'No se pudieron cargar los sellos');
       } else {
         setStamps(data);
       }
     } catch (err) {
       console.error('Error loading stamp card:', err);
-      setError('Failed to load stamps');
+      setError('No se pudieron cargar los sellos');
     } finally {
       setLoading(false);
     }
@@ -93,7 +93,7 @@ export default function StampCard({ customerId, onReward, className }: StampCard
     const { data, error: err } = await accrueStamp(customerId, 1);
     setAccruing(false);
     if (err) {
-      setError(err.message ?? 'Failed to add stamp');
+      setError(err.message ?? 'No se pudo agregar el sello');
       return;
     }
     setStamps(data);
@@ -111,7 +111,7 @@ export default function StampCard({ customerId, onReward, className }: StampCard
     return (
       <div className={cn('flex items-center gap-2 py-4 text-muted-foreground', className)}>
         <Loader2 className="h-4 w-4 animate-spin" />
-        <span className="text-sm">Loading stamps…</span>
+        <span className="text-sm">Cargando sellos…</span>
       </div>
     );
   }
@@ -121,7 +121,7 @@ export default function StampCard({ customerId, onReward, className }: StampCard
       <div className={cn('space-y-2', className)}>
         <p className="text-sm text-destructive">{error}</p>
         <Button size="sm" variant="outline" onClick={load} className="gap-1">
-          <RefreshCw className="h-3 w-3" /> Retry
+          <RefreshCw className="h-3 w-3" /> Reintentar
         </Button>
       </div>
     );
@@ -202,7 +202,7 @@ export default function StampCard({ customerId, onReward, className }: StampCard
       >
         {accruing
           ? <><Loader2 className="h-4 w-4 animate-spin" />Adding stamp…</>
-          : <><Stamp className="h-4 w-4" />Add stamp</>}
+          : <><Stamp className="h-4 w-4" />Agregar sello</>}
       </Button>
     </div>
   );

@@ -140,7 +140,7 @@ const ForgotPasswordPage = () => {
                   onClick={() => navigate('/signin')}
                   disabled={isLoading}
                 >
-                  Sign in
+                  Iniciar sesión
                 </button>
               </p>
             </div>

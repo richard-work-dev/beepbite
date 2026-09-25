@@ -132,7 +132,7 @@ function TicketHeader({ ticket, onAdjustGuests }: TicketHeaderProps) {
         </div>
         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 text-xs font-semibold shrink-0">
           <Receipt className="w-3 h-3" />
-          Counter
+          Mostrador
         </span>
       </div>
     );
@@ -143,19 +143,19 @@ function TicketHeader({ ticket, onAdjustGuests }: TicketHeaderProps) {
     <div className="px-4 py-3 border-b border-border bg-card flex items-center justify-between gap-2">
       <div className="min-w-0">
         <p className="text-[10px] uppercase tracking-widest text-primary font-bold mb-0.5">
-          {ticket.section_name ? `${ticket.section_name} · ` : ''}Table
+          {ticket.section_name ? `${ticket.section_name} · ` : ''}Mesa
         </p>
-        <p className="text-base font-bold text-gray-900 dark:text-white">Table {ticket.table_number ?? '?'}</p>
+        <p className="text-base font-bold text-gray-900 dark:text-white">Mesa {ticket.table_number ?? '?'}</p>
       </div>
       {onAdjustGuests && (
         <button
           type="button"
           onClick={onAdjustGuests}
-          aria-label={`Adjust guest count: ${ticket.party_size || 1} ${(ticket.party_size || 1) === 1 ? 'guest' : 'guests'}`}
+          aria-label={`Ajustar cantidad de comensales: ${ticket.party_size || 1}`}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/25 text-primary text-xs font-semibold hover:bg-primary/15 active:bg-primary/20 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
         >
           <Users className="w-3.5 h-3.5" />
-          {ticket.party_size || 1} {(ticket.party_size || 1) === 1 ? 'guest' : 'guests'}
+          {ticket.party_size || 1} {(ticket.party_size || 1) === 1 ? 'comensal' : 'comensales'}
         </button>
       )}
     </div>
@@ -225,7 +225,7 @@ function SentItemRow({ item, orderId, locationId, onAdjustSuccess }: SentItemRow
           'text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border',
           statusColor,
         )}>
-          {status === 'fired' ? 'Fired' : status === 'in_progress' ? 'Cooking' : status === 'ready' ? 'Ready' : status}
+          {status === 'fired' ? 'Enviado' : status === 'in_progress' ? 'En preparación' : status === 'ready' ? 'Listo' : status}
         </span>
         <span className="text-sm font-medium text-gray-700 dark:text-gray-300 tabular-nums shrink-0">
           {format(priceCents)}
@@ -265,7 +265,7 @@ function SentOrderGroup({ order, locationId, onAdjustSuccess }: SentOrderGroupPr
         locationId={locationId}
         onSuccess={onAdjustSuccess}
         disabled={!canVoid}
-        label={`order ${shortOrderNum(order)}`}
+        label={`pedido ${shortOrderNum(order)}`}
       >
         <div
           className={cn(
@@ -275,7 +275,7 @@ function SentOrderGroup({ order, locationId, onAdjustSuccess }: SentOrderGroupPr
         >
           <div className="flex items-center gap-1.5 text-[11px] font-bold text-green-700 dark:text-green-400">
             <CheckCircle2 className="w-3.5 h-3.5 text-green-600 dark:text-green-500" />
-            Sent · {shortOrderNum(order)}
+            Enviado · {shortOrderNum(order)}
           </div>
           {firedDisplay && (
             <span className="text-[10px] text-gray-400 dark:text-gray-500 inline-flex items-center gap-0.5">
@@ -314,9 +314,9 @@ function SentSection({ sentOrders, locationId, onAdjustSuccess }: SentSectionPro
     <div className="px-3 py-2.5 space-y-2">
       <div className="flex items-center gap-1.5 px-1 text-[10px] uppercase tracking-widest font-bold text-gray-400 dark:text-gray-500">
         <ChefHat className="w-3.5 h-3.5" />
-        Sent to kitchen
+        Enviado a cocina
         <span className="ml-1 text-gray-300 dark:text-gray-600">·</span>
-        <span>{sentOrders.length} {sentOrders.length === 1 ? 'round' : 'rounds'}</span>
+        <span>{sentOrders.length} {sentOrders.length === 1 ? 'ronda' : 'rondas'}</span>
       </div>
       <div className="space-y-2">
         {sentOrders.map((order) => (
@@ -358,7 +358,7 @@ function NewItemRow({ item, onBumpQty, onRemove, courses, onSetCourse }: NewItem
             </p>
           )}
           <p className="text-xs text-gray-400 dark:text-gray-500 tabular-nums mt-0.5">
-            {format(Math.round(parseFloat(String(item.price ?? 0)) * scale))} each
+            {format(Math.round(parseFloat(String(item.price ?? 0)) * scale))} cada uno
           </p>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
@@ -367,7 +367,7 @@ function NewItemRow({ item, onBumpQty, onRemove, courses, onSetCourse }: NewItem
             size="sm"
             variant="outline"
             onClick={() => onBumpQty(item.id, -1)}
-            aria-label={`Decrease quantity of ${item.name}`}
+            aria-label={`Disminuir cantidad de ${item.name}`}
             className="h-9 w-9 p-0 rounded-full border-primary/25 hover:bg-primary/10 hover:border-primary/50 focus-visible:ring-2 focus-visible:ring-ring transition"
           >
             <Minus className="w-4 h-4" />
@@ -377,7 +377,7 @@ function NewItemRow({ item, onBumpQty, onRemove, courses, onSetCourse }: NewItem
           <Button
             size="sm"
             onClick={() => onBumpQty(item.id, +1)}
-            aria-label={`Increase quantity of ${item.name}`}
+            aria-label={`Aumentar cantidad de ${item.name}`}
             className="h-9 w-9 p-0 rounded-full bg-primary hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring transition"
           >
             <Plus className="w-4 h-4" />
@@ -403,7 +403,7 @@ function NewItemRow({ item, onBumpQty, onRemove, courses, onSetCourse }: NewItem
             size="sm"
             variant="ghost"
             onClick={() => onRemove(item.id)}
-            aria-label={`Remove ${item.name} from order`}
+            aria-label={`Quitar ${item.name} del pedido`}
             className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full focus-visible:ring-2 focus-visible:ring-destructive transition"
           >
             <Trash2 className="w-4 h-4" />
@@ -438,7 +438,7 @@ function NewSection({ newItems, onBumpQty, onRemove, courses, onSetCourse }: New
     <div className="px-3 py-2.5">
       <div className="flex items-center gap-1.5 px-1 mb-2 text-[10px] uppercase tracking-widest font-bold text-primary">
         <Utensils className="w-3 h-3" />
-        New — not yet sent
+        Nuevo — todavía sin enviar
       </div>
       <div className="rounded-xl border border-primary/25 bg-card overflow-hidden divide-y divide-primary/15 shadow-sm">
         {newItems.map((it) => (

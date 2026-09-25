@@ -306,7 +306,7 @@ export default function SplitBySeat({
       setAppliedSplits(result);
     } catch (err) {
       console.error('Split check failed:', err);
-      setError(err instanceof Error ? err.message : 'Failed to split check');
+      setError(err instanceof Error ? err.message : 'No se pudo dividir la cuenta');
     } finally {
       setApplying(false);
     }
@@ -332,7 +332,7 @@ export default function SplitBySeat({
       setTenderingSplit(null);
     } catch (err) {
       console.error('Split tender failed:', err);
-      setTenderError(err instanceof Error ? err.message : 'Payment failed');
+      setTenderError(err instanceof Error ? err.message : 'No se pudo procesar el pago');
     } finally {
       setTenderBusy(false);
     }
@@ -353,15 +353,15 @@ export default function SplitBySeat({
           <DialogHeader className="px-6 pt-5 pb-3 border-b border-border shrink-0">
             <DialogTitle className="flex items-center gap-2 text-lg">
               <Scissors className="w-5 h-5 text-primary" />
-              Split Check by Seat
+              Dividir cuenta por asiento
               {ticket.table_number && (
                 <span className="ml-1 text-sm font-normal text-muted-foreground">
-                  — Table {ticket.table_number}
+                  — Mesa {ticket.table_number}
                 </span>
               )}
             </DialogTitle>
             <DialogDescription className="sr-only">
-              Assign order items to seats, then tender each seat total independently.
+              Asigná los productos a los asientos y cobrá cada total por separado.
             </DialogDescription>
           </DialogHeader>
 
@@ -370,14 +370,14 @@ export default function SplitBySeat({
             {!appliedSplits && (
               <>
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-foreground">Seats</h3>
+                  <h3 className="text-sm font-semibold text-foreground">Asientos</h3>
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={handleAddSeat}
                     className="h-8 px-2.5 text-xs border-primary/30 text-primary hover:bg-primary/10"
                   >
-                    <Plus className="w-3 h-3 mr-1" /> Add Seat
+                    <Plus className="w-3 h-3 mr-1" /> Agregar asiento
                   </Button>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -406,8 +406,8 @@ export default function SplitBySeat({
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b border-border bg-primary/10">
-                        <th className="text-left px-3 py-2 font-semibold text-muted-foreground w-40">Item</th>
-                        <th className="text-center px-2 py-2 font-semibold text-muted-foreground w-12">Qty</th>
+                        <th className="text-left px-3 py-2 font-semibold text-muted-foreground w-40">Producto</th>
+                        <th className="text-center px-2 py-2 font-semibold text-muted-foreground w-12">Cant.</th>
                         {seats.map((seat) => (
                           <th key={seat.id} className="text-center px-2 py-2 font-semibold text-primary min-w-[72px]">
                             <SeatHeader
@@ -417,7 +417,7 @@ export default function SplitBySeat({
                             />
                           </th>
                         ))}
-                        <th className="text-center px-2 py-2 font-semibold text-muted-foreground w-14">Left</th>
+                        <th className="text-center px-2 py-2 font-semibold text-muted-foreground w-14">Falta</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -428,7 +428,7 @@ export default function SplitBySeat({
                           <tr key={item.key} className={cn('border-b border-border last:border-0', unallocated > 0 && 'bg-destructive/5')}>
                             <td className="px-3 py-2">
                               <span className="font-medium text-foreground line-clamp-1">{item.name}</span>
-                              <span className="text-muted-foreground ml-1">({format(Math.abs(item.unitCents))}/ea)</span>
+                              <span className="text-muted-foreground ml-1">({format(Math.abs(item.unitCents))}/u.)</span>
                             </td>
                             <td className="px-2 py-2 text-center font-semibold">{item.quantity}</td>
                             {seats.map((seat) => {
@@ -446,7 +446,7 @@ export default function SplitBySeat({
                                       type="button"
                                       onClick={() => handleToggleAssign(item.key, seat.id)}
                                       aria-pressed={isAssigned}
-                                      aria-label={`${isAssigned ? 'Unassign' : 'Assign'} ${item.name} to ${seat.label}`}
+                                      aria-label={`${isAssigned ? 'Quitar' : 'Asignar'} ${item.name} ${isAssigned ? 'de' : 'a'} ${seat.label}`}
                                       className={cn(
                                         'w-11 h-11 rounded-full border-[3px] transition flex items-center justify-center mx-auto',
                                         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
@@ -468,7 +468,7 @@ export default function SplitBySeat({
                                         max={item.quantity}
                                         value={qty || ''}
                                         placeholder="0"
-                                        aria-label={`Quantity of ${item.name} for ${seat.label}`}
+                                        aria-label={`Cantidad de ${item.name} para ${seat.label}`}
                                         onChange={(e) => handleAssign(item.key, seat.id, e.target.value)}
                                         className={cn(
                                           'w-14 h-9 text-center text-sm font-bold rounded-lg border-2 tabular-nums transition-colors',
@@ -512,7 +512,7 @@ export default function SplitBySeat({
 
                 {unallocatedItems.length > 0 && (
                   <p className="text-xs text-destructive">
-                    {unallocatedItems.length} item(s) not fully assigned — allocate all quantities before splitting.
+                    Hay {unallocatedItems.length} producto(s) sin asignar por completo. Asigná todas las cantidades antes de dividir.
                   </p>
                 )}
                 {error && (
@@ -528,7 +528,7 @@ export default function SplitBySeat({
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-sm font-semibold text-success bg-success/10 rounded-lg px-3 py-2 border border-success/30">
                   <CheckCircle2 className="w-4 h-4" />
-                  Check split applied — tender each seat below.
+                  División aplicada. Cobrá cada asiento a continuación.
                 </div>
                 {appliedSplits.splits.map((split) => {
                   const seat = seats.find((s) => s.label === split.split_label);
@@ -549,7 +549,7 @@ export default function SplitBySeat({
                           {isPaid && <CheckCircle2 className="w-3.5 h-3.5 text-success" />}
                         </div>
                         <span className="text-xs text-muted-foreground">
-                          {(appliedSplits.items.filter((i) => i.check_split_id === split.id)).length} item(s)
+                          {(appliedSplits.items.filter((i) => i.check_split_id === split.id)).length} producto(s)
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
@@ -561,10 +561,10 @@ export default function SplitBySeat({
                             className="h-10 px-4"
                           >
                             <Wallet className="w-3.5 h-3.5 mr-1" />
-                            Tender
+                            Cobrar
                           </Button>
                         ) : (
-                          <span className="text-xs font-semibold text-success px-3">Paid</span>
+                          <span className="text-xs font-semibold text-success px-3">Pagado</span>
                         )}
                       </div>
                     </div>
@@ -572,14 +572,14 @@ export default function SplitBySeat({
                 })}
                 {allSplitsPaid && (
                   <div className="text-center pt-2">
-                    <p className="text-sm text-success font-semibold">All seats paid — table cleared.</p>
+                    <p className="text-sm text-success font-semibold">Todos los asientos están pagados. La mesa quedó liberada.</p>
                     <Button
                       variant="outline"
                       size="sm"
                       className="mt-2"
                       onClick={() => onOpenChange(false)}
                     >
-                      Close
+                      Cerrar
                     </Button>
                   </div>
                 )}
@@ -596,7 +596,7 @@ export default function SplitBySeat({
                 onClick={() => onOpenChange(false)}
                 className="flex-1"
               >
-                Cancel
+                Cancelar
               </Button>
               <Button
                 size="touch"
@@ -607,12 +607,12 @@ export default function SplitBySeat({
                 {applying ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                    Applying…
+                    Aplicando…
                   </>
                 ) : (
                   <>
                     <Receipt className="w-4 h-4 mr-1" />
-                    Apply Split
+                    Aplicar división
                   </>
                 )}
               </Button>

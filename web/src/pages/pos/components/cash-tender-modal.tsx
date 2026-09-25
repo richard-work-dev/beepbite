@@ -82,7 +82,7 @@ export default function CashTenderModal({
   // first. Labels are rendered, never stored — that is how 'R 200' got baked in.
   const chips = useMemo(
     () => [
-      { label: 'Exact', value: null },
+      { label: 'Exacto', value: null },
       ...quickTenderValues(currency).map((minor) => ({
         label: format(minor),
         value: minor,
@@ -140,10 +140,10 @@ export default function CashTenderModal({
         <DialogHeader className="px-6 pt-6 pb-3 border-b border-border">
           <DialogTitle className="flex items-center gap-2 text-xl">
             <Banknote className="text-primary shrink-0" size={22} />
-            Cash Payment
+            Pago en efectivo
           </DialogTitle>
           <DialogDescription className="sr-only">
-            Enter the cash amount tendered by the customer.
+            Ingresá el importe entregado por el cliente.
           </DialogDescription>
         </DialogHeader>
 
@@ -151,7 +151,7 @@ export default function CashTenderModal({
           {/* Amount due */}
           <div className="text-center rounded-xl border-2 border-primary/20 bg-primary/10 py-3">
             <p className="text-xs uppercase tracking-widest font-bold text-primary/80 mb-0.5">
-              Amount due
+              Total a cobrar
             </p>
             <p className="font-ticket text-4xl text-primary tabular-nums">
               {format(Math.abs(amountDueCents))}
@@ -161,7 +161,7 @@ export default function CashTenderModal({
           {/* Tendered input */}
           <div>
             <label className="text-xs uppercase tracking-widest text-muted-foreground block mb-1">
-              Amount tendered
+              Importe recibido
             </label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium">
@@ -211,7 +211,7 @@ export default function CashTenderModal({
               'text-xs uppercase tracking-widest font-bold mb-0.5',
               changeCents >= 0 ? 'text-success/80' : 'text-destructive/80',
             )}>
-              Change due
+              Cambio
             </p>
             <p
               className={cn(
@@ -233,7 +233,7 @@ export default function CashTenderModal({
                 key={key}
                 type="button"
                 onClick={() => handleNumpad(key)}
-                aria-label={key === '⌫' ? 'backspace' : key}
+                aria-label={key === '⌫' ? 'borrar último dígito' : key}
                 className={cn(
                   'h-14 rounded-xl text-xl font-bold border-2 border-border transition-colors select-none',
                   'bg-card hover:bg-primary/10 hover:border-primary/40 active:bg-primary/15 active:scale-95',
@@ -261,7 +261,7 @@ export default function CashTenderModal({
           <div className="px-6 pb-2">
             <div className="flex items-center gap-2 text-success text-sm font-medium">
               <CheckCircle2 size={16} />
-              Payment recorded — drawer opening…
+              Pago registrado. Abriendo la caja…
             </div>
           </div>
         )}
@@ -272,26 +272,26 @@ export default function CashTenderModal({
             size="touch"
             onClick={() => onOpenChange(false)}
             disabled={submitting}
-            aria-label="Cancel cash payment"
+            aria-label="Cancelar pago en efectivo"
             className="flex-1"
           >
-            Cancel
+            Cancelar
           </Button>
           <Button
             size="xl"
             onClick={handleConfirm}
             disabled={!canConfirm}
-            aria-label={submitting ? 'Processing payment' : 'Confirm cash payment'}
+            aria-label={submitting ? 'Procesando el pago' : 'Confirmar pago en efectivo'}
             aria-busy={submitting}
             className="flex-1 font-bold"
           >
             {submitting ? (
               <span className="flex items-center gap-1.5">
                 <Loader2 className="animate-spin" size={18} aria-hidden="true" />
-                Processing…
+                Procesando…
               </span>
             ) : (
-              'Confirm Cash Payment'
+              'Confirmar pago'
             )}
           </Button>
         </DialogFooter>

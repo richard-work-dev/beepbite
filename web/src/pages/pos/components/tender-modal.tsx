@@ -50,10 +50,10 @@ import type { TenderLeg } from '@/services/payment';
 type MethodColor = 'green' | 'blue' | 'purple' | 'amber';
 
 const METHODS: { code: string; label: string; icon: typeof Banknote; color: MethodColor }[] = [
-  { code: 'cash',          label: 'Cash',          icon: Banknote,  color: 'green' },
-  { code: 'card_in_person',label: 'Card',          icon: CreditCard, color: 'blue' },
-  { code: 'gift_card',     label: 'Gift Card',     icon: Gift,       color: 'purple' },
-  { code: 'house_account', label: 'House Account', icon: Building2,  color: 'amber' },
+  { code: 'cash',          label: 'Efectivo',          icon: Banknote,  color: 'green' },
+  { code: 'card_in_person',label: 'Tarjeta',           icon: CreditCard, color: 'blue' },
+  { code: 'gift_card',     label: 'Tarjeta de regalo', icon: Gift,       color: 'purple' },
+  { code: 'house_account', label: 'Cuenta corriente',  icon: Building2,  color: 'amber' },
 ];
 
 // A tender leg being edited in this modal: same fields as the final TenderLeg
@@ -146,7 +146,7 @@ function LegRow({ leg, onChange, onRemove, canRemove, remainingCents }: LegRowPr
       {leg.method === 'card_in_person' && (
         <Input
           className="h-9 w-28 text-xs"
-          placeholder="Terminal ref"
+          placeholder="Ref. terminal"
           maxLength={40}
           value={leg.reference}
           onChange={(e) => onChange(leg.id, 'reference', e.target.value)}
@@ -156,7 +156,7 @@ function LegRow({ leg, onChange, onRemove, canRemove, remainingCents }: LegRowPr
         <button
           type="button"
           onClick={() => onRemove(leg.id)}
-          aria-label="Remove this payment method"
+          aria-label="Quitar este método de pago"
           className="w-9 h-9 flex items-center justify-center rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive"
         >
           <Trash2 className="w-4 h-4" />
@@ -325,17 +325,17 @@ export default function TenderModal({
         <DialogHeader className="px-6 pt-6 pb-3 border-b border-border">
           <DialogTitle className="flex items-center gap-2 text-xl">
             <CreditCard className="text-primary shrink-0" size={22} />
-            Split Tender
+            Dividir pago
           </DialogTitle>
           <DialogDescription className="sr-only">
-            Split payment across multiple methods.
+            Dividí el total entre varios métodos de pago.
           </DialogDescription>
         </DialogHeader>
 
         <div className="px-6 py-4 space-y-4">
           {/* Total due */}
           <div className="text-center rounded-xl border-2 border-primary/20 bg-primary/10 py-3">
-            <p className="text-xs uppercase tracking-widest font-bold text-primary/80 mb-0.5">Total due</p>
+            <p className="text-xs uppercase tracking-widest font-bold text-primary/80 mb-0.5">Total a cobrar</p>
             <p className="font-ticket text-4xl text-primary tabular-nums">{format(Math.abs(totalCents))}</p>
           </div>
 
@@ -375,7 +375,7 @@ export default function TenderModal({
               'text-xs uppercase tracking-widest font-bold mb-0.5',
               isFullyTendered ? 'text-success/80' : 'text-destructive/80',
             )}>
-              {isFullyTendered ? 'Remaining' : 'Still needed'}
+              {isFullyTendered ? 'Restante' : 'Falta ingresar'}
             </p>
             <p
               className={cn(
@@ -387,7 +387,7 @@ export default function TenderModal({
             </p>
             {isFullyTendered && changeCents > 0 && (
               <div className="mt-2 pt-2 border-t border-success/20">
-                <p className="text-[11px] uppercase tracking-wide text-success/70 font-semibold">Cash change</p>
+                <p className="text-[11px] uppercase tracking-wide text-success/70 font-semibold">Cambio en efectivo</p>
                 <p className="font-ticket text-2xl text-success tabular-nums">{format(Math.abs(changeCents))}</p>
               </div>
             )}
@@ -406,31 +406,31 @@ export default function TenderModal({
             size="touch"
             onClick={() => onOpenChange(false)}
             disabled={submitting}
-            aria-label="Cancel payment"
+            aria-label="Cancelar pago"
             className="flex-1"
           >
-            <X className="w-4 h-4 mr-1" aria-hidden="true" /> Cancel
+            <X className="w-4 h-4 mr-1" aria-hidden="true" /> Cancelar
           </Button>
           <Button
             size="xl"
             onClick={handleConfirm}
             disabled={!canConfirm}
-            aria-label={submitting ? 'Processing payment' : isFullyTendered ? 'Confirm payment' : 'Enter full amount to confirm'}
+            aria-label={submitting ? 'Procesando el pago' : isFullyTendered ? 'Confirmar pago' : 'Ingresar el importe completo para confirmar'}
             aria-busy={submitting}
             className="flex-1 font-bold"
           >
             {submitting ? (
               <span className="flex items-center gap-1.5">
                 <Loader2 className="animate-spin" size={18} aria-hidden="true" />
-                Processing…
+                Procesando…
               </span>
             ) : isFullyTendered ? (
               <span className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-5 h-5" aria-hidden="true" />
-                Confirm Payment
+                Confirmar pago
               </span>
             ) : (
-              'Enter Full Amount'
+              'Ingresá el importe completo'
             )}
           </Button>
         </DialogFooter>

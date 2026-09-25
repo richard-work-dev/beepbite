@@ -197,7 +197,7 @@ export default function QuickReorder({
         if (!cancelled) setOrders(data);
       })
       .catch((err) => {
-        if (!cancelled) setError((err instanceof Error && err.message) || 'Failed to load recent orders');
+        if (!cancelled) setError((err instanceof Error && err.message) || 'No se pudieron cargar los pedidos recientes');
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

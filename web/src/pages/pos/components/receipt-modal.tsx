@@ -53,7 +53,7 @@ import { fetchReceipt, type Receipt } from '@/services/receipts';
 function formatDate(iso?: string | null) {
   if (!iso) return '';
   try {
-    return new Date(iso).toLocaleString(undefined, {
+    return new Date(iso).toLocaleString('es-AR', {
       year: 'numeric',
       month: 'short',
       day: '2-digit',
@@ -66,9 +66,13 @@ function formatDate(iso?: string | null) {
 }
 
 function humaniseMethod(code?: string | null) {
-  return (code || '')
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  const labels: Record<string, string> = {
+    cash: 'Efectivo',
+    card_in_person: 'Tarjeta',
+    gift_card: 'Tarjeta de regalo',
+    house_account: 'Cuenta corriente',
+  };
+  return labels[code || ''] || (code || '').replace(/_/g, ' ');
 }
 
 // ---------------------------------------------------------------------------
@@ -171,10 +175,10 @@ function ReceiptPaper({ receipt, printId }: ReceiptPaperProps) {
 
       {/* Order meta */}
       <div className="mb-2 space-y-0.5">
-        <Row label="Order #" value={receipt.order_number} bold />
-        <Row label="Date" value={formatDate(receipt.created_at)} />
+        <Row label="Pedido n.º" value={receipt.order_number} bold />
+        <Row label="Fecha" value={formatDate(receipt.created_at)} />
         {receipt.fiscal_receipt_number && (
-          <Row label="Fiscal #" value={receipt.fiscal_receipt_number} />
+          <Row label="Comprobante fiscal n.º" value={receipt.fiscal_receipt_number} />
         )}
       </div>
 
@@ -219,9 +223,9 @@ function ReceiptPaper({ receipt, printId }: ReceiptPaperProps) {
       {/* Financial summary */}
       <div className="mb-2 space-y-0.5">
         <Row label="Subtotal" value={fmt(receipt.subtotal_cents)} />
-        <Row label="Tax" value={fmt(receipt.tax_cents)} />
+        <Row label="Impuesto" value={fmt(receipt.tax_cents)} />
         {receipt.tip_cents > 0 && (
-          <Row label="Tip / Gratuity" value={fmt(receipt.tip_cents)} />
+          <Row label="Propina" value={fmt(receipt.tip_cents)} />
         )}
       </div>
 
@@ -234,7 +238,7 @@ function ReceiptPaper({ receipt, printId }: ReceiptPaperProps) {
       {/* Payments */}
       {(receipt.payments || []).length > 0 && (
         <div className="mb-2 space-y-1">
-          <p className="font-semibold text-foreground print:text-foreground mb-0.5">Payment</p>
+          <p className="font-semibold text-foreground print:text-foreground mb-0.5">Pago</p>
           {receipt.payments.map((p) => (
             <div key={p.payment_id}>
               <Row
@@ -243,11 +247,11 @@ function ReceiptPaper({ receipt, printId }: ReceiptPaperProps) {
                 indent
               />
               {p.change_given_cents > 0 && (
-                <Row label="Change" value={fmt(p.change_given_cents)} indent />
+                <Row label="Cambio" value={fmt(p.change_given_cents)} indent />
               )}
               {p.payment_reference && (
                 <div className="pl-4 text-muted-foreground print:text-foreground">
-                  Ref: {p.payment_reference}
+                  Ref.: {p.payment_reference}
                 </div>
               )}
             </div>
@@ -258,7 +262,7 @@ function ReceiptPaper({ receipt, printId }: ReceiptPaperProps) {
       {/* Footer */}
       <Divider />
       <p className="text-center text-muted-foreground print:text-foreground text-xs">
-        Thank you for your business
+        Gracias por tu compra
       </p>
     </div>
   );
@@ -314,7 +318,7 @@ export default function ReceiptModal({ orderId, open, onClose, onNewOrder }: Rec
     fetchReceipt(orderId).then(({ data, error: err }) => {
       if (cancelled) return;
       if (err) {
-        setError(err.message || 'Failed to load receipt.');
+        setError(err.message || 'No se pudo cargar el comprobante.');
       } else {
         setReceipt(data);
       }
@@ -325,7 +329,7 @@ export default function ReceiptModal({ orderId, open, onClose, onNewOrder }: Rec
       // without this, `loading` stayed true forever.
       if (!cancelled) {
         console.error('Error loading receipt:', err);
-        setError('Failed to load receipt.');
+        setError('No se pudo cargar el comprobante.');
         setLoading(false);
       }
     });
@@ -356,14 +360,14 @@ export default function ReceiptModal({ orderId, open, onClose, onNewOrder }: Rec
     setLoading(true);
     fetchReceipt(orderId || '').then(({ data, error: err }) => {
       setLoading(false);
-      if (err) setError(err.message || 'Failed to load receipt.');
+      if (err) setError(err.message || 'No se pudo cargar el comprobante.');
       else setReceipt(data);
     }).catch((err: unknown) => {
       // Same failure mode as the initial-load effect above: a
       // network-level rejection left `loading` stuck true.
       console.error('Error retrying receipt load:', err);
       setLoading(false);
-      setError('Failed to load receipt.');
+      setError('No se pudo cargar el comprobante.');
     });
   }, [orderId]);
 
@@ -384,10 +388,10 @@ export default function ReceiptModal({ orderId, open, onClose, onNewOrder }: Rec
                   not brand orange. This screen is the calm "it's done" moment,
                   not a till action, so it earns the paid/confirmed colour. */}
               <CheckCircle2 className="w-5 h-5 text-success shrink-0" />
-              Payment Complete
+              Pago completado
             </DialogTitle>
             <DialogDescription className="sr-only">
-              Receipt for the completed order.
+              Comprobante del pedido completado.
             </DialogDescription>
           </DialogHeader>
 
@@ -397,7 +401,7 @@ export default function ReceiptModal({ orderId, open, onClose, onNewOrder }: Rec
             {loading && (
               <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                <p className="text-sm">Loading receipt&hellip;</p>
+                <p className="text-sm">Cargando comprobante&hellip;</p>
               </div>
             )}
 
@@ -407,7 +411,7 @@ export default function ReceiptModal({ orderId, open, onClose, onNewOrder }: Rec
                 <ReceiptText className="w-8 h-8 opacity-60" />
                 <p className="text-sm font-medium text-center">{error}</p>
                 <Button variant="outline" size="sm" onClick={handleRetry}>
-                  Retry
+                  Reintentar
                 </Button>
               </div>
             )}
@@ -435,7 +439,7 @@ export default function ReceiptModal({ orderId, open, onClose, onNewOrder }: Rec
               className="gap-1.5"
             >
               <Printer className="w-4 h-4" />
-              Print
+              Imprimir
             </Button>
 
             {/* Email — stubbed: no dedicated send-receipt endpoint exists */}
@@ -451,11 +455,11 @@ export default function ReceiptModal({ orderId, open, onClose, onNewOrder }: Rec
                     aria-disabled="true"
                   >
                     <Mail className="w-4 h-4" />
-                    Email
+                    Correo
                   </Button>
                 </span>
               </TooltipTrigger>
-              <TooltipContent side="top">Email receipts not yet available</TooltipContent>
+              <TooltipContent side="top">El envío por correo todavía no está disponible</TooltipContent>
             </Tooltip>
 
             {/* WhatsApp — stubbed: no dedicated send-receipt endpoint exists */}
@@ -474,7 +478,7 @@ export default function ReceiptModal({ orderId, open, onClose, onNewOrder }: Rec
                   </Button>
                 </span>
               </TooltipTrigger>
-              <TooltipContent side="top">WhatsApp receipts not yet available</TooltipContent>
+              <TooltipContent side="top">El envío por WhatsApp todavía no está disponible</TooltipContent>
             </Tooltip>
 
             {/* Spacer pushes primary action to the right */}
@@ -486,7 +490,7 @@ export default function ReceiptModal({ orderId, open, onClose, onNewOrder }: Rec
                 of that (and could drift out of sync with it). */}
             <Button size="sm" onClick={handleNewOrder} className="gap-1.5">
               <RotateCcw className="w-4 h-4" />
-              {onNewOrder ? 'New Order' : 'Done'}
+              {onNewOrder ? 'Pedido nuevo' : 'Listo'}
             </Button>
           </div>
         </DialogContent>

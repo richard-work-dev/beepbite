@@ -53,21 +53,21 @@ export function CardTenderModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5 text-primary" />
-            Card Payment
+            Pago con tarjeta
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-5 py-1">
           {/* Instruction */}
           <p className="text-sm text-muted-foreground">
-            Process the payment on the card terminal, then confirm below.
+            Procesá el pago en la terminal y confirmalo a continuación.
           </p>
 
           {/* Amount due — the number a cashier reads back to the terminal /
               customer, so it gets the biggest, boldest treatment on screen. */}
           <div className="rounded-xl border-2 border-primary/25 bg-primary/10 px-4 py-4 text-center">
             <p className="text-xs font-bold uppercase tracking-widest text-primary/80">
-              Amount due
+              Total a cobrar
             </p>
             <p className="mt-1 font-ticket text-5xl text-primary tabular-nums">
               {format(amountDueCents)}
@@ -80,12 +80,12 @@ export function CardTenderModal({
               id="card-ref"
               value={reference}
               onChange={(e) => setReference(e.target.value)}
-              placeholder="Optional: terminal ref"
+              placeholder="Opcional: referencia de la terminal"
               maxLength={50}
               disabled={submitting}
             />
             <p className="text-xs text-muted-foreground">
-              Helps reconcile with the bank statement.
+              Ayuda a conciliar el pago con el resumen bancario.
             </p>
           </div>
 
@@ -120,7 +120,7 @@ export function CardTenderModal({
               {confirmed && <CheckCircle2 className="h-3.5 w-3.5" />}
             </div>
             <span className="text-sm leading-snug">
-              I confirm the card transaction was approved on the terminal
+              Confirmo que la transacción fue aprobada en la terminal
             </span>
           </label>
 
@@ -139,25 +139,25 @@ export function CardTenderModal({
             size="touch"
             onClick={() => onOpenChange(false)}
             disabled={submitting}
-            aria-label="Cancel card payment"
+            aria-label="Cancelar pago con tarjeta"
           >
-            Cancel
+            Cancelar
           </Button>
           <Button
             size="touch"
             onClick={handleConfirm}
             disabled={!confirmed || submitting}
-            aria-label={submitting ? 'Processing card payment' : 'Mark card payment as paid'}
+            aria-label={submitting ? 'Procesando el pago con tarjeta' : 'Marcar el pago con tarjeta como pagado'}
             aria-busy={submitting}
             className="font-bold"
           >
             {submitting ? (
               <span className="flex items-center gap-1.5">
                 <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
-                Processing…
+                Procesando…
               </span>
             ) : (
-              "Mark as Paid"
+              "Marcar como pagado"
             )}
           </Button>
         </DialogFooter>

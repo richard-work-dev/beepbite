@@ -287,15 +287,15 @@ export function TablePickerDialog({
           {loading ? (
             <span className="flex items-center gap-1.5 text-xs text-gray-400">
               <Loader2 className="w-3 h-3 animate-spin" />
-              Loading tables…
+              Cargando mesas…
             </span>
           ) : (
             <span className="text-xs text-gray-400">
-              {visibleTables.length} table{visibleTables.length !== 1 ? "s" : ""}
+              {visibleTables.length} {visibleTables.length === 1 ? "mesa" : "mesas"}
             </span>
           )}
           <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
-            Cancel
+            Cancelar
           </Button>
         </div>
       </DialogContent>

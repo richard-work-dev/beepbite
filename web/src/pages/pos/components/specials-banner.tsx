@@ -134,7 +134,7 @@ export function SpecialsBanner({ locationId, onSelect, currency = 'USD', classNa
       const data = await fetchSpecials(locationId);
       setSpecials(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load specials');
+      setError(err instanceof Error ? err.message : 'No se pudieron cargar las promociones');
     } finally {
       setLoading(false);
     }

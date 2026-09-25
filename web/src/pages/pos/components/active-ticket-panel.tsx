@@ -494,13 +494,13 @@ function TicketFooter({
         <div className="text-xs space-y-1 rounded-lg bg-gray-50 dark:bg-gray-800/60 px-3 py-2">
           {sentSubtotalCents > 0 && (
             <div className="flex justify-between text-gray-500 dark:text-gray-400">
-              <span>Already sent</span>
+              <span>Ya enviados</span>
               <span className="tabular-nums font-medium">{format(sentSubtotalCents)}</span>
             </div>
           )}
           {newSubtotalCents > 0 && (
             <div className="flex justify-between text-primary font-semibold">
-              <span>New items</span>
+              <span>Productos nuevos</span>
               <span className="tabular-nums">{format(newSubtotalCents)}</span>
             </div>
           )}
@@ -518,7 +518,7 @@ function TicketFooter({
         <Button
           onClick={onSend}
           disabled={!canSend}
-          aria-label={sending ? 'Sending order to kitchen' : `Send ${newItemsCount} item${newItemsCount === 1 ? '' : 's'} to kitchen`}
+          aria-label={sending ? 'Enviando el pedido a cocina' : `Enviar ${newItemsCount} producto${newItemsCount === 1 ? '' : 's'} a cocina`}
           aria-busy={sending}
           className={cn(
             'h-14 font-bold text-base shadow-sm transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
@@ -547,7 +547,7 @@ function TicketFooter({
         <Button
           onClick={onCharge}
           disabled={!canCharge}
-          aria-label="Charge customer and take payment"
+          aria-label="Cobrar al cliente y registrar el pago"
           className={cn(
             'h-14 font-bold text-base shadow-sm transition-all focus-visible:ring-2 focus-visible:ring-success focus-visible:ring-offset-1',
             canCharge
@@ -622,7 +622,7 @@ export default function ActiveTicketPanel({
 
   return (
     <aside
-      aria-label="Order ticket"
+      aria-label="Comanda del pedido"
       className={cn(
         'flex flex-col bg-muted/40 border-l-2 border-border',
         // Desktop: fixed-width sidebar; mobile: full-width drawer fixed to bottom

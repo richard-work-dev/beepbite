@@ -19,11 +19,16 @@ import {
 
 // Role options for the invite form (owner and driver excluded).
 const ROLE_OPTIONS = [
-  { value: 'manager', label: 'Manager' },
-  { value: 'staff',   label: 'Staff' },
-  { value: 'kitchen', label: 'Kitchen' },
-  { value: 'pos',     label: 'POS' },
+  { value: 'manager', label: 'Encargado' },
+  { value: 'staff',   label: 'Personal' },
+  { value: 'kitchen', label: 'Cocina' },
+  { value: 'pos',     label: 'Punto de venta' },
 ];
+
+const roleLabel = (role: string) => ({
+  owner: 'Propietario', manager: 'Encargado', staff: 'Personal',
+  kitchen: 'Cocina', pos: 'Punto de venta',
+}[role] || role);
 
 interface StatusMessage {
   kind: 'ok' | 'err';
@@ -91,12 +96,12 @@ export default function MemberInvitesPanel() {
       await inviteMember(emailVal, role);
       setMsg({
         kind: 'ok',
-        text: `Invite sent to ${emailVal} as ${role}. They get access when they sign up with this email.`,
+        text: `Invitación enviada a ${emailVal} con el rol ${roleLabel(role)}. Tendrá acceso cuando se registre con este correo.`,
       });
       setEmail('');
       await load();
     } catch (err) {
-      setMsg({ kind: 'err', text: err instanceof Error ? err.message : 'Failed to invite member' });
+      setMsg({ kind: 'err', text: err instanceof Error ? err.message : 'No se pudo invitar al miembro' });
     } finally {
       setSubmitting(false);
     }
@@ -107,20 +112,20 @@ export default function MemberInvitesPanel() {
       await revokeMemberInvite(id);
       await load();
     } catch (err) {
-      setMsg({ kind: 'err', text: err instanceof Error ? err.message : 'Failed to revoke invite' });
+      setMsg({ kind: 'err', text: err instanceof Error ? err.message : 'No se pudo revocar la invitación' });
     }
   };
 
   const handleRemoveMember = async (member: Member) => {
-    if (!window.confirm(`Remove ${member.full_name || member.email} from the team? They will lose access immediately.`)) return;
+    if (!window.confirm(`¿Querés quitar a ${member.full_name || member.email} del equipo? Perderá el acceso de inmediato.`)) return;
     setRemovingId(member.profile_id);
     setMsg(null);
     try {
       await removeMember(member.profile_id);
-      setMsg({ kind: 'ok', text: `Removed ${member.email} from the team.` });
+      setMsg({ kind: 'ok', text: `${member.email} fue quitado del equipo.` });
       await loadMembers();
     } catch (err) {
-      setMsg({ kind: 'err', text: err instanceof Error ? err.message : 'Failed to remove member' });
+      setMsg({ kind: 'err', text: err instanceof Error ? err.message : 'No se pudo quitar al miembro' });
     } finally {
       setRemovingId(null);
     }
@@ -149,12 +154,12 @@ export default function MemberInvitesPanel() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="pl-9"
-              aria-label="Member email"
+              aria-label="Correo del miembro"
             />
           </div>
           <Select value={role} onValueChange={setRole}>
             <SelectTrigger className="w-full sm:w-36 border-border focus:ring-blue-300/50 focus:border-blue-400">
-              <SelectValue placeholder="Role" />
+              <SelectValue placeholder="Rol" />
             </SelectTrigger>
             <SelectContent>
               {ROLE_OPTIONS.map((opt) => (
@@ -169,7 +174,7 @@ export default function MemberInvitesPanel() {
             disabled={submitting || !email.trim()}
             className="bg-blue-500 hover:bg-blue-600 text-white"
           >
-            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Invite'}
+            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Invitar'}
           </Button>
         </form>
 
@@ -188,7 +193,7 @@ export default function MemberInvitesPanel() {
           <h4 className="text-sm font-semibold text-foreground mb-2">Invitaciones pendientes</h4>
           {loading ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="w-4 h-4 animate-spin" /> Loading…
+              <Loader2 className="w-4 h-4 animate-spin" /> Cargando…
             </div>
           ) : invites.length === 0 ? (
             <p className="text-sm text-muted-foreground">No hay invitaciones pendientes.</p>
@@ -199,20 +204,20 @@ export default function MemberInvitesPanel() {
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{inv.email}</p>
                     <p className="text-xs text-muted-foreground">
-                      {inv.status || 'pending'}
+                      {(inv.status || 'pending') === 'pending' ? 'pendiente' : inv.status}
                       {inv.created_at ? ` · ${new Date(inv.created_at).toLocaleDateString()}` : ''}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge variant="outline" className={`text-xs ${roleBadgeClass(inv.role)}`}>
-                      {inv.role}
+                      {roleLabel(inv.role)}
                     </Badge>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => handleRevoke(inv.id)}
                       className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      aria-label={`Revoke invite for ${inv.email}`}
+                      aria-label={`Revocar invitación de ${inv.email}`}
                     >
                       <X className="w-4 h-4" />
                     </Button>
@@ -228,10 +233,10 @@ export default function MemberInvitesPanel() {
           <h4 className="text-sm font-semibold text-foreground mb-2">Miembros activos</h4>
           {loadingMembers ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="w-4 h-4 animate-spin" /> Loading…
+              <Loader2 className="w-4 h-4 animate-spin" /> Cargando…
             </div>
           ) : members.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No active members yet. Invited members appear here once they sign up.</p>
+            <p className="text-sm text-muted-foreground">Todavía no hay miembros activos. Las personas invitadas aparecerán aquí cuando se registren.</p>
           ) : (
             <ul className="divide-y divide-border rounded-lg border border-border">
               {members.map((m) => (
@@ -240,12 +245,12 @@ export default function MemberInvitesPanel() {
                     <p className="text-sm font-medium text-foreground truncate">{m.full_name || m.email}</p>
                     <p className="text-xs text-muted-foreground truncate">
                       {m.full_name ? m.email : ''}
-                      {m.joined_at ? `${m.full_name ? ' · ' : ''}since ${new Date(m.joined_at).toLocaleDateString()}` : ''}
+                      {m.joined_at ? `${m.full_name ? ' · ' : ''}desde ${new Date(m.joined_at).toLocaleDateString('es-AR')}` : ''}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge variant="outline" className={`text-xs ${roleBadgeClass(m.role)}`}>
-                      {m.role}
+                      {roleLabel(m.role)}
                     </Badge>
                     <Button
                       variant="ghost"
@@ -253,7 +258,7 @@ export default function MemberInvitesPanel() {
                       disabled={removingId === m.profile_id}
                       onClick={() => handleRemoveMember(m)}
                       className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      aria-label={`Remove ${m.email}`}
+                      aria-label={`Quitar a ${m.email}`}
                     >
                       {removingId === m.profile_id
                         ? <Loader2 className="w-4 h-4 animate-spin" />

@@ -718,7 +718,7 @@ const Categories = () => {
           eyebrow="Menú"
           title="Categorías"
           icon={LayoutGrid}
-          description={`Organize your menu items into categories for ${activeLocation?.name}`}
+          description={`Organizá los productos del menú en categorías para ${activeLocation?.name}`}
           actions={
             <Button
               onClick={() => {
@@ -908,7 +908,7 @@ const Categories = () => {
                 Editar categoría
               </DialogTitle>
               <DialogDescription className="text-sm text-muted-foreground">
-                Update category information for "{editingCategory?.name}".
+                Actualizá la información de la categoría “{editingCategory?.name}”.
               </DialogDescription>
             </DialogHeader>
           </div>

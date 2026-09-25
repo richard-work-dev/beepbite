@@ -330,7 +330,7 @@ export default function PosWorkspacePage() {
   const displayName = actorDisplayName || staffName
     || (userProfile as unknown as { first_name?: string } | null)?.first_name
     || (user as unknown as { user_metadata?: { name?: string } } | null)?.user_metadata?.name
-    || user?.email || 'User';
+    || user?.email || 'Usuario';
   // The device is authed if: (a) actor overlay set, (b) legacy staff session, or (c) member JWT.
   const isAuthed = Boolean(actor || staff || user);
   useEffect(() => { if (!isAuthed) void navigate('/pos/login', { replace: true }); }, [isAuthed, navigate]);
@@ -568,7 +568,7 @@ export default function PosWorkspacePage() {
         setItems(rows || []);
       } catch (err) {
         console.error('Menu load failed:', err);
-        if (!cancelled) toast({ variant: 'destructive', title: 'Menu failed to load', description: err instanceof Error ? err.message : 'Unknown error' });
+        if (!cancelled) toast({ variant: 'destructive', title: 'No se pudo cargar el menú', description: err instanceof Error ? err.message : 'Error desconocido' });
       } finally {
         if (!cancelled) setLoadingMenu(false);
       }
@@ -771,8 +771,8 @@ export default function PosWorkspacePage() {
       console.error('Open session failed:', err);
       toast({
         variant: 'destructive',
-        title: 'Could not open this table',
-        description: err instanceof Error ? err.message : 'Try again.',
+        title: 'No se pudo abrir esta mesa',
+        description: err instanceof Error ? err.message : 'Intentá nuevamente.',
       });
     } finally {
       setOpeningTable(false);
@@ -857,12 +857,12 @@ export default function PosWorkspacePage() {
     if (error) {
       // revert
       setItems((prev) => prev.map((it) => it.id === item.id ? { ...it, is_86ed: !next } : it));
-      toast({ variant: 'destructive', title: '86 failed', description: error.message });
+      toast({ variant: 'destructive', title: 'No se pudo cambiar la disponibilidad', description: error.message });
       return;
     }
     toast({
-      title: next ? `86'd ${item.name}` : `${item.name} is back on`,
-      description: next ? 'Removed from ordering until you restore it.' : 'Available to order again.',
+      title: next ? `${item.name} marcado como agotado` : `${item.name} vuelve a estar disponible`,
+      description: next ? 'No se podrá pedir hasta que lo restaures.' : 'Ya está disponible para pedir nuevamente.',
     });
   }, [toast]);
 
@@ -1105,8 +1105,8 @@ export default function PosWorkspacePage() {
       console.error('Assign table failed:', err);
       toast({
         variant: 'destructive',
-        title: 'Could not assign table',
-        description: err instanceof Error ? err.message : 'Try again.',
+        title: 'No se pudo asignar la mesa',
+        description: err instanceof Error ? err.message : 'Intentá nuevamente.',
       });
     } finally {
       setAssigningTable(false);
@@ -1181,7 +1181,7 @@ export default function PosWorkspacePage() {
                 {actor && (
                   <span className="ml-0.5 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-primary/10 border border-primary/25 text-primary text-[9px] font-semibold uppercase tracking-wide">
                     <UserCheck className="w-2.5 h-2.5" />
-                    {actor.role || 'Staff'}
+                    {actor.role || 'Personal'}
                   </span>
                 )}
                 {!actor && !staff && (
@@ -1235,24 +1235,24 @@ export default function PosWorkspacePage() {
                 outline rather than competing for the same accent colour. */}
             {activeTicket && isDineInMode && (
               <Button size="sm" variant="outline" onClick={handleStartEatIn}
-                aria-label={activeTicket.kind === 'walkin' ? 'Assign this ticket to a table' : 'Move to a different table'}
+                aria-label={activeTicket.kind === 'walkin' ? 'Asignar esta cuenta a una mesa' : 'Mover a otra mesa'}
                 className="border-primary/30 text-primary hover:bg-primary/10 h-9 focus-visible:ring-2 focus-visible:ring-primary">
                 <MapPin className="w-3.5 h-3.5 mr-1.5" aria-hidden="true" />
                 <span className="hidden md:inline">
-                  {activeTicket.kind === 'walkin' ? 'Assign Table' : 'Move Table'}
+                  {activeTicket.kind === 'walkin' ? 'Asignar mesa' : 'Cambiar mesa'}
                 </span>
               </Button>
             )}
             {activeTicket?.kind === 'table' && activeTicket?.sentOrders?.length > 0 && (
               <Button size="sm" variant="outline" onClick={() => setShowSplitBySeat(true)}
-                aria-label="Split check by seat"
+                aria-label="Dividir la cuenta por asiento"
                 className="border-primary/30 text-primary hover:bg-primary/10 h-9 focus-visible:ring-2 focus-visible:ring-primary">
                 <Scissors className="w-3.5 h-3.5 mr-1.5" aria-hidden="true" />
-                <span className="hidden md:inline">Split</span>
+                <span className="hidden md:inline">Dividir</span>
               </Button>
             )}
             <Button size="sm" variant="outline" onClick={() => setIsReturnOpen(true)} disabled={isStaffSession && !registerSession}
-              aria-label="Process a return"
+              aria-label="Procesar una devolución"
               className="h-9 focus-visible:ring-2 focus-visible:ring-ring">
               <RotateCcw className="w-3.5 h-3.5 mr-1.5" aria-hidden="true" />
               <span className="hidden md:inline">Devolución</span>
@@ -1273,7 +1273,7 @@ export default function PosWorkspacePage() {
               </Button>
             )}
             <Button size="sm" variant="ghost" onClick={handleSignOut}
-              aria-label="Sign out"
+              aria-label="Cerrar sesión"
               className="text-muted-foreground hover:text-foreground h-9 focus-visible:ring-2 focus-visible:ring-ring">
               <LogOut className="w-3.5 h-3.5 mr-1.5" aria-hidden="true" />
               <span className="hidden md:inline">Cerrar sesión</span>
@@ -1311,10 +1311,10 @@ export default function PosWorkspacePage() {
             <div className="relative">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
               <Input
-                placeholder="Search menu…"
+                placeholder="Buscar en el menú…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                aria-label="Search menu items"
+                aria-label="Buscar productos del menú"
                 className="pl-10 h-11 rounded-xl text-sm"
               />
             </div>
@@ -1325,7 +1325,7 @@ export default function PosWorkspacePage() {
               active category without needing to read at normal weight. */}
           <div
             role="group"
-            aria-label="Filter by category"
+            aria-label="Filtrar por categoría"
             className="px-3 py-2 border-b border-border overflow-x-auto scrollbar-none"
             style={{ scrollbarWidth: 'none' }}
           >
@@ -1341,7 +1341,7 @@ export default function PosWorkspacePage() {
                     : 'border-border text-foreground bg-card hover:bg-accent hover:border-primary/40',
                 )}
               >
-                <Filter className="w-3 h-3" /> All
+                <Filter className="w-3 h-3" /> Todos
               </button>
               {categories.map((c) => (
                 <button
@@ -1377,7 +1377,7 @@ export default function PosWorkspacePage() {
                     <button
                       type="button"
                       onClick={handleStartEatIn}
-                      aria-label="Start eat-in order — select a table"
+                      aria-label="Iniciar pedido para consumir en el local: seleccionar una mesa"
                       className="flex flex-col items-center justify-center gap-2 py-7 rounded-2xl border-2 border-primary/30 bg-card hover:bg-primary/10 hover:border-primary/50 active:bg-primary/15 transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     >
                       <Utensils className="w-10 h-10 text-primary" />
@@ -1390,7 +1390,7 @@ export default function PosWorkspacePage() {
                     <button
                       type="button"
                       onClick={handleAddWalkIn}
-                      aria-label="Start takeaway / walk-in order"
+                      aria-label="Iniciar pedido para llevar o de mostrador"
                       className="flex flex-col items-center justify-center gap-2 py-7 rounded-2xl border-2 border-border bg-card hover:bg-accent hover:border-secondary/40 active:bg-accent/70 transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <ShoppingBag className="w-10 h-10 text-secondary dark:text-foreground/80" />
@@ -1403,12 +1403,12 @@ export default function PosWorkspacePage() {
                   <button
                     type="button"
                     onClick={handleAddWalkIn}
-                    aria-label="Start a new order"
+                    aria-label="Iniciar un pedido nuevo"
                     className="w-full flex flex-col items-center justify-center gap-2 py-8 rounded-2xl border-2 border-primary/30 bg-card hover:bg-primary/10 hover:border-primary/50 active:bg-primary/15 transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
                     <ShoppingBag className="w-10 h-10 text-primary" />
-                    <span className="text-base font-bold text-foreground">New order</span>
-                    <span className="text-[11px] text-muted-foreground">Tap to start serving</span>
+                    <span className="text-base font-bold text-foreground">Pedido nuevo</span>
+                    <span className="text-[11px] text-muted-foreground">Tocá para comenzar</span>
                   </button>
                 )}
               </div>
@@ -1424,14 +1424,14 @@ export default function PosWorkspacePage() {
                 <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-3">
                   <Search className="w-7 h-7 text-muted-foreground/50" />
                 </div>
-                <p className="text-sm font-semibold text-muted-foreground">No items match</p>
+                <p className="text-sm font-semibold text-muted-foreground">No hay productos que coincidan</p>
                 {search && (
                   <button
                     type="button"
                     onClick={() => setSearch('')}
                     className="mt-2 text-xs text-primary hover:text-primary/80 underline"
                   >
-                    Clear search
+                    Limpiar búsqueda
                   </button>
                 )}
               </div>
@@ -1498,8 +1498,8 @@ export default function PosWorkspacePage() {
                         type="button"
                         onClick={() => handleToggle86(it)}
                         disabled={busy86}
-                        title={is86 ? 'Restore to menu' : '86 — mark sold out'}
-                        aria-label={is86 ? `Restore ${it.name} to the menu` : `86 ${it.name} — mark sold out`}
+                        title={is86 ? 'Restaurar en el menú' : 'Marcar como agotado'}
+                        aria-label={is86 ? `Restaurar ${it.name} en el menú` : `Marcar ${it.name} como agotado`}
                         className={cn(
                           'absolute top-1.5 right-1.5 z-10 inline-flex items-center justify-center rounded-full w-7 h-7 text-[10px] font-bold shadow-sm transition-all',
                           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1',
@@ -1531,7 +1531,7 @@ export default function PosWorkspacePage() {
           onAdjust={handleOpenAdjustment}
           onAdjustSuccess={() => {
             // Inline adjustment succeeded — refresh sent orders for the active ticket.
-            toast({ title: 'Adjustment applied' });
+            toast({ title: 'Ajuste aplicado' });
           }}
           locationId={activeLocation?.id || ''}
           sending={sending}
@@ -1548,7 +1548,7 @@ export default function PosWorkspacePage() {
         onOpened={({ session }: { session: CashDrawerSession }) => {
           setRegisterSession(session);
           setIsOpenRegisterOpen(false);
-          toast({ title: 'Register opened', description: 'You can now take orders.' });
+          toast({ title: 'Caja abierta', description: 'Ya podés tomar pedidos.' });
         }}
       />
       <ReturnModal
@@ -1566,31 +1566,31 @@ export default function PosWorkspacePage() {
       <Dialog open={showMethodPicker} onOpenChange={setShowMethodPicker}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>How is the customer paying?</DialogTitle>
+            <DialogTitle>¿Cómo pagará el cliente?</DialogTitle>
             <DialogDescription>
-              Total due: <span className="font-bold tabular-nums text-foreground">{format(activeUnpaidCents)}</span>
+              Total a cobrar: <span className="font-bold tabular-nums text-foreground">{format(activeUnpaidCents)}</span>
             </DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-3 mt-3">
             <button
               type="button"
               onClick={() => handlePickMethod('cash')}
-              aria-label="Pay with cash — numpad and change calculator"
+              aria-label="Pagar en efectivo: teclado numérico y cálculo de cambio"
               className="flex flex-col items-center justify-center gap-2 py-7 rounded-2xl border-2 border-primary/30 bg-primary/10 hover:bg-primary/15 hover:border-primary/50 active:bg-primary/20 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               <Banknote className="w-9 h-9 text-primary" />
               <span className="text-base font-bold text-foreground">Efectivo</span>
-              <span className="text-[11px] text-muted-foreground">Numpad + change calc</span>
+              <span className="text-[11px] text-muted-foreground">Teclado y cálculo de cambio</span>
             </button>
             <button
               type="button"
               onClick={() => handlePickMethod('card_in_person')}
-              aria-label="Pay with card — external terminal"
+              aria-label="Pagar con tarjeta en una terminal externa"
               className="flex flex-col items-center justify-center gap-2 py-7 rounded-2xl border-2 border-border bg-accent/40 hover:bg-accent/70 hover:border-secondary/40 active:bg-accent transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <CreditCard className="w-9 h-9 text-accent-foreground" />
               <span className="text-base font-bold text-foreground">Tarjeta</span>
-              <span className="text-[11px] text-muted-foreground">External terminal</span>
+              <span className="text-[11px] text-muted-foreground">Terminal externa</span>
             </button>
           </div>
         </DialogContent>
@@ -1668,7 +1668,7 @@ export default function PosWorkspacePage() {
           locationId={activeLocation?.id || ''}
           onSuccess={() => {
             setAdjustmentModal(null);
-            toast({ title: 'Adjustment applied' });
+            toast({ title: 'Ajuste aplicado' });
           }}
         />
       )}

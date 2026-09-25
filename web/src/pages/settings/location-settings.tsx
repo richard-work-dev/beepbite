@@ -312,19 +312,19 @@ const LocationSettings = () => {
 
       const taxRate = formData.tax_rate === '' ? 0 : Number(formData.tax_rate);
       if (!Number.isFinite(taxRate) || taxRate < 0 || taxRate > 100) {
-        throw new Error('Tax rate must be a percentage between 0 and 100');
+        throw new Error('El impuesto debe ser un porcentaje entre 0 y 100');
       }
       if (!isValidTimezone(formData.timezone)) {
-        throw new Error(`"${formData.timezone}" is not a recognised IANA timezone name`);
+        throw new Error(`“${formData.timezone}” no es una zona horaria IANA reconocida`);
       }
       if (!isValidLocale(formData.locale.trim())) {
         throw new Error(
-          `"${formData.locale.trim()}" is not a valid BCP-47 locale tag (e.g. pt-PT, ja-JP)`
+          `“${formData.locale.trim()}” no es una configuración regional BCP-47 válida (por ejemplo, es-AR)`
         );
       }
       const dialCode = formData.phone_country_code.replace(/\D/g, '');
       if (formData.phone_country_code && !/^[0-9]{1,4}$/.test(dialCode)) {
-        throw new Error('Phone country code must be 1–4 digits, without the plus');
+        throw new Error('El código telefónico del país debe tener entre 1 y 4 dígitos, sin el signo más');
       }
 
       // Update location data
@@ -415,7 +415,7 @@ const LocationSettings = () => {
           </span>
           <h2 className="font-display text-xl font-semibold text-foreground mb-2">No se encontró el local</h2>
           <p className="text-sm text-muted-foreground mb-6 max-w-sm">
-            The location you're looking for doesn't exist or you don't have access to it.
+            El local que buscás no existe o no tenés acceso.
           </p>
           <Button onClick={() => navigate('/settings/organization')} variant="outline" className="rounded-xl">
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -427,7 +427,7 @@ const LocationSettings = () => {
     );
   }
 
-  const isSuccess = saveMessage.includes('successfully');
+  const isSuccess = saveMessage === 'Configuración guardada correctamente.';
 
   return (
     <PageContainer>
@@ -441,11 +441,11 @@ const LocationSettings = () => {
             className="text-muted-foreground hover:text-primary -ml-2 rounded-lg h-8 px-2 gap-1.5"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span className="text-xs">Organization</span>
+            <span className="text-xs">Organización</span>
           </Button>
 
           <PageHeader
-            eyebrow="Location"
+            eyebrow="Local"
             title={locationData?.name || 'Configuración del local'}
             description={`Administrá la dirección, las entregas y el estado de este local.`}
             icon={MapPin}
@@ -530,7 +530,7 @@ const LocationSettings = () => {
               className="flex items-center gap-2 text-xs sm:text-sm py-2.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary"
             >
               <MapPin className="w-4 h-4" />
-              <span>Details</span>
+              <span>Datos</span>
             </TabsTrigger>
             <TabsTrigger
               value="regional"
@@ -544,7 +544,7 @@ const LocationSettings = () => {
               className="flex items-center gap-2 text-xs sm:text-sm py-2.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary"
             >
               <Truck className="w-4 h-4" />
-              <span>Delivery</span>
+              <span>Entrega</span>
             </TabsTrigger>
             <TabsTrigger
               value="status"
@@ -601,7 +601,7 @@ const LocationSettings = () => {
                         placeholder={
                           formData.phone_country_code
                             ? `+${formData.phone_country_code.replace(/\D/g, '')} …`
-                            : 'International format, e.g. +<country code> <number>'
+                            : 'Formato internacional, por ejemplo +<código de país> <número>'
                         }
                         value={formData.whatsapp_number}
                         onChange={(e) => handleInputChange('whatsapp_number', e.target.value)}
@@ -659,7 +659,7 @@ const LocationSettings = () => {
                         step="0.000001"
                         // The old placeholders were Johannesburg's coordinates.
                         // A valid range is the useful hint and belongs to no city.
-                        placeholder="Decimal degrees, −90 to 90"
+                        placeholder="Grados decimales, de −90 a 90"
                         value={formData.latitude}
                         onChange={(e) => handleInputChange('latitude', e.target.value)}
                         className="rounded-xl h-10"
@@ -675,7 +675,7 @@ const LocationSettings = () => {
                         id="longitude"
                         type="number"
                         step="0.000001"
-                        placeholder="Decimal degrees, −180 to 180"
+                        placeholder="Grados decimales, de −180 a 180"
                         value={formData.longitude}
                         onChange={(e) => handleInputChange('longitude', e.target.value)}
                         className="rounded-xl h-10"
@@ -712,9 +712,9 @@ const LocationSettings = () => {
                       <Globe className="h-4 w-4" />
                     </span>
                     <div>
-                      <CardTitle>Currency &amp; formatting</CardTitle>
+                      <CardTitle>Moneda y formato</CardTitle>
                       <CardDescription className="mt-0.5">
-                        What this location charges in, and how amounts and dates are written.
+                        Moneda del local y formato de importes y fechas.
                       </CardDescription>
                     </div>
                   </div>
@@ -742,8 +742,8 @@ const LocationSettings = () => {
                         </SelectContent>
                       </Select>
                       <p className="text-xs text-muted-foreground">
-                        Used for address and tax context. It does not by itself set the
-                        currency or timezone — those are chosen separately below.
+                        Se usa para la dirección y los impuestos. La moneda y la zona horaria
+                        se configuran por separado.
                       </p>
                     </div>
 
@@ -768,8 +768,8 @@ const LocationSettings = () => {
                         </SelectContent>
                       </Select>
                       <p className="text-xs text-muted-foreground">
-                        Every price, report and receipt for this location is denominated in
-                        this currency. Changing it does not convert existing amounts.
+                        Todos los precios, reportes y comprobantes de este local usan esta moneda.
+                        Cambiarla no convierte los importes existentes.
                       </p>
                     </div>
                   </div>
@@ -797,7 +797,7 @@ const LocationSettings = () => {
                       </Select>
                       <div className="flex items-center justify-between gap-2">
                         <p className="text-xs text-muted-foreground">
-                          Decides when this location&apos;s trading day starts and ends.
+                          Define cuándo comienza y termina la jornada comercial del local.
                         </p>
                         <Button
                           type="button"
@@ -806,7 +806,7 @@ const LocationSettings = () => {
                           className="h-6 px-2 text-xs shrink-0"
                           onClick={() => handleInputChange('timezone', detectedTimezone())}
                         >
-                          Use mine
+                          Usar la mía
                         </Button>
                       </div>
                     </div>
@@ -824,9 +824,8 @@ const LocationSettings = () => {
                         className="rounded-xl h-10"
                       />
                       <p className="text-xs text-muted-foreground">
-                        A BCP-47 tag such as <code>pt-PT</code>, <code>ja-JP</code> or{' '}
-                        <code>en-GB</code>. Controls how numbers and dates are written, not
-                        which currency they are in.
+                        Una etiqueta BCP-47 como <code>es-AR</code>, <code>pt-BR</code> o{' '}
+                        <code>en-GB</code>. Controla el formato de números y fechas, pero no la moneda.
                       </p>
                     </div>
                   </div>
@@ -834,9 +833,9 @@ const LocationSettings = () => {
                   {/* Worked example of the choices above */}
                   <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-primary/5 rounded-xl border border-primary/15">
                     <div>
-                      <p className="text-xs font-semibold text-foreground">Preview</p>
+                      <p className="text-xs font-semibold text-foreground">Vista previa</p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        How an amount will appear to staff and on receipts.
+                        Así verán el importe el personal y los clientes en los comprobantes.
                       </p>
                     </div>
                     <p className="font-display text-xl font-bold text-primary">
@@ -857,7 +856,7 @@ const LocationSettings = () => {
                     <div>
                       <CardTitle>Impuestos</CardTitle>
                       <CardDescription className="mt-0.5">
-                        The rate, the convention and what it is called on receipts.
+                        Porcentaje, modalidad y nombre que aparece en los comprobantes.
                       </CardDescription>
                     </div>
                   </div>
@@ -881,7 +880,7 @@ const LocationSettings = () => {
                         className="rounded-xl h-10"
                       />
                       <p className="text-xs text-muted-foreground">
-                        Leave at 0 where the location charges no tax at the register.
+                        Dejalo en 0 si el local no cobra impuestos en la caja.
                       </p>
                     </div>
 
@@ -892,14 +891,14 @@ const LocationSettings = () => {
                       </label>
                       <Input
                         id="tax_label"
-                        placeholder="VAT, GST, Sales Tax, IVA…"
+                        placeholder="IVA, impuesto a las ventas…"
                         value={formData.tax_label}
                         onChange={(e) => handleInputChange('tax_label', e.target.value)}
                         className="rounded-xl h-10"
                       />
                       <p className="text-xs text-muted-foreground">
-                        What the tax line is called on receipts and reports. Defaults to
-                        &ldquo;Tax&rdquo; when blank.
+                        Nombre de la línea de impuesto en comprobantes y reportes. Si queda vacío,
+                        se mostrará “Impuesto”.
                       </p>
                     </div>
                   </div>
@@ -908,11 +907,9 @@ const LocationSettings = () => {
                     <div className="pr-4">
                       <p className="text-sm font-medium text-foreground">Los precios incluyen impuestos</p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        On means menu prices already contain the tax — the VAT/GST convention
-                        used across the EU, the UK, Australia, Japan and South Africa. Off
-                        means tax is added at the register, the US and Canadian sales-tax
-                        convention. This changes what customers are charged, not just what
-                        they read.
+                        Si está activado, los precios del menú ya incluyen el impuesto. Si está
+                        desactivado, el impuesto se agrega al cobrar. Esta opción modifica el total
+                        que paga el cliente.
                       </p>
                     </div>
                     <Switch
@@ -932,7 +929,7 @@ const LocationSettings = () => {
                 <CardHeader className="pb-4">
                   <CardTitle className="text-base">Teléfonos</CardTitle>
                   <CardDescription className="mt-0.5">
-                    The dial code used to read local numbers as international ones.
+                    Código usado para interpretar números locales en formato internacional.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -946,17 +943,16 @@ const LocationSettings = () => {
                       <Input
                         id="phone_country_code"
                         inputMode="numeric"
-                        placeholder="1–4 digits"
+                        placeholder="1–4 dígitos"
                         value={formData.phone_country_code}
                         onChange={(e) => handleInputChange('phone_country_code', e.target.value)}
                         className="rounded-xl h-10"
                       />
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Digits only, without the plus. A customer who types a local number
-                      starting with 0 has it stored against this code, so the same person is
-                      not saved twice under two different numbers. Left blank, numbers must
-                      be entered in full international format.
+                      Solo dígitos, sin el signo más. Los números locales se guardarán con este
+                      código para evitar contactos duplicados. Si queda vacío, los números deben
+                      ingresarse en formato internacional completo.
                     </p>
                   </div>
                 </CardContent>
@@ -990,7 +986,7 @@ const LocationSettings = () => {
                     </span>
                     <div>
                       <CardTitle>Configuración de entregas</CardTitle>
-                      <CardDescription className="mt-0.5">Fees, thresholds, distances and prep times for this location.</CardDescription>
+                      <CardDescription className="mt-0.5">Costos, montos mínimos, distancias y tiempos de preparación de este local.</CardDescription>
                     </div>
                   </div>
                 </CardHeader>
@@ -1011,7 +1007,7 @@ const LocationSettings = () => {
                         onChange={(e) => handleInputChange('delivery_fee', e.target.value)}
                         className="rounded-xl h-10"
                       />
-                      <p className="text-xs text-muted-foreground">Standard delivery fee charged to customers</p>
+                      <p className="text-xs text-muted-foreground">Costo estándar de entrega cobrado al cliente</p>
                     </div>
 
                     <div className="space-y-1.5">
@@ -1029,7 +1025,7 @@ const LocationSettings = () => {
                         onChange={(e) => handleInputChange('free_delivery_threshold', e.target.value)}
                         className="rounded-xl h-10"
                       />
-                      <p className="text-xs text-muted-foreground">Minimum order amount for free delivery</p>
+                      <p className="text-xs text-muted-foreground">Monto mínimo del pedido para obtener entrega gratuita</p>
                     </div>
                   </div>
 
@@ -1049,7 +1045,7 @@ const LocationSettings = () => {
                         onChange={(e) => handleInputChange('max_delivery_distance_km', e.target.value)}
                         className="rounded-xl h-10"
                       />
-                      <p className="text-xs text-muted-foreground">Maximum distance for delivery orders</p>
+                      <p className="text-xs text-muted-foreground">Distancia máxima para pedidos con entrega</p>
                     </div>
 
                     <div className="space-y-1.5">
@@ -1066,7 +1062,7 @@ const LocationSettings = () => {
                         onChange={(e) => handleInputChange('estimated_prep_time', e.target.value)}
                         className="rounded-xl h-10"
                       />
-                      <p className="text-xs text-muted-foreground">Average time to prepare orders</p>
+                      <p className="text-xs text-muted-foreground">Tiempo promedio de preparación de los pedidos</p>
                     </div>
                   </div>
 
@@ -1156,7 +1152,7 @@ const LocationSettings = () => {
                       </span>
                       <div>
                         <p className="text-sm font-semibold text-foreground">Consumo en el local</p>
-                        <p className="mt-0.5 text-xs text-muted-foreground">Restaurant or café with tables. Shows the floor plan, seat selection and dine-in flow.</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">Restaurante o cafetería con mesas. Muestra el plano, la selección de asientos y el flujo de consumo en el local.</p>
                       </div>
                     </button>
 
@@ -1179,12 +1175,12 @@ const LocationSettings = () => {
                       </span>
                       <div>
                         <p className="text-sm font-semibold text-foreground">Para llevar / mostrador</p>
-                        <p className="mt-0.5 text-xs text-muted-foreground">Market stall, food truck, counter service or delivery-only. No floor plan or table selection needed.</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">Puesto, carrito, atención por mostrador o solo entrega. No requiere plano ni selección de mesas.</p>
                       </div>
                     </button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    You can change this any time. Choosing &ldquo;Takeaway&rdquo; hides the dine-in flow in the POS so it&apos;s never in the way.
+                    Podés cambiar esta opción en cualquier momento. “Para llevar” oculta el flujo de mesas en el punto de venta.
                   </p>
                 </CardContent>
               </Card>
@@ -1225,29 +1221,29 @@ const LocationSettings = () => {
                   <div className="grid grid-cols-3 gap-3 p-4 bg-primary/5 rounded-xl border border-primary/15">
                     <div className="text-center">
                       <p className={cn('text-xl font-bold font-display', formData.is_active ? 'text-primary' : 'text-muted-foreground')}>
-                        {formData.is_active ? 'On' : 'Off'}
+                        {formData.is_active ? 'Sí' : 'No'}
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">Estado</p>
                     </div>
                     <div className="text-center border-x border-primary/15">
                       <p className={cn('text-xl font-bold font-display', formData.accepts_delivery ? 'text-primary' : 'text-muted-foreground')}>
-                        {formData.accepts_delivery ? 'On' : 'Off'}
+                        {formData.accepts_delivery ? 'Sí' : 'No'}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Delivery</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Entrega</p>
                     </div>
                     <div className="text-center">
                       <p className={cn('text-xl font-bold font-display', formData.accepts_pickup ? 'text-primary' : 'text-muted-foreground')}>
-                        {formData.accepts_pickup ? 'On' : 'Off'}
+                        {formData.accepts_pickup ? 'Sí' : 'No'}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Pickup</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Retiro</p>
                     </div>
                   </div>
 
                   <div className="p-4 bg-muted/40 rounded-xl border border-border/40 space-y-1.5">
-                    <p className="text-xs font-semibold text-foreground">Tips</p>
+                    <p className="text-xs font-semibold text-foreground">Consejos</p>
                     <ul className="space-y-1 text-xs text-muted-foreground list-disc list-inside">
                       <li>Los locales inactivos no aparecen en las búsquedas de clientes</li>
-                      <li>You can disable delivery or pickup individually</li>
+                      <li>Podés desactivar la entrega o el retiro por separado</li>
                       <li>Configurá tiempos de preparación realistas</li>
                     </ul>
                   </div>

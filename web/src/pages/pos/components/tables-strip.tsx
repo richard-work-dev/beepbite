@@ -243,7 +243,7 @@ export function TablesStrip({
           <Button
             variant="outline"
             onClick={onAddWalkIn}
-            aria-label="New walk-in tab"
+            aria-label="Nueva cuenta de mostrador"
             className={cn(
               isDineInMode ? "flex-shrink-0 w-24 h-[4.5rem]" : "flex-shrink-0 h-[4.5rem] px-6",
               "rounded-xl flex flex-col items-center justify-center gap-1",
@@ -271,7 +271,7 @@ export function TablesStrip({
       )}
       <div
         role="tablist"
-        aria-label="Tables and walk-in tickets"
+        aria-label="Mesas y cuentas de mostrador"
         className="flex items-center gap-2 overflow-x-auto px-1 py-1 scrollbar-thin scrollbar-thumb-gray-200"
         style={{ scrollbarWidth: "thin" }}
       >
@@ -301,7 +301,7 @@ export function TablesStrip({
             <Button
               variant="outline"
               onClick={onAddWalkIn}
-              aria-label="New walk-in tab"
+              aria-label="Nueva cuenta de mostrador"
               className={cn(
                 "flex-shrink-0 w-24 h-[4.5rem] rounded-xl flex flex-col items-center justify-center gap-1",
                 "border-dashed border-2 border-gray-300 text-gray-500",

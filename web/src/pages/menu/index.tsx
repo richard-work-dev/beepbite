@@ -874,7 +874,7 @@ const Menu = () => {
           eyebrow="Cocina"
           title="Menú y recetas"
           icon={UtensilsCrossed}
-          description={`Manage menu items, recipes and their components for ${activeLocation?.name}`}
+          description={`Administrá los productos, las recetas y sus componentes para ${activeLocation?.name}`}
           actions={
             <Button onClick={() => { resetForm(); setIsAddModalOpen(true); }} className="gap-2">
               <Plus className="h-4 w-4" />
@@ -913,7 +913,7 @@ const Menu = () => {
         </StaggerItem>
         <StaggerItem>
           <StatCard
-            label="Active Items"
+            label="Productos activos"
             value={items.filter(i => i.is_active).length}
             icon={CheckCircle}
             hint="visibles en el menú"

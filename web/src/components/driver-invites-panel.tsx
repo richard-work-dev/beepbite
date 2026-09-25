@@ -54,15 +54,15 @@ export default function DriverInvitesPanel() {
   useEffect(() => { void load(); void loadDrivers(); }, [load, loadDrivers]);
 
   const handleRemoveDriver = async (driver: Driver) => {
-    if (!window.confirm(`Remove driver access for ${driver.email}? They will lose access to the Driver Portal.`)) return;
+    if (!window.confirm(`¿Querés quitar el acceso de repartidor a ${driver.email}? Perderá el acceso al portal de repartidores.`)) return;
     setRemovingId(driver.profile_id);
     setMsg(null);
     try {
       await removeDriver(driver.profile_id);
-      setMsg({ kind: 'ok', text: `Removed driver access for ${driver.email}.` });
+      setMsg({ kind: 'ok', text: `Se quitó el acceso de repartidor a ${driver.email}.` });
       await loadDrivers();
     } catch (err) {
-      setMsg({ kind: 'err', text: err instanceof Error ? err.message : 'Failed to remove driver' });
+      setMsg({ kind: 'err', text: err instanceof Error ? err.message : 'No se pudo quitar al repartidor' });
     } finally {
       setRemovingId(null);
     }
@@ -76,11 +76,11 @@ export default function DriverInvitesPanel() {
     setMsg(null);
     try {
       await inviteDriver(value);
-      setMsg({ kind: 'ok', text: `Invite sent to ${value}. They get driver access when they sign up with this email.` });
+      setMsg({ kind: 'ok', text: `Invitación enviada a ${value}. Tendrá acceso de repartidor cuando se registre con este correo.` });
       setEmail('');
       await load();
     } catch (err) {
-      setMsg({ kind: 'err', text: err instanceof Error ? err.message : 'Failed to invite driver' });
+      setMsg({ kind: 'err', text: err instanceof Error ? err.message : 'No se pudo invitar al repartidor' });
     } finally {
       setSubmitting(false);
     }
@@ -91,7 +91,7 @@ export default function DriverInvitesPanel() {
       await revokeDriverInvite(id);
       await load();
     } catch (err) {
-      setMsg({ kind: 'err', text: err instanceof Error ? err.message : 'Failed to revoke invite' });
+      setMsg({ kind: 'err', text: err instanceof Error ? err.message : 'No se pudo revocar la invitación' });
     }
   };
 
@@ -100,7 +100,7 @@ export default function DriverInvitesPanel() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Truck className="w-5 h-5 text-primary" />
-          Drivers
+          Repartidores
         </CardTitle>
         <CardDescription>
           Invitá a un repartidor por correo. Obtendrá acceso al portal de repartidores al registrarse con la dirección invitada.
@@ -117,7 +117,7 @@ export default function DriverInvitesPanel() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="pl-9"
-              aria-label="Driver email"
+              aria-label="Correo del repartidor"
             />
           </div>
           <Button type="submit" disabled={submitting || !email.trim()}>
@@ -135,7 +135,7 @@ export default function DriverInvitesPanel() {
         <div>
           <h4 className="text-sm font-semibold text-foreground mb-2">Invitaciones pendientes</h4>
           {loading ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin" /> Loading…</div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin" /> Cargando…</div>
           ) : invites.length === 0 ? (
             <p className="text-sm text-muted-foreground">No hay invitaciones pendientes para repartidores.</p>
           ) : (
@@ -145,18 +145,18 @@ export default function DriverInvitesPanel() {
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{inv.email}</p>
                     <p className="text-xs text-muted-foreground">
-                      {inv.status || 'pending'}
+                      {(inv.status || 'pending') === 'pending' ? 'pendiente' : inv.status}
                       {inv.created_at ? ` · ${new Date(inv.created_at).toLocaleDateString()}` : ''}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs">driver</Badge>
+                    <Badge variant="outline" className="text-xs">Repartidor</Badge>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => handleRevoke(inv.id)}
                       className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      aria-label={`Revoke invite for ${inv.email}`}
+                      aria-label={`Revocar invitación de ${inv.email}`}
                     >
                       <X className="w-4 h-4" />
                     </Button>
@@ -170,9 +170,9 @@ export default function DriverInvitesPanel() {
         <div>
           <h4 className="text-sm font-semibold text-foreground mb-2">Repartidores activos</h4>
           {loadingDrivers ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin" /> Loading…</div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin" /> Cargando…</div>
           ) : drivers.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No active drivers yet. Invited drivers appear here once they sign up.</p>
+            <p className="text-sm text-muted-foreground">Todavía no hay repartidores activos. Las personas invitadas aparecerán aquí cuando se registren.</p>
           ) : (
             <ul className="divide-y divide-border rounded-lg border border-border">
               {drivers.map((d) => (
@@ -180,8 +180,8 @@ export default function DriverInvitesPanel() {
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{d.full_name || d.email}</p>
                     <p className="text-xs text-muted-foreground truncate">
-                      {d.full_name ? d.email : 'driver'}
-                      {d.joined_at ? ` · since ${new Date(d.joined_at).toLocaleDateString()}` : ''}
+                      {d.full_name ? d.email : 'repartidor'}
+                      {d.joined_at ? ` · desde ${new Date(d.joined_at).toLocaleDateString('es-AR')}` : ''}
                     </p>
                   </div>
                   <Button
@@ -190,7 +190,7 @@ export default function DriverInvitesPanel() {
                     disabled={removingId === d.profile_id}
                     onClick={() => handleRemoveDriver(d)}
                     className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                    aria-label={`Remove driver ${d.email}`}
+                    aria-label={`Quitar al repartidor ${d.email}`}
                   >
                     {removingId === d.profile_id ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserMinus className="w-4 h-4" />}
                   </Button>

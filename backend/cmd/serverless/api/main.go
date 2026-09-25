@@ -131,6 +131,15 @@ func handler(ctx context.Context, request events.APIGatewayV2HTTPRequest) (event
 		return application.signOut(ctx, request)
 	case "GET /auth/me":
 		return application.me(ctx, request)
+	case "POST /rpc/check_invites":
+		// In the DynamoDB single-store runtime, invitations are accepted when the
+		// invited address signs up (or immediately when the user already exists).
+		// Keep the legacy authenticated RPC contract used by the web client so a
+		// normal sign-in does not generate a spurious 404.
+		if _, err := application.authenticate(ctx, request.Headers); err != nil {
+			return errorResponse(401, "invalid token"), nil
+		}
+		return mustJSONResponse(200, []any{}), nil
 	default:
 		if response, handled, marketplaceErr := application.handleMarketplaceAPI(ctx, request); handled {
 			return response, marketplaceErr

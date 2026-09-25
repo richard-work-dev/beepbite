@@ -32,6 +32,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { emojiFor } from '@/lib/item-emoji';
+import { normalizeServiceStyle } from '@/lib/service-style';
 
 import { useAuth } from '@/context/auth-context';
 import { useActor } from '@/context/actor-token-context';
@@ -163,29 +164,6 @@ interface WalkInTileData {
 }
 
 // ---------------------------------------------------------------------------
-// Service-style helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Per-location service style stored in localStorage.
- * 'dine_in'  — the business has tables and uses the floor plan.
- * 'takeaway' — counter / market stall / delivery-only; no tables needed.
- *
- * Key: bb_service_style_<locationId>
- * Default: 'dine_in' (preserve existing behaviour for locations that have
- * already set up a floor plan; takeaway-only users switch explicitly).
- */
-function getServiceStyle(locationId?: string): 'dine_in' | 'takeaway' {
-  if (!locationId) return 'dine_in';
-  try {
-    const v = localStorage.getItem(`bb_service_style_${locationId}`);
-    return v === 'takeaway' ? 'takeaway' : 'dine_in';
-  } catch {
-    return 'dine_in';
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Constants & helpers
 // ---------------------------------------------------------------------------
 
@@ -221,7 +199,7 @@ function ItemCountdownPill({ remaining }: { remaining: number | null }) {
   if (remaining === 0) {
     return (
       <span className="absolute top-1.5 left-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-destructive text-destructive-foreground leading-none">
-        Sold out
+        Agotado
       </span>
     );
   }
@@ -230,7 +208,7 @@ function ItemCountdownPill({ remaining }: { remaining: number | null }) {
   // is reserved for the actual "Sold out" case above.
   return (
     <span className="absolute top-1.5 left-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-warning text-warning-foreground leading-none tabular-nums">
-      {remaining} left
+      Quedan {remaining}
     </span>
   );
 }
@@ -405,15 +383,7 @@ export default function PosWorkspacePage() {
   // then, dine-in cannot proceed (there is nothing to seat a guest at).
   const hasFloorPlan = tables.length > 0;
 
-  // Service style: 'dine_in' or 'takeaway'. Loaded from localStorage and
-  // refreshed whenever the active location changes. Takeaway-only locations
-  // never show the Eat-in button or the NoFloorPlanCard nag.
-  const [serviceStyle, setServiceStyle] = useState(() =>
-    getServiceStyle(activeLocation?.id)
-  );
-  useEffect(() => {
-    setServiceStyle(getServiceStyle(activeLocation?.id));
-  }, [activeLocation?.id]);
+  const serviceStyle = normalizeServiceStyle(activeLocation?.service_style) ?? 'dine_in';
   const isDineInMode = serviceStyle === 'dine_in';
 
   const handleDesignFloor = useCallback(() => {
@@ -1450,7 +1420,7 @@ export default function PosWorkspacePage() {
                         type="button"
                         onClick={() => handleAddItem(it)}
                         disabled={isDisabled}
-                        aria-label={`Add ${it.name} — ${format(Math.round(parseFloat(String(it.price || 0)) * scale))}${is86 ? ' (86 — sold out)' : soldOutToday ? ' (sold out)' : ''}`}
+                        aria-label={`Agregar ${it.name} — ${format(Math.round(parseFloat(String(it.price || 0)) * scale))}${is86 || soldOutToday ? ' (agotado)' : ''}`}
                         className={cn(
                           'flex w-full flex-col rounded-2xl bg-card border-2 overflow-hidden text-left',
                           'transition-all duration-150',
@@ -1464,7 +1434,7 @@ export default function PosWorkspacePage() {
                           <span className="text-4xl sm:text-5xl group-hover:scale-110 transition-transform duration-200 select-none">{emojiFor(it)}</span>
                           {is86 ? (
                             <span className="absolute top-1.5 left-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-destructive text-destructive-foreground leading-none tracking-wide">
-                              86&apos;d
+                              Agotado
                             </span>
                           ) : (
                             <ItemCountdownPill remaining={remaining} />

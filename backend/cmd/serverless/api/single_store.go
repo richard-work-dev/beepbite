@@ -79,7 +79,7 @@ func (c singleStoreConfig) signupItems(userID, email string, createdAt time.Time
 		"id": locationID, "organization_id": orgID, "name": c.Name, "slug": "rikopollo",
 		"country": c.Country, "city": c.City, "address": c.Address, "timezone": c.TimeZone,
 		"currency_code": c.Currency, "tax_rate": c.TaxRate, "tax_inclusive": c.TaxInclusive,
-		"tax_label": "IVA", "is_active": true, "created_at": now, "updated_at": now,
+		"tax_label": "IVA", "service_style": "takeaway", "is_active": true, "created_at": now, "updated_at": now,
 	}
 	orgItem, err := jsonDataItem("ORG#"+orgID, "PROFILE", "organization", orgID, organization)
 	if err != nil {

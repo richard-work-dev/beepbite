@@ -33,6 +33,10 @@ func TestSingleStoreOwnerSignupItems(t *testing.T) {
 	if len(items) != 4 {
 		t.Fatalf("got %d bootstrap items, want 4", len(items))
 	}
+	location, ok := decodeJSONItem(items[3].Put.Item)
+	if !ok || displayString(location["service_style"]) != "takeaway" {
+		t.Fatalf("single-store location must default to takeaway: %#v", location["service_style"])
+	}
 	app := application{table: "core"}
 	if err := app.bindSingleStoreTable(items); err != nil {
 		t.Fatal(err)

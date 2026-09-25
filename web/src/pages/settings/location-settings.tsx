@@ -41,23 +41,7 @@ import {
   detectedTimezone,
   timezoneOptions,
 } from '@/lib/locale-data';
-
-// ---------------------------------------------------------------------------
-// Service-style localStorage helpers (same key as workspace.jsx)
-// ---------------------------------------------------------------------------
-function getServiceStyleLS(locId?: string): 'dine_in' | 'takeaway' {
-  if (!locId) return 'dine_in';
-  try {
-    const v = localStorage.getItem(`bb_service_style_${locId}`);
-    return v === 'takeaway' ? 'takeaway' : 'dine_in';
-  } catch {
-    return 'dine_in';
-  }
-}
-function setServiceStyleLS(locId: string, value: string) {
-  if (!locId) return;
-  try { localStorage.setItem(`bb_service_style_${locId}`, value); } catch { /* ignore */ }
-}
+import { normalizeServiceStyle, type ServiceStyle } from '@/lib/service-style';
 
 // ---------------------------------------------------------------------------
 // Regional-settings validation
@@ -117,6 +101,7 @@ interface LocationDetail {
   accepts_delivery: boolean;
   accepts_pickup: boolean;
   is_active: boolean;
+  service_style?: ServiceStyle | null;
 }
 
 interface LocationFormData {
@@ -152,8 +137,7 @@ const LocationSettings = () => {
   const [saveMessage, setSaveMessage] = useState('');
   const [activeTab, setActiveTab] = useState('details');
   const [locationData, setLocationData] = useState<LocationDetail | null>(null);
-  // Service style — stored locally per-location. Loaded on mount; persisted on save.
-  const [serviceStyle, setServiceStyle] = useState(() => getServiceStyleLS(locationId));
+  const [serviceStyle, setServiceStyle] = useState<ServiceStyle>('dine_in');
   const [formData, setFormData] = useState<LocationFormData>({
     // Location details
     name: '',
@@ -278,8 +262,7 @@ const LocationSettings = () => {
         accepts_pickup: location.accepts_pickup ?? true,
         is_active: location.is_active ?? true
       });
-      // Sync service style from localStorage
-      setServiceStyle(getServiceStyleLS(locationId));
+      setServiceStyle(normalizeServiceStyle(location.service_style) ?? 'dine_in');
     } catch (error) {
       console.error('Error loading location data:', error);
     } finally {
@@ -355,15 +338,13 @@ const LocationSettings = () => {
           estimated_prep_time: formData.estimated_prep_time ? parseInt(String(formData.estimated_prep_time)) : null,
           accepts_delivery: formData.accepts_delivery,
           accepts_pickup: formData.accepts_pickup,
+          service_style: serviceStyle,
           is_active: formData.is_active,
           updated_at: new Date().toISOString()
         })
         .eq('id', locationId);
 
       if (locationError) throw locationError;
-
-      // Persist service style to localStorage
-      setServiceStyleLS(locationId, serviceStyle);
 
       setSaveMessage('Configuración guardada correctamente.');
 

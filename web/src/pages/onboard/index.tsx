@@ -45,25 +45,10 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 import { useAuth } from '@/context/auth-context';
+import { normalizeServiceStyle, type ServiceStyle } from '@/lib/service-style';
+import { supabase } from '@/services/supabase-client';
 import { getProgress, putProgress, getStatus } from '@/services/onboarding';
 import type { OnboardingStatus } from '@/services/onboarding';
-
-// ---------------------------------------------------------------------------
-// Service-style localStorage helpers (shared key with workspace + settings)
-// ---------------------------------------------------------------------------
-type ServiceStyle = 'takeaway' | 'dine_in';
-
-function getServiceStyleForOnboard(locId: string | undefined): ServiceStyle | null {
-  if (!locId) return null;
-  try {
-    const v = localStorage.getItem(`bb_service_style_${locId}`);
-    return v === 'takeaway' || v === 'dine_in' ? v : null;
-  } catch { return null; }
-}
-function setServiceStyleForOnboard(locId: string | undefined, value: ServiceStyle) {
-  if (!locId) return;
-  try { localStorage.setItem(`bb_service_style_${locId}`, value); } catch { /* ignore */ }
-}
 
 // ---------------------------------------------------------------------------
 // Step definitions
@@ -85,10 +70,10 @@ const STEPS: Step[] = [
   {
     key: 'email',
     icon: Mail,
-    title: 'Verify your email',
+    title: 'Verificá tu correo',
     description:
-      'Confirm your email address so we can send you important notifications about your account.',
-    hint: 'Check your inbox for a verification link from BeepBite. Once verified, continue to the next step.',
+      'Confirmá tu correo para recibir avisos importantes sobre tu cuenta.',
+    hint: 'Buscá en tu bandeja de entrada el enlace de verificación de BeepBite. Después, continuá al siguiente paso.',
     actionLabel: null,
     actionPath: null,
     statusKey: null,
@@ -96,21 +81,21 @@ const STEPS: Step[] = [
   {
     key: 'location',
     icon: MapPin,
-    title: 'Create your first store',
+    title: 'Creá tu primer local',
     description:
-      'Add a location — a physical store, kitchen or service point. You need at least one to start taking orders.',
-    hint: 'Go to Settings → Locations → Add location. Fill in your store name, slug and city.',
-    actionLabel: 'Go to Settings',
+      'Agregá un local físico, una cocina o un punto de atención para comenzar a recibir pedidos.',
+    hint: 'Andá a Configuración → Locales → Agregar local. Completá el nombre, identificador y ciudad.',
+    actionLabel: 'Ir a Configuración',
     actionPath: '/settings',
     statusKey: 'has_location',
   },
   {
     key: 'service_style',
     icon: Store,
-    title: 'How do you serve customers?',
+    title: '¿Cómo atendés a tus clientes?',
     description:
-      'Tell BeepBite your service style so it shows the right features — floor plan and dine-in seating for restaurants, or a clean counter flow for market stalls and takeaway counters.',
-    hint: 'Pick the style that best describes this location. You can always change it later in Settings → Location → Status.',
+      'Elegí la modalidad del local para que BeepBite muestre sólo las funciones que necesitás.',
+    hint: 'Podés cambiarla más adelante en Configuración → Local → Estado.',
     actionLabel: null,
     actionPath: null,
     statusKey: null,
@@ -119,33 +104,33 @@ const STEPS: Step[] = [
   {
     key: 'menu',
     icon: UtensilsCrossed,
-    title: 'Add 5 menu items',
+    title: 'Agregá 5 productos al menú',
     description:
-      'Add the items you sell — food, drinks, products or services. You need at least 5 active items to start selling.',
-    hint: 'Go to Menu → Categories, create a category, then add items with names and prices.',
-    actionLabel: 'Go to Menu',
+      'Agregá comidas, bebidas, productos o servicios. Necesitás al menos 5 productos activos para comenzar a vender.',
+    hint: 'Andá a Menú → Categorías, creá una categoría y agregá productos con nombre y precio.',
+    actionLabel: 'Ir al Menú',
     actionPath: '/menu',
     statusKey: 'has_five_items',
   },
   {
     key: 'staff',
     icon: Users,
-    title: 'Invite a staff member or driver',
+    title: 'Invitá a un empleado o repartidor',
     description:
-      'Add at least one team member so they can take orders, manage the kitchen or make deliveries.',
-    hint: 'Go to Staff → Add staff member, enter their name and PIN. For drivers use the Drivers section.',
-    actionLabel: 'Go to Staff',
+      'Agregá al menos una persona para tomar pedidos, gestionar la cocina o hacer entregas.',
+    hint: 'Andá a Personal → Agregar empleado e ingresá su nombre y PIN. Para repartidores usá la sección Repartidores.',
+    actionLabel: 'Ir a Personal',
     actionPath: '/staff',
     statusKey: 'has_staff_or_driver',
   },
   {
     key: 'order',
     icon: ShoppingBag,
-    title: 'Ship a test order',
+    title: 'Completá un pedido de prueba',
     description:
-      'Open the POS, add items to a cart and complete a sale. This confirms your full setup is working.',
-    hint: 'Open the POS from the sidebar, select items, choose a payment method and complete the order.',
-    actionLabel: 'Open POS',
+      'Abrí el punto de venta, agregá productos y completá una venta para confirmar que todo funciona.',
+    hint: 'Abrí el punto de venta desde el menú lateral, elegí productos, seleccioná un método de pago y completá el pedido.',
+    actionLabel: 'Abrir punto de venta',
     actionPath: '/pos',
     statusKey: 'has_order',
   },
@@ -287,21 +272,28 @@ function StepBadge({ index, done, isCurrent }: { index: number; done: boolean; i
 
 export default function OnboardPage() {
   const navigate = useNavigate();
-  const { activeOrganization, locations } = useAuth();
+  const { activeOrganization, locations, fetchLocations } = useAuth();
 
   // Service style for the first location
-  const firstLocationId = locations?.[0]?.id;
-  const [serviceStyle, setServiceStyleState] = useState(() =>
-    getServiceStyleForOnboard(firstLocationId)
+  const firstLocation = locations?.[0];
+  const firstLocationId = firstLocation?.id;
+  const [serviceStyle, setServiceStyleState] = useState<ServiceStyle | null>(() =>
+    normalizeServiceStyle(firstLocation?.service_style)
   );
   useEffect(() => {
-    setServiceStyleState(getServiceStyleForOnboard(firstLocationId));
-  }, [firstLocationId]);
+    setServiceStyleState(normalizeServiceStyle(firstLocation?.service_style));
+  }, [firstLocation?.service_style]);
 
-  const handlePickServiceStyle = useCallback((style: ServiceStyle) => {
-    setServiceStyleForOnboard(firstLocationId, style);
+  const handlePickServiceStyle = useCallback(async (style: ServiceStyle) => {
+    if (!firstLocationId) return;
+    const { error } = await supabase.from('locations').update({ service_style: style }).eq('id', firstLocationId);
+    if (error) {
+      console.error('No se pudo guardar la modalidad de atención:', error);
+      return;
+    }
     setServiceStyleState(style);
-  }, [firstLocationId]);
+    await fetchLocations();
+  }, [fetchLocations, firstLocationId]);
 
   const serviceStyleChosen = serviceStyle === 'dine_in' || serviceStyle === 'takeaway';
 
@@ -364,7 +356,7 @@ export default function OnboardPage() {
         <BrandMark />
         <div className="flex items-center gap-2 text-muted-foreground text-sm">
           <Loader2 className="w-4 h-4 animate-spin text-primary" aria-hidden="true" />
-          Loading your setup progress…
+          Cargando el progreso de la configuración…
         </div>
       </div>
     );
@@ -393,13 +385,13 @@ export default function OnboardPage() {
                 <div className="min-w-0">
                   <h1 className="text-lg sm:text-xl font-bold leading-snug">
                     {allDone
-                      ? `${activeOrganization?.name || 'Your business'} is ready!`
-                      : `Set up ${activeOrganization?.name || 'your business'}`}
+                      ? `¡${activeOrganization?.name || 'Tu negocio'} está listo!`
+                      : `Configurá ${activeOrganization?.name || 'tu negocio'}`}
                   </h1>
                   <p className="text-primary-foreground/80 text-sm mt-0.5">
                     {allDone
-                      ? 'All steps complete. You can start taking orders.'
-                      : 'Complete each step to unlock the full BeepBite experience.'}
+                      ? 'Completaste todos los pasos. Ya podés recibir pedidos.'
+                      : 'Completá cada paso para dejar BeepBite listo para trabajar.'}
                   </p>
                 </div>
               </div>
@@ -407,9 +399,9 @@ export default function OnboardPage() {
               {/* Progress bar */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-primary-foreground/80">Setup progress</span>
+                  <span className="text-primary-foreground/80">Progreso de configuración</span>
                   <span className="font-semibold tabular-nums">
-                    {doneCount} / {totalCount} complete
+                    {doneCount} / {totalCount} completos
                   </span>
                 </div>
                 <div
@@ -418,7 +410,7 @@ export default function OnboardPage() {
                   aria-valuenow={doneCount}
                   aria-valuemin={0}
                   aria-valuemax={totalCount}
-                  aria-label={`${doneCount} of ${totalCount} steps complete`}
+                  aria-label={`${doneCount} de ${totalCount} pasos completos`}
                 >
                   <div
                     className="h-full rounded-full bg-primary-foreground transition-all duration-700 ease-out"
@@ -435,7 +427,7 @@ export default function OnboardPage() {
                   className="mt-4 w-full sm:w-auto bg-primary-foreground text-primary hover:bg-primary-foreground/90 shadow-sm focus-visible:ring-primary-foreground"
                 >
                   <ShoppingBag className="w-4 h-4" aria-hidden="true" />
-                  Open POS and start serving
+                  Abrir el punto de venta
                   <ChevronRight className="w-4 h-4" aria-hidden="true" />
                 </Button>
               )}
@@ -445,12 +437,12 @@ export default function OnboardPage() {
           {/* Resumability cue */}
           <div className="bg-primary/5 border-t border-primary/10 px-6 py-2.5 flex items-center gap-2 text-xs text-primary">
             <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" aria-hidden="true" />
-            <span>Your progress is automatically saved — you can leave and come back anytime.</span>
+            <span>Tu progreso se guarda automáticamente. Podés salir y volver cuando quieras.</span>
           </div>
         </Card>
 
         {/* ── Step list (nav overview) ──────────────────────────────────────── */}
-        <nav aria-label="Onboarding steps">
+        <nav aria-label="Pasos de configuración inicial">
           <ol className="space-y-2">
             {STEPS.map((s, idx) => {
               const done = isStepDone(s.key, idx);
@@ -465,7 +457,7 @@ export default function OnboardPage() {
                     onClick={() => handleJumpTo(idx)}
                     disabled={saving}
                     aria-current={isCurrent ? 'step' : undefined}
-                    aria-label={`Step ${idx + 1}: ${s.title}${done ? ' (complete)' : isCurrent ? ' (current)' : ''}`}
+                    aria-label={`Paso ${idx + 1}: ${s.title}${done ? ' (completo)' : isCurrent ? ' (actual)' : ''}`}
                     className={cn(
                       'h-auto w-full justify-start text-left font-normal rounded-xl border px-4 py-3 flex items-center gap-3 transition-all duration-150 group',
                       isCurrent
@@ -490,11 +482,11 @@ export default function OnboardPage() {
 
                     {/* Right-side indicator */}
                     {done && !isCurrent && (
-                      <span className="text-xs text-beepbite-success font-medium shrink-0">Done</span>
+                      <span className="text-xs text-beepbite-success font-medium shrink-0">Listo</span>
                     )}
                     {isCurrent && (
                       <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full shrink-0">
-                        Current
+                        Actual
                       </span>
                     )}
                     {!done && !isCurrent && (
@@ -525,12 +517,12 @@ export default function OnboardPage() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h2 className="font-semibold text-foreground">
-                      Step {step + 1} — {currentStepDef.title}
+                      Paso {step + 1} — {currentStepDef.title}
                     </h2>
                     {stepDone && (
                       <span className="inline-flex items-center gap-1 text-xs font-semibold text-beepbite-success bg-beepbite-success/10 px-2 py-0.5 rounded-full">
                         <CheckCircle2 className="w-3 h-3" aria-hidden="true" />
-                        Complete
+                        Completo
                       </span>
                     )}
                   </div>
@@ -543,7 +535,7 @@ export default function OnboardPage() {
               {/* Hint box — hidden for service style step (the picker replaces it) */}
               {!currentStepDef.isServiceStyleStep && (
                 <div className="rounded-lg bg-primary/5 border border-primary/10 px-4 py-3">
-                  <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-1">How to complete this step</p>
+                  <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-1">Cómo completar este paso</p>
                   <p className="text-sm text-primary/90 leading-relaxed">{currentStepDef.hint}</p>
                 </div>
               )}
@@ -556,7 +548,7 @@ export default function OnboardPage() {
                       type="button"
                       variant="outline"
                       aria-pressed={serviceStyle === 'dine_in'}
-                      onClick={() => handlePickServiceStyle('dine_in')}
+                      onClick={() => void handlePickServiceStyle('dine_in')}
                       className={cn(
                         'h-auto justify-start font-normal flex items-start gap-3 rounded-xl border-2 p-4 text-left whitespace-normal focus-visible:ring-2 focus-visible:ring-primary/60',
                         serviceStyle === 'dine_in'
@@ -571,8 +563,8 @@ export default function OnboardPage() {
                         <UtensilsCrossed className="h-4 w-4" />
                       </span>
                       <div>
-                        <p className="text-sm font-semibold text-foreground">Dine-in restaurant or café</p>
-                        <p className="mt-0.5 text-xs text-muted-foreground">I have tables. I want a floor plan and dine-in seating in the POS.</p>
+                        <p className="text-sm font-semibold text-foreground">Consumo en el local</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">Tengo mesas y quiero usar el plano del salón y los asientos en el punto de venta.</p>
                       </div>
                     </Button>
 
@@ -580,7 +572,7 @@ export default function OnboardPage() {
                       type="button"
                       variant="outline"
                       aria-pressed={serviceStyle === 'takeaway'}
-                      onClick={() => handlePickServiceStyle('takeaway')}
+                      onClick={() => void handlePickServiceStyle('takeaway')}
                       className={cn(
                         'h-auto justify-start font-normal flex items-start gap-3 rounded-xl border-2 p-4 text-left whitespace-normal focus-visible:ring-2 focus-visible:ring-primary/60',
                         serviceStyle === 'takeaway'
@@ -595,19 +587,19 @@ export default function OnboardPage() {
                         <ShoppingBag className="h-4 w-4" />
                       </span>
                       <div>
-                        <p className="text-sm font-semibold text-foreground">Takeaway, counter or market stall</p>
-                        <p className="mt-0.5 text-xs text-muted-foreground">No tables needed. Customers order at the counter. The POS goes straight to order entry.</p>
+                        <p className="text-sm font-semibold text-foreground">Para llevar o mostrador</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">No necesito mesas. Los clientes piden en el mostrador y el punto de venta abre directamente el pedido.</p>
                       </div>
                     </Button>
                   </div>
                   {serviceStyleChosen && (
                     <p className="text-xs text-beepbite-success bg-beepbite-success/10 border border-beepbite-success/20 rounded-lg px-3 py-2 flex items-center gap-2">
                       <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                      Great choice — you can change this any time in Settings → Location.
+                      Modalidad guardada. Podés cambiarla cuando quieras en Configuración → Local.
                     </p>
                   )}
                   {!serviceStyleChosen && (
-                    <p className="text-xs text-muted-foreground">Pick one to continue. This just personalises the POS — you can switch later.</p>
+                    <p className="text-xs text-muted-foreground">Elegí una opción para continuar. Podés cambiarla más adelante.</p>
                   )}
                 </div>
               )}
@@ -631,8 +623,8 @@ export default function OnboardPage() {
                   )}
                   <span className="flex-1">
                     {stepDone
-                      ? 'Verified — this step is complete based on your account data.'
-                      : 'Not yet complete — follow the instructions above, then refresh to check.'}
+                      ? 'Verificado: este paso está completo según los datos de tu cuenta.'
+                      : 'Todavía falta completar este paso. Seguí las instrucciones y luego actualizá el estado.'}
                   </span>
                   <Button
                     type="button"
@@ -641,10 +633,10 @@ export default function OnboardPage() {
                     onClick={refreshStatus}
                     disabled={statusLoading}
                     className="ml-auto h-auto gap-1 px-2 py-1 text-xs opacity-70 hover:opacity-100 hover:bg-transparent focus-visible:ring-1 focus-visible:ring-current"
-                    aria-label="Re-check status"
+                    aria-label="Volver a comprobar el estado"
                   >
                     <RefreshCw className={cn('w-3.5 h-3.5', statusLoading && 'animate-spin')} aria-hidden="true" />
-                    Refresh
+                    Actualizar
                   </Button>
                 </div>
               )}
@@ -654,10 +646,10 @@ export default function OnboardPage() {
               {!stepDone && !currentStepDef.isServiceStyleStep && (
                 <div className="rounded-lg bg-muted border border-border px-4 py-3 text-sm text-muted-foreground">
                   <p>
-                    <span className="font-medium text-foreground">Not done yet?</span>{' '}
+                    <span className="font-medium text-foreground">¿Todavía no está listo?</span>{' '}
                     {currentStepDef.actionPath
-                      ? 'Use the button below to go to the right place, complete the task, then come back and mark it done.'
-                      : 'Complete the step above then click "Mark done & continue".'}
+                      ? 'Usá el botón de abajo, completá la tarea y volvé para marcarla como lista.'
+                      : 'Completá el paso y luego seleccioná "Marcar como listo y continuar".'}
                   </p>
                 </div>
               )}
@@ -673,7 +665,7 @@ export default function OnboardPage() {
                     className="gap-1"
                   >
                     <ChevronLeft className="w-4 h-4" aria-hidden="true" />
-                    Back
+                    Atrás
                   </Button>
                 )}
 
@@ -701,7 +693,7 @@ export default function OnboardPage() {
                         <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
                       ) : (
                         <>
-                          {stepDone ? 'Continue' : currentStepDef.isServiceStyleStep ? 'Confirm & continue' : 'Mark done & continue'}
+                          {stepDone ? 'Continuar' : currentStepDef.isServiceStyleStep ? 'Confirmar y continuar' : 'Marcar como listo y continuar'}
                           <ChevronRight className="w-4 h-4" aria-hidden="true" />
                         </>
                       )}
@@ -713,7 +705,7 @@ export default function OnboardPage() {
                       className="gap-1.5 font-semibold shadow-sm"
                     >
                       <ShoppingBag className="w-4 h-4" aria-hidden="true" />
-                      Open POS
+                      Abrir punto de venta
                       <ChevronRight className="w-4 h-4" aria-hidden="true" />
                     </Button>
                   )}
@@ -726,17 +718,17 @@ export default function OnboardPage() {
         {/* ── Help footer ──────────────────────────────────────────────────── */}
         <footer className="text-center space-y-1 px-4">
           <p className="text-xs text-muted-foreground">
-            Need help?{' '}
+            ¿Necesitás ayuda?{' '}
             <a
               href="/docs/getting-started"
               className="inline-flex items-center gap-1 underline hover:text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded"
             >
               <BookOpen className="w-3 h-3" aria-hidden="true" />
-              Read the Getting Started guide
+              Leé la guía de inicio
             </a>
           </p>
           <p className="text-xs text-muted-foreground">
-            You can return to this wizard any time from your dashboard.
+            Podés volver a este asistente cuando quieras desde el panel.
           </p>
         </footer>
       </div>

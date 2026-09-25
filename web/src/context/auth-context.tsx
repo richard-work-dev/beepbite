@@ -17,6 +17,7 @@ export interface Location {
   name?: string;
   slug?: string;
   is_active?: boolean;
+  service_style?: 'dine_in' | 'takeaway' | null;
   [key: string]: unknown;
 }
 

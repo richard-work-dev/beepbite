@@ -19,9 +19,8 @@ import {
 import { useAuth, type Organization } from '@/context/auth-context';
 import { supabase } from '@/services/supabase-client';
 import { cn } from '@/lib/utils';
+import { normalizeServiceStyle, type ServiceStyle } from '@/lib/service-style';
 import AddLocationModal from './add-location-modal';
-
-type ServiceStyle = 'takeaway' | 'dine_in';
 
 interface OnboardingStep {
   key: string;
@@ -36,23 +35,6 @@ interface OnboardingStep {
   disabled?: boolean;
   disabledHint?: string | null;
   isServiceStyleStep?: boolean;
-}
-
-// ---------------------------------------------------------------------------
-// Service-style localStorage helpers
-// ---------------------------------------------------------------------------
-function getServiceStyleLS(locId: string | undefined): ServiceStyle | null {
-  if (!locId) return null; // null means "not chosen yet"
-  try {
-    const v = localStorage.getItem(`bb_service_style_${locId}`);
-    return v === 'takeaway' || v === 'dine_in' ? v : null;
-  } catch {
-    return null;
-  }
-}
-function setServiceStyleLS(locId: string | undefined, value: ServiceStyle) {
-  if (!locId) return;
-  try { localStorage.setItem(`bb_service_style_${locId}`, value); } catch { /* ignore */ }
 }
 
 // Individual step definitions — completion is computed dynamically
@@ -135,19 +117,23 @@ const OnboardingChecklist = ({ onComplete }: OnboardingChecklistProps) => {
   const locationsCount = locations?.length ?? 0;
   const firstLocation = locations?.[0];
 
-  // Service style state — loaded from localStorage for the first location.
-  const [serviceStyle, setServiceStyleState] = useState(() =>
-    getServiceStyleLS(firstLocation?.id)
+  const [serviceStyle, setServiceStyleState] = useState<ServiceStyle | null>(() =>
+    normalizeServiceStyle(firstLocation?.service_style)
   );
-  // Keep in sync if the first location id changes after the component mounts.
   useEffect(() => {
-    setServiceStyleState(getServiceStyleLS(firstLocation?.id));
-  }, [firstLocation?.id]);
+    setServiceStyleState(normalizeServiceStyle(firstLocation?.service_style));
+  }, [firstLocation?.service_style]);
 
-  const handlePickServiceStyle = useCallback((style: ServiceStyle) => {
-    setServiceStyleLS(firstLocation?.id, style);
+  const handlePickServiceStyle = useCallback(async (style: ServiceStyle) => {
+    if (!firstLocation?.id) return;
+    const { error } = await supabase.from('locations').update({ service_style: style }).eq('id', firstLocation.id);
+    if (error) {
+      console.error('No se pudo guardar la modalidad de atención:', error);
+      return;
+    }
     setServiceStyleState(style);
-  }, [firstLocation?.id]);
+    await fetchLocations();
+  }, [fetchLocations, firstLocation?.id]);
 
   const serviceStyleChosen = serviceStyle === 'dine_in' || serviceStyle === 'takeaway';
 
@@ -422,7 +408,7 @@ const OnboardingChecklist = ({ onComplete }: OnboardingChecklistProps) => {
                               <Button
                                 type="button"
                                 variant="outline"
-                                onClick={() => handlePickServiceStyle('dine_in')}
+                                onClick={() => void handlePickServiceStyle('dine_in')}
                                 aria-pressed={serviceStyle === 'dine_in'}
                                 className={cn(
                                   'h-auto flex flex-col items-center gap-1.5 rounded-xl border-2 px-3 py-3 text-center text-xs font-semibold whitespace-normal focus-visible:ring-2 focus-visible:ring-primary',
@@ -438,7 +424,7 @@ const OnboardingChecklist = ({ onComplete }: OnboardingChecklistProps) => {
                               <Button
                                 type="button"
                                 variant="outline"
-                                onClick={() => handlePickServiceStyle('takeaway')}
+                                onClick={() => void handlePickServiceStyle('takeaway')}
                                 aria-pressed={serviceStyle === 'takeaway'}
                                 className={cn(
                                   'h-auto flex flex-col items-center gap-1.5 rounded-xl border-2 px-3 py-3 text-center text-xs font-semibold whitespace-normal focus-visible:ring-2 focus-visible:ring-primary',

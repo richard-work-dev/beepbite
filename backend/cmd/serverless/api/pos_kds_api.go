@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math"
 	"net/url"
@@ -47,6 +48,8 @@ func matchCommerceRoute(method, path string) (commerceRoute, bool) {
 		return commerceRoute{name: "kds_details", params: []string{segments[2]}}, true
 	case len(segments) == 4 && segments[0] == "kds" && segments[1] == "tickets" && method == "POST" && (segments[3] == "start" || segments[3] == "ready" || segments[3] == "bump" || segments[3] == "recall" || segments[3] == "refire" || segments[3] == "rush"):
 		return commerceRoute{name: "kds_" + segments[3], params: []string{segments[2]}}, true
+	case len(segments) == 2 && segments[0] == "kds" && segments[1] == "expo" && method == "GET":
+		return commerceRoute{name: "kds_expo_list"}, true
 	case len(segments) == 4 && segments[0] == "kds" && segments[1] == "orders" && method == "GET" && segments[3] == "expo":
 		return commerceRoute{name: "kds_expo", params: []string{segments[2]}}, true
 	case len(segments) == 4 && segments[0] == "kds" && segments[1] == "orders" && method == "POST" && segments[3] == "fanout":
@@ -110,6 +113,8 @@ func (a *application) handleCommerceAPI(ctx context.Context, request events.APIG
 		response = a.transitionKDSTicket(ctx, orgID, route.params[0], strings.TrimPrefix(route.name, "kds_"))
 	case "kds_expo":
 		response = a.getKDSExpo(ctx, orgID, route.params[0])
+	case "kds_expo_list":
+		response = a.listKDSExpo(ctx, orgID)
 	case "kds_fanout":
 		response = a.fanoutKDS(ctx, orgID, route.params[0])
 	case "time_clock_in", "time_clock_out":
@@ -875,6 +880,34 @@ func (a *application) getKDSExpo(ctx context.Context, orgID, orderID string) eve
 		"customer_name": valueOr(order, "customer_name", nil), "customer_phone": valueOr(order, "customer_phone", nil), "delivery_address": valueOr(order, "delivery_address", nil), "notes": valueOr(order, "notes", nil),
 		"earliest_fired_at": earliest, "station_tickets": stationTickets, "max_priority": maxPriority, "all_ready": allReady, "any_in_progress": anyProgress,
 	})
+}
+
+// listKDSExpo is the board endpoint. It keeps Expo out of the generic data
+// API, whose table permissions are intentionally stricter than kitchen access.
+func (a *application) listKDSExpo(ctx context.Context, orgID string) events.APIGatewayV2HTTPResponse {
+	orders, err := a.queryDataRows(ctx, orgID, "orders")
+	if err != nil {
+		return dataAccessError(err)
+	}
+	open := map[string]bool{"pending": true, "confirmed": true, "preparing": true, "ready": true, "out_for_delivery": true}
+	result := make([]map[string]any, 0)
+	for _, order := range orders {
+		if !open[fmt.Sprint(order["status"])] {
+			continue
+		}
+		response := a.getKDSExpo(ctx, orgID, fmt.Sprint(order["id"]))
+		if response.StatusCode != 200 {
+			continue
+		}
+		var row map[string]any
+		if json.Unmarshal([]byte(response.Body), &row) == nil {
+			result = append(result, row)
+		}
+	}
+	sort.Slice(result, func(i, j int) bool {
+		return fmt.Sprint(result[i]["earliest_fired_at"]) < fmt.Sprint(result[j]["earliest_fired_at"])
+	})
+	return mustJSONResponse(200, result)
 }
 
 func (a *application) openCashSession(ctx context.Context, orgID, drawerID, body string) events.APIGatewayV2HTTPResponse {

@@ -9,7 +9,8 @@
 // one is still firing — the expo needs to chase the slow station.
 // Color-coded urgency header: green < 5 min, amber 5-15 min, red > 15 min.
 
-import { Bell, Clock } from 'lucide-react';
+import { Bell, Clock, Send } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { ExpoOrder } from '../types';
 
@@ -112,9 +113,11 @@ function fmtElapsed(ms: string | number | null | undefined, now: number) {
 interface ExpoOrderCardProps {
   order: ExpoOrder;
   now: number;
+  onSendToKitchen?: (order: ExpoOrder) => void;
+  sendingToKitchen?: boolean;
 }
 
-export function ExpoOrderCard({ order, now }: ExpoOrderCardProps) {
+export function ExpoOrderCard({ order, now, onSendToKitchen, sendingToKitchen = false }: ExpoOrderCardProps) {
   const stations = Array.isArray(order.station_tickets) ? order.station_tickets : [];
 
   // Urgency from earliest_fired_at (already a JS timestamp or ISO string).
@@ -207,9 +210,22 @@ export function ExpoOrderCard({ order, now }: ExpoOrderCardProps) {
       {/* ------------------------------------------------------------------ */}
       <div className="flex-1 space-y-2.5 p-4">
         {stations.length === 0 ? (
-          <p className="py-4 text-center text-sm italic text-gray-500">
-            Todavía no hay comandas de estación.
-          </p>
+          <div className="space-y-3 rounded-lg border border-amber-700/60 bg-amber-950/30 p-3 text-center">
+            <p className="text-sm font-semibold text-amber-200">Este pedido todavía no fue enviado a cocina.</p>
+            <p className="text-xs leading-relaxed text-amber-100/80">Reenviá la comanda. Si el problema continúa, configurá una estación de cocina activa para este local.</p>
+            {onSendToKitchen && (
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => onSendToKitchen(order)}
+                disabled={sendingToKitchen}
+                className="w-full gap-2 bg-orange-500 font-bold text-white hover:bg-orange-400"
+              >
+                <Send className="size-4" aria-hidden="true" />
+                {sendingToKitchen ? 'Enviando...' : 'Enviar a cocina'}
+              </Button>
+            )}
+          </div>
         ) : (
           stations.map((st) => {
             const statusMeta = (st.status && STATION_STATUS[st.status])

@@ -202,7 +202,7 @@ function useKdsStations() {
     // Same failure mode as useMembership above: a network-level rejection
     // (not just an { error } response) skipped setLoading(false), leaving
     // the KDS station list stuck loading forever.
-    (async () => {
+    const loadStations = async () => {
       try {
         const { data, error } = await api
           .from('kitchen_stations')
@@ -219,10 +219,17 @@ function useKdsStations() {
       } finally {
         if (!cancelled) setLoading(false);
       }
-    })();
+    };
 
-    return () => { cancelled = true; };
-  }, [activeLocation?.id]);
+    void loadStations();
+    // The first order can provision Cocina principal. Retry only while the
+    // station list is empty so staff do not need to leave and re-enter Cocina.
+    const retry = window.setInterval(() => {
+      if (stations.length === 0) void loadStations();
+    }, 5_000);
+
+    return () => { cancelled = true; window.clearInterval(retry); };
+  }, [activeLocation?.id, stations.length]);
 
   return { stations, loading };
 }

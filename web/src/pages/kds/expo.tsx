@@ -93,6 +93,7 @@ export default function ExpoPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sendingOrderID, setSendingOrderID] = useState<string | null>(null);
   const now = useTick();
   const mountedRef = useRef(true);
 
@@ -179,6 +180,26 @@ export default function ExpoPage() {
   useEffect(() => {
     const id = setInterval(() => { void load({ background: true }); }, POLL_MS);
     return () => clearInterval(id);
+  }, [load]);
+
+  const sendToKitchen = useCallback(async (order: ExpoOrder) => {
+    setSendingOrderID(order.order_id);
+    setError(null);
+    try {
+      const { error: fanoutError } = await api.request('POST', `/orders/${encodeURIComponent(order.order_id)}/kds/fanout`);
+      if (fanoutError) {
+        const message = fanoutError.message || 'No se pudo enviar la comanda a cocina.';
+        if (message.includes('no active kitchen station')) {
+          throw new Error('No hay una estación de cocina activa configurada para este local. Configurala y volvé a enviar la comanda.');
+        }
+        throw new Error(message);
+      }
+      await load({ background: true });
+    } catch (e) {
+      if (mountedRef.current) setError(e instanceof Error ? e.message : 'No se pudo enviar la comanda a cocina.');
+    } finally {
+      if (mountedRef.current) setSendingOrderID(null);
+    }
   }, [load]);
 
   // Derive counts for header summary
@@ -270,7 +291,13 @@ export default function ExpoPage() {
         ) : (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {orders.map((o) => (
-              <ExpoOrderCard key={o.order_id} order={o} now={now} />
+              <ExpoOrderCard
+                key={o.order_id}
+                order={o}
+                now={now}
+                onSendToKitchen={sendToKitchen}
+                sendingToKitchen={sendingOrderID === o.order_id}
+              />
             ))}
           </div>
         )}

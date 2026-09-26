@@ -602,9 +602,29 @@ func (a *application) fanoutKDS(ctx context.Context, orgID, orderID string) even
 	if err != nil {
 		return errorResponse(404, "order not found")
 	}
+	if order["held_at"] != nil {
+		return errorResponse(409, "the order is on hold and cannot be sent to kitchen")
+	}
+	stations, err := a.queryDataRows(ctx, orgID, "kitchen_stations")
+	if err != nil {
+		return dataAccessError(err)
+	}
+	hasActiveStation := false
+	for _, station := range stations {
+		if fmt.Sprint(station["location_id"]) == fmt.Sprint(order["location_id"]) && station["is_active"] != false {
+			hasActiveStation = true
+			break
+		}
+	}
+	if !hasActiveStation {
+		return errorResponse(409, "no active kitchen station is configured for this location")
+	}
 	ids, err := a.fanoutKDSRows(ctx, orgID, order)
 	if err != nil {
 		return dataAccessError(err)
+	}
+	if len(ids) == 0 {
+		return errorResponse(409, "the order could not be assigned to an active kitchen station")
 	}
 	allItems, _ := a.queryDataRows(ctx, orgID, "kds_ticket_items")
 	tickets := make([]map[string]any, 0, len(ids))

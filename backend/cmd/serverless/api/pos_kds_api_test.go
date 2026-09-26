@@ -19,6 +19,8 @@ func TestMatchCommerceRoute(t *testing.T) {
 		{method: "POST", path: "/cash-drawers/drawer-1/sessions/open", name: "cash_open", param: "drawer-1"},
 		{method: "POST", path: "/cash-drawers/sessions/session-1/close", name: "cash_close", param: "session-1"},
 		{method: "GET", path: "/kds/stations/station-1/tickets", name: "kds_station_tickets", param: "station-1"},
+		{method: "POST", path: "/kds/tickets/ticket-1/start", name: "kds_start", param: "ticket-1"},
+		{method: "POST", path: "/kds/tickets/ticket-1/ready", name: "kds_ready", param: "ticket-1"},
 		{method: "POST", path: "/kds/tickets/ticket-1/bump", name: "kds_bump", param: "ticket-1"},
 		{method: "PATCH", path: "/timeclock/entries/entry-1", name: "time_edit", param: "entry-1"},
 	}

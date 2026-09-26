@@ -14,7 +14,7 @@
 
 import { useMemo } from 'react';
 import {
-  AlertTriangle, Bell, Check, Flame, Loader2, MapPin, RotateCcw, StickyNote, Utensils,
+  AlertTriangle, Bell, Check, Flame, Loader2, MapPin, Play, RotateCcw, StickyNote, Utensils,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { RecipeSection } from './recipe-section';
@@ -53,7 +53,7 @@ const CARD_BY_BUCKET: Record<string, {
     header: 'bg-emerald-800',
     headerText: 'text-emerald-50',
     timer:  'text-emerald-200',
-    label:  'Fresh',
+    label:  'Nuevo',
     labelCls: 'bg-emerald-700 text-emerald-100',
     pulseDot: 'bg-emerald-400',
   },
@@ -63,7 +63,7 @@ const CARD_BY_BUCKET: Record<string, {
     header: 'bg-amber-700',
     headerText: 'text-amber-50',
     timer:  'text-amber-100',
-    label:  'Warming',
+    label:  'En espera',
     labelCls: 'bg-amber-600 text-amber-50',
     pulseDot: 'bg-amber-300 animate-pulse',
   },
@@ -73,7 +73,7 @@ const CARD_BY_BUCKET: Record<string, {
     header: 'bg-red-700',
     headerText: 'text-red-50',
     timer:  'text-red-100',
-    label:  'Late!',
+    label:  'Demorado',
     labelCls: 'bg-red-500 text-white animate-pulse',
     pulseDot: 'bg-red-300 animate-ping',
   },
@@ -84,17 +84,17 @@ const ITEM_STATUS_STYLES: Record<string, { dot: string; pill: string; label: str
   fired: {
     dot:   'bg-gray-500',
     pill:  'bg-gray-700 text-gray-300',
-    label: 'Fired',
+    label: 'Nuevo',
   },
   in_progress: {
     dot:   'bg-amber-400',
     pill:  'bg-amber-900/60 text-amber-300',
-    label: 'Cooking',
+    label: 'En preparación',
   },
   ready: {
     dot:   'bg-emerald-400',
     pill:  'bg-emerald-900/60 text-emerald-300',
-    label: 'Ready',
+    label: 'Listo',
   },
 };
 
@@ -103,6 +103,8 @@ interface TicketCardProps {
   details?: KdsTicketDetail | null;   // optional; from GET /kds/tickets/{id}/details
   detailsLoading?: boolean;
   now: number;
+  onStart?: (ticket: KdsTicket) => void;
+  onReady?: (ticket: KdsTicket) => void;
   onBump?: (ticket: KdsTicket) => void;
   onRecall?: (ticket: KdsTicket) => void;
   onRefire?: (ticket: KdsTicket) => void;
@@ -116,6 +118,8 @@ export function TicketCard({
   details,
   detailsLoading,
   now,
+  onStart,
+  onReady,
   onBump,
   onRecall,
   onRefire,
@@ -131,10 +135,13 @@ export function TicketCard({
   const theme = CARD_BY_BUCKET[bucket];
 
   const isBumped = ticket.status === 'bumped';
+  const isFired = ticket.status === 'fired';
+  const isPreparing = ticket.status === 'in_progress';
+  const isReady = ticket.status === 'ready';
   const label = ticket.order_type
-    || (ticket.table_number ? `Table ${ticket.table_number}` : null)
-    || (details?.table_number ? `Table ${details.table_number}` : null)
-    || 'Order';
+    || (ticket.table_number ? `Mesa ${ticket.table_number}` : null)
+    || (details?.table_number ? `Mesa ${details.table_number}` : null)
+    || 'Pedido';
 
   // Prefer the detailed item list when we have it (carries variations,
   // ingredients, prep_steps, notes, per-item status). Otherwise fall back
@@ -155,6 +162,8 @@ export function TicketCard({
     ?? ticket.order_number
     ?? '—';
   const tableNumber = ticket.table_number || details?.table_number || null;
+  const serviceLabel = ({ dine_in: 'En salón', pickup: 'Para retirar', takeaway: 'Para retirar', delivery: 'Envío a domicilio' } as Record<string, string>)[details?.order_type || ticket.order_type || ''] || label;
+  const customerContext = [details?.customer_name, details?.customer_phone].filter(Boolean).join(' · ');
 
   return (
     <div
@@ -180,7 +189,7 @@ export function TicketCard({
           </div>
           <span className={cn('ml-7 flex items-center gap-1 text-sm font-medium opacity-90', theme.headerText)}>
             {tableNumber && <MapPin className="size-3.5 shrink-0" aria-hidden="true" />}
-            {tableNumber ? `Table ${tableNumber}` : label}
+            {tableNumber ? `Mesa ${tableNumber}` : serviceLabel}
           </span>
         </div>
 
@@ -201,7 +210,7 @@ export function TicketCard({
             </span>
             {ticket.priority > 0 && (
               <span className="flex items-center gap-1 rounded-full bg-red-600 px-2 py-0.5 text-xs font-extrabold uppercase tracking-wide text-white">
-                <Bell className="size-3" aria-hidden="true" /> Rush
+                <Bell className="size-3" aria-hidden="true" /> Urgente
               </span>
             )}
             {detailsLoading && (
@@ -232,22 +241,28 @@ export function TicketCard({
         )}
 
         {/* Ticket-level notes */}
-        {ticket.notes && (
+        {(ticket.notes || details?.notes) && (
           <p className="rounded-lg border border-amber-700/40 bg-amber-900/30 px-3 py-2.5 text-sm font-medium italic text-amber-300">
             <StickyNote className="mr-1.5 inline size-3.5 align-text-bottom text-amber-400" aria-hidden="true" />
-            {ticket.notes}
+            {ticket.notes || details?.notes}
           </p>
+        )}
+
+        {(customerContext || details?.delivery_address) && (
+          <div className="space-y-1 rounded-lg border border-sky-800/50 bg-sky-950/30 px-3 py-2 text-xs text-sky-200">
+            {customerContext && <p><span className="font-bold text-sky-300">Cliente:</span> {customerContext}</p>}
+            {details?.delivery_address && <p><span className="font-bold text-sky-300">Entrega:</span> {details.delivery_address}</p>}
+          </div>
         )}
 
         {/* Action buttons */}
         <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
-          {!isBumped && (
+          {isFired && (
             <>
-              {/* Primary: big, full-width bump button — impossible to miss */}
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => onBump?.(ticket)}
+                onClick={() => onStart?.(ticket)}
                 className={cn(
                   'flex h-14 flex-1 min-w-[9rem] items-center justify-center gap-2 rounded-xl',
                   'bg-emerald-600 text-white text-lg font-extrabold',
@@ -255,10 +270,10 @@ export function TicketCard({
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900',
                   'disabled:opacity-50 disabled:cursor-not-allowed',
                 )}
-                aria-label={`Marcar la comanda ${orderNumber} como lista`}
+                aria-label={`Iniciar la preparación de la comanda ${orderNumber}`}
               >
-                <Check className="size-6 shrink-0" aria-hidden="true" />
-                Mark Ready
+                <Play className="size-6 shrink-0" aria-hidden="true" />
+                Iniciar preparación
               </button>
 
               {/* Rush button — secondary, narrower */}
@@ -266,7 +281,7 @@ export function TicketCard({
                 type="button"
                 disabled={busy || ticket.priority > 0}
                 onClick={() => onRush?.(ticket)}
-                title="Mark as rush priority"
+                title="Marcar como prioridad urgente"
                 aria-label={`Dar prioridad a la comanda ${orderNumber}`}
                 className={cn(
                   'flex h-14 items-center justify-center gap-2 rounded-xl px-4',
@@ -277,6 +292,51 @@ export function TicketCard({
                 )}
               >
                 <Bell className="size-5 shrink-0" aria-hidden="true" />
+              </button>
+            </>
+          )}
+
+          {isPreparing && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onReady?.(ticket)}
+              className={cn(
+                'flex h-14 flex-1 items-center justify-center gap-2 rounded-xl',
+                'bg-emerald-600 text-white text-lg font-extrabold transition-colors hover:bg-emerald-500',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900',
+                'disabled:opacity-50 disabled:cursor-not-allowed',
+              )}
+            >
+              <Check className="size-6 shrink-0" aria-hidden="true" />
+              Marcar listo
+            </button>
+          )}
+
+          {isReady && (
+            <>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => onBump?.(ticket)}
+                className={cn(
+                  'flex h-14 flex-1 items-center justify-center gap-2 rounded-xl',
+                  'bg-emerald-600 text-white text-lg font-extrabold transition-colors hover:bg-emerald-500',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900',
+                  'disabled:opacity-50 disabled:cursor-not-allowed',
+                )}
+              >
+                <Check className="size-6 shrink-0" aria-hidden="true" />
+                Completar entrega
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => onRefire?.(ticket)}
+                className="flex h-14 items-center justify-center rounded-xl border-2 border-gray-600 px-4 text-gray-200 transition-colors hover:bg-gray-700 disabled:opacity-50"
+                title="Volver a preparar"
+              >
+                <RotateCcw className="size-5" aria-hidden="true" />
               </button>
             </>
           )}
@@ -296,7 +356,7 @@ export function TicketCard({
               aria-label={`Volver a preparar la comanda ${orderNumber}`}
             >
               <RotateCcw className="size-6 shrink-0" aria-hidden="true" />
-              Refire
+              Volver a preparar
             </button>
           )}
 
@@ -333,7 +393,7 @@ interface TicketItemProps {
 }
 
 function TicketItem({ item, recipeDefaultOpen, storageKey }: TicketItemProps) {
-  const name = item.item_name || item.name || 'Item';
+  const name = item.item_name || item.name || 'Producto';
   const qty = Number(item.quantity ?? 1);
   const variations = Array.isArray(item.variations) ? item.variations : [];
   const allergens = Array.isArray(item.allergens) ? item.allergens : [];

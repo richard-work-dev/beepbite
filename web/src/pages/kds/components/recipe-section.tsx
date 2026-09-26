@@ -69,7 +69,7 @@ export function RecipeSection({
   if (!hasContent) {
     return (
       <div className="rounded-lg border border-dashed border-gray-600/50 bg-gray-800/30 px-3 py-2 text-xs italic text-gray-500">
-        No recipe defined
+        No hay una receta definida
       </div>
     );
   }
@@ -92,7 +92,7 @@ export function RecipeSection({
         <span className="flex items-center gap-2">
           <ListOrdered className={cn('size-4', allDone ? 'text-emerald-400' : 'text-gray-400')} aria-hidden="true" />
           <span className={cn('text-sm font-semibold', allDone ? 'text-emerald-300' : 'text-gray-200')}>
-            Recipe
+            Receta
           </span>
           {progressLabel && (
             <span
@@ -121,7 +121,7 @@ export function RecipeSection({
           <div className="space-y-2">
             <div className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-widest text-gray-500">
               <Soup className="size-3.5" aria-hidden="true" />
-              Ingredients
+              Ingredientes
             </div>
             {ingredients.length === 0 ? (
               <p className="text-xs italic text-gray-600">Ninguno indicado</p>
@@ -133,7 +133,7 @@ export function RecipeSection({
                       {fmtIngredientQty(ing.quantity, ing.unit)}
                     </span>
                     <span className="font-medium leading-tight text-gray-200">
-                      {ing.name || 'ingredient'}
+                      {ing.name || 'ingrediente'}
                     </span>
                   </li>
                 ))}
@@ -145,7 +145,7 @@ export function RecipeSection({
           <div className="space-y-2">
             <div className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-widest text-gray-500">
               <ListOrdered className="size-3.5" aria-hidden="true" />
-              Steps
+              Pasos
             </div>
             {steps.length === 0 ? (
               <p className="text-xs italic text-gray-600">Ninguno indicado</p>

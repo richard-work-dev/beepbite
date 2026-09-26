@@ -386,8 +386,8 @@ function KitchenPanel({ kdsView }: KitchenPanelProps) {
           {needsStation && stations.length === 0 && (
             <div className="flex flex-1 flex-col items-center justify-center gap-2 text-muted-foreground">
               <ChefHat className="h-10 w-10" />
-              <p className="text-sm">No KDS stations configured for this location.</p>
-              <p className="text-xs">Add stations under Settings → Kitchen.</p>
+              <p className="text-sm">No hay estaciones de cocina configuradas para este local.</p>
+              <p className="text-xs">Agregá estaciones en Configuración → Rutas de cocina.</p>
             </div>
           )}
 

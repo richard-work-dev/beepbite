@@ -45,6 +45,7 @@ import { useAuth } from '@/context/auth-context';
 import { supabase } from '@/services/supabase-client';
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -52,8 +53,8 @@ import { useToast } from '@/hooks/use-toast';
 
 // Form validation schema
 const staffFormSchema = z.object({
-  full_name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Invalid email address"),
+  full_name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
+  email: z.string().email("Ingresá un correo electrónico válido"),
   phone: z.string().optional(),
   role: z.enum(["staff", "manager", "admin", "owner"]),
   department: z.string().optional(),
@@ -182,7 +183,7 @@ const Members = () => {
       setMembers(data || []);
     } catch (error) {
       console.error('Error fetching members:', error);
-      toast({ variant: 'destructive', title: 'Failed to fetch members' });
+      toast({ variant: 'destructive', title: 'No se pudieron cargar los miembros' });
     } finally {
       setLoading(false);
     }
@@ -252,11 +253,11 @@ const Members = () => {
 
       // Here you would typically send an email notification
       // For now, we'll just show success
-      toast({ title: 'Invitation sent successfully!' });
+      toast({ title: 'Invitación enviada correctamente' });
     } catch (error) {
       console.error('Error sending invite:', error);
       const message = error instanceof Error ? error.message : undefined;
-      toast({ variant: 'destructive', title: 'Failed to send invitation', description: message });
+      toast({ variant: 'destructive', title: 'No se pudo enviar la invitación', description: message });
     } finally {
       setInviteLoading(false);
     }
@@ -290,12 +291,12 @@ const Members = () => {
         if (roleError) throw roleError;
       }
 
-      toast({ title: 'Member updated successfully' });
+      toast({ title: 'Miembro actualizado correctamente' });
       setIsEditModalOpen(false);
       void fetchMembers();
     } catch (error) {
       console.error('Error updating member:', error);
-      toast({ variant: 'destructive', title: 'Failed to update member' });
+      toast({ variant: 'destructive', title: 'No se pudo actualizar el miembro' });
     } finally {
       setActionLoading('');
     }
@@ -315,11 +316,11 @@ const Members = () => {
 
       if (error) throw error;
 
-      toast({ title: 'Member archived successfully' });
+      toast({ title: 'Miembro archivado correctamente' });
       void fetchMembers();
     } catch (error) {
       console.error('Error archiving member:', error);
-      toast({ variant: 'destructive', title: 'Failed to archive member' });
+      toast({ variant: 'destructive', title: 'No se pudo archivar el miembro' });
     } finally {
       setActionLoading('');
       setIsArchiveModalOpen(false);
@@ -339,11 +340,11 @@ const Members = () => {
 
       if (error) throw error;
 
-      toast({ title: 'Member restored successfully' });
+      toast({ title: 'Miembro restaurado correctamente' });
       void fetchMembers();
     } catch (error) {
       console.error('Error restoring member:', error);
-      toast({ variant: 'destructive', title: 'Failed to restore member' });
+      toast({ variant: 'destructive', title: 'No se pudo restaurar el miembro' });
     } finally {
       setActionLoading('');
     }
@@ -368,7 +369,7 @@ const Members = () => {
       void fetchMembers();
     } catch (error) {
       console.error('Error removing member:', error);
-      toast({ variant: 'destructive', title: 'Failed to remove member' });
+      toast({ variant: 'destructive', title: 'No se pudo eliminar el miembro' });
     } finally {
       setActionLoading('');
       setRemoveConfirmMember(null);
@@ -387,7 +388,7 @@ const Members = () => {
       void fetchMembers();
     } catch (error) {
       console.error('Error updating member role:', error);
-      toast({ variant: 'destructive', title: 'Failed to update member role' });
+      toast({ variant: 'destructive', title: 'No se pudo actualizar el rol del miembro' });
     } finally {
       setActionLoading('');
     }
@@ -405,7 +406,7 @@ const Members = () => {
       void fetchInvites();
     } catch (error) {
       console.error('Error canceling invite:', error);
-      toast({ variant: 'destructive', title: 'Failed to cancel invitation' });
+      toast({ variant: 'destructive', title: 'No se pudo cancelar la invitación' });
     } finally {
       setActionLoading('');
     }
@@ -488,8 +489,8 @@ const Members = () => {
     return (
       <div className="flex flex-col items-center justify-center py-12">
         <AlertCircle className="w-16 h-16 text-muted-foreground mb-4" />
-        <h2 className="text-xl font-semibold text-foreground mb-2">No Organization Selected</h2>
-        <p className="text-muted-foreground">Please select an organization to manage members.</p>
+        <h2 className="text-xl font-semibold text-foreground mb-2">No hay una organización seleccionada</h2>
+        <p className="text-muted-foreground">Seleccioná una organización para administrar sus miembros.</p>
       </div>
     );
   }
@@ -510,8 +511,8 @@ const Members = () => {
   return (
     <PageContainer className="pb-20">
       <PageHeader
-        title="Team Members"
-        description="Manage your organization team and invite new members"
+        title="Miembros del equipo"
+        description="Administrá el equipo de tu organización e invitá nuevos miembros"
         icon={Users}
         actions={
           <Button
@@ -520,7 +521,7 @@ const Members = () => {
             className={cn(showArchived && "bg-primary/10 text-primary border-primary/30")}
           >
             <Archive className="w-4 h-4 mr-2" />
-            {showArchived ? "Show Active" : "Show Archived"}
+            {showArchived ? "Ver activos" : "Ver archivados"}
           </Button>
         }
       />
@@ -530,7 +531,7 @@ const Members = () => {
         <div className="relative flex-1 max-w-2xl">
           <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
           <Input
-            placeholder="Search by name, email, department..."
+            placeholder="Buscar por nombre, correo o área..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-12 h-12 text-base font-medium"
@@ -544,7 +545,7 @@ const Members = () => {
             className="h-12"
           >
             <UserPlus className="w-4 h-4 mr-2" />
-            Invite Member
+            Invitar miembro
           </Button>
         )}
       </div>
@@ -567,7 +568,7 @@ const Members = () => {
             onClick={() => setIsInviteModalOpen(true)}
           >
             <UserPlus className="w-4 h-4 mr-2" />
-            Invite Member
+            Invitar miembro
           </Button>
         </div>
       )}
@@ -579,7 +580,7 @@ const Members = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-3xl font-bold text-foreground">{members.length}</p>
-                <p className="text-sm text-muted-foreground mt-1">Total Members</p>
+                <p className="text-sm text-muted-foreground mt-1">Miembros totales</p>
               </div>
               <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
                 <Users className="w-6 h-6 text-primary" />
@@ -595,7 +596,7 @@ const Members = () => {
                 <p className="text-3xl font-bold text-foreground">
                   {invites.filter(i => i.status === 'pending').length}
                 </p>
-                <p className="text-sm text-muted-foreground mt-1">Pending Invites</p>
+                <p className="text-sm text-muted-foreground mt-1">Invitaciones pendientes</p>
               </div>
               <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
                 <Mail className="w-6 h-6 text-primary" />
@@ -608,8 +609,8 @@ const Members = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-lg font-semibold text-foreground truncate">{activeOrganization?.name || 'Organization'}</p>
-                <p className="text-sm text-muted-foreground mt-1">Current Organization</p>
+                <p className="text-lg font-semibold text-foreground truncate">{activeOrganization?.name || 'Organización'}</p>
+                <p className="text-sm text-muted-foreground mt-1">Organización actual</p>
               </div>
               <div className="w-12 h-12 rounded-lg bg-primary/15 flex items-center justify-center">
                 <Building2 className="w-6 h-6 text-primary" />
@@ -622,7 +623,7 @@ const Members = () => {
       {/* Members Grid */}
       <div className="space-y-6">
         <h2 className="text-xl font-semibold text-foreground">
-          {showArchived ? "Archived Members" : "Active Members"}
+          {showArchived ? "Miembros archivados" : "Miembros activos"}
         </h2>
 
         {filteredMembers.length === 0 ? (
@@ -637,24 +638,24 @@ const Members = () => {
               </div>
               <h3 className="text-lg font-semibold text-foreground mb-2">
                 {searchTerm
-                  ? 'No members found'
+                  ? 'No se encontraron miembros'
                   : showArchived
-                    ? 'No archived members'
-                    : 'No members yet'
+                    ? 'No hay miembros archivados'
+                    : 'Todavía no hay miembros'
                 }
               </h3>
               <p className="text-muted-foreground mb-6">
                 {searchTerm
-                  ? 'Try adjusting your search terms'
+                  ? 'Probá con otros términos de búsqueda'
                   : showArchived
-                    ? 'Archived members will appear here'
-                    : 'Invite team members to get started'
+                    ? 'Los miembros archivados aparecerán aquí'
+                    : 'Invitá integrantes para comenzar'
                 }
               </p>
               {!searchTerm && !showArchived && canManageMembers && (
                 <Button onClick={() => setIsInviteModalOpen(true)}>
                   <UserPlus className="w-4 h-4 mr-2" />
-                  Invite First Member
+                  Invitar al primer miembro
                 </Button>
               )}
             </CardContent>
@@ -688,9 +689,9 @@ const Members = () => {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
                             <h3 className="font-semibold text-foreground text-lg truncate">
-                              {member.profiles?.full_name || member.profiles?.username || 'Unknown User'}
+                              {member.profiles?.full_name || member.profiles?.username || 'Usuario desconocido'}
                               {isCurrentUser && (
-                                <span className="text-sm text-primary font-normal ml-2">(You)</span>
+                                <span className="text-sm text-primary font-normal ml-2">(Vos)</span>
                               )}
                             </h3>
 
@@ -707,7 +708,7 @@ const Members = () => {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-48">
-                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                  <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem
                                     onClick={() => {
@@ -716,7 +717,7 @@ const Members = () => {
                                     }}
                                   >
                                     <Pencil className="w-4 h-4 mr-2" />
-                                    Edit Details
+                                    Editar datos
                                   </DropdownMenuItem>
                                   {member.archived_at ? (
                                     <DropdownMenuItem
@@ -724,7 +725,7 @@ const Members = () => {
                                       className="text-primary"
                                     >
                                       <CheckCircle className="w-4 h-4 mr-2" />
-                                      Restore Member
+                                      Restaurar miembro
                                     </DropdownMenuItem>
                                   ) : (
                                     <DropdownMenuItem
@@ -735,7 +736,7 @@ const Members = () => {
                                       className="text-destructive"
                                     >
                                       <Archive className="w-4 h-4 mr-2" />
-                                      Archive Member
+                                      Archivar miembro
                                     </DropdownMenuItem>
                                   )}
                                 </DropdownMenuContent>
@@ -771,15 +772,15 @@ const Members = () => {
                                 className="bg-muted text-muted-foreground border-border"
                               >
                                 <Archive className="w-3 h-3 mr-1" />
-                                Archived
+                                Archivado
                               </Badge>
                             )}
                           </div>
 
                           <p className="text-xs text-muted-foreground mt-2">
                             {member.archived_at
-                              ? `Archived ${formatDistanceToNow(new Date(member.archived_at), { addSuffix: true })}`
-                              : `Joined ${formatDistanceToNow(new Date(member.created_at), { addSuffix: true })}`
+                              ? `Archivado ${formatDistanceToNow(new Date(member.archived_at), { addSuffix: true, locale: es })}`
+                              : `Se unió ${formatDistanceToNow(new Date(member.created_at), { addSuffix: true, locale: es })}`
                             }
                           </p>
                         </div>
@@ -804,7 +805,7 @@ const Members = () => {
       {/* Pending Invites */}
       {invites.length > 0 && (
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-foreground">Invitations</h2>
+          <h2 className="text-xl font-semibold text-foreground">Invitaciones</h2>
 
           <div className="space-y-3">
             {invites.map((invite) => (
@@ -829,7 +830,7 @@ const Members = () => {
                             </span>
                           </Badge>
                           <span className="text-xs text-muted-foreground">
-                            Invited {formatDistanceToNow(new Date(invite.created_at), { addSuffix: true })}
+                            Invitado {formatDistanceToNow(new Date(invite.created_at), { addSuffix: true, locale: es })}
                           </span>
                         </div>
                       </div>
@@ -873,21 +874,21 @@ const Members = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Mail className="w-5 h-5 text-primary" />
-              Invite New Member
+              Invitar nuevo miembro
             </DialogTitle>
             <DialogDescription>
-              Send an invitation to join {activeOrganization?.name} as a team member.
+              Enviá una invitación para unirse a {activeOrganization?.name} como miembro del equipo.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 mt-4">
             <div>
               <label className="text-sm font-medium text-foreground block mb-2">
-                Email Address
+                Correo electrónico
               </label>
               <Input
                 type="email"
-                placeholder="Enter email address"
+                placeholder="Ingresá el correo electrónico"
                 value={inviteEmail}
                 onChange={(e) => setInviteEmail(e.target.value)}
                 className="w-full"
@@ -896,7 +897,7 @@ const Members = () => {
 
             <div>
               <label className="text-sm font-medium text-foreground block mb-2">
-                Role
+                Rol
               </label>
               <Select value={inviteRole} onValueChange={setInviteRole}>
                 <SelectTrigger className="w-full">
@@ -912,7 +913,7 @@ const Members = () => {
                   <SelectItem value="manager">
                     <div className="flex items-center gap-2">
                       <ChefHat className="w-4 h-4" />
-                      Manager
+                      Encargado
                     </div>
                   </SelectItem>
                   <SelectItem value="admin">
@@ -940,7 +941,7 @@ const Members = () => {
                 className="flex-1"
                 disabled={inviteLoading}
               >
-                Cancel
+                Cancelar
               </Button>
               <Button
                 onClick={sendInvite}
@@ -952,7 +953,7 @@ const Members = () => {
                 ) : (
                   <Send className="w-4 h-4 mr-2" />
                 )}
-                Send Invite
+                Enviar invitación
               </Button>
             </div>
           </div>
@@ -965,10 +966,10 @@ const Members = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Pencil className="w-5 h-5 text-primary" />
-              Edit Member Details
+              Editar datos del miembro
             </DialogTitle>
             <DialogDescription>
-              Update member information and role
+              Actualizá los datos y el rol del miembro
             </DialogDescription>
           </DialogHeader>
 
@@ -979,7 +980,7 @@ const Members = () => {
                 name="full_name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Full Name</FormLabel>
+                    <FormLabel>Nombre completo</FormLabel>
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
@@ -993,7 +994,7 @@ const Members = () => {
                 name="phone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Phone Number</FormLabel>
+                    <FormLabel>Teléfono</FormLabel>
                     <FormControl>
                       <Input {...field} type="tel" />
                     </FormControl>
@@ -1008,7 +1009,7 @@ const Members = () => {
                   name="department"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Department</FormLabel>
+                      <FormLabel>Área</FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
@@ -1022,7 +1023,7 @@ const Members = () => {
                   name="title"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Job Title</FormLabel>
+                      <FormLabel>Cargo</FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
@@ -1037,14 +1038,14 @@ const Members = () => {
                 name="role"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Role</FormLabel>
+                    <FormLabel>Rol</FormLabel>
                     <Select
                       onValueChange={field.onChange}
                       defaultValue={field.value}
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select a role" />
+                          <SelectValue placeholder="Seleccioná un rol" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -1057,7 +1058,7 @@ const Members = () => {
                         <SelectItem value="manager">
                           <div className="flex items-center gap-2">
                             <ChefHat className="w-4 h-4" />
-                            Manager
+                            Encargado
                           </div>
                         </SelectItem>
                         {currentUserMember?.role === 'owner' && (
@@ -1088,7 +1089,7 @@ const Members = () => {
                   variant="outline"
                   onClick={() => setIsEditModalOpen(false)}
                 >
-                  Cancel
+                  Cancelar
                 </Button>
                 <Button
                   type="submit"
@@ -1099,7 +1100,7 @@ const Members = () => {
                   ) : (
                     <CheckCircle className="w-4 h-4 mr-2" />
                   )}
-                  Save Changes
+                  Guardar cambios
                 </Button>
               </DialogFooter>
             </form>
@@ -1113,16 +1114,16 @@ const Members = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
               <Archive className="w-5 h-5" />
-              Archive Member
+              Archivar miembro
             </DialogTitle>
             <DialogDescription>
-              Are you sure you want to archive this member? They will lose access to the organization but their data will be preserved.
+              ¿Querés archivar a este miembro? Perderá el acceso a la organización, pero sus datos se conservarán.
             </DialogDescription>
           </DialogHeader>
 
           <div className="bg-primary/5 border border-primary/10 rounded-lg p-4 mt-2">
             <p className="text-sm text-primary">
-              <strong>Note:</strong> Archiving a member is reversible. You can restore their access later if needed.
+              <strong>Nota:</strong> Archivar un miembro es reversible. Podés restaurar su acceso más adelante.
             </p>
           </div>
 
@@ -1131,7 +1132,7 @@ const Members = () => {
               variant="outline"
               onClick={() => setIsArchiveModalOpen(false)}
             >
-              Cancel
+              Cancelar
             </Button>
             <Button
               variant="destructive"
@@ -1143,7 +1144,7 @@ const Members = () => {
               ) : (
                 <Archive className="w-4 h-4 mr-2" />
               )}
-              Archive Member
+              Archivar miembro
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1154,20 +1155,20 @@ const Members = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Remove {removeConfirmMember?.profiles?.full_name || removeConfirmMember?.profiles?.email || 'this member'}?
+              ¿Eliminar a {removeConfirmMember?.profiles?.full_name || removeConfirmMember?.profiles?.email || 'este miembro'}?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently remove them from {activeOrganization?.name}. This action cannot be undone.
+              Se eliminará permanentemente de {activeOrganization?.name}. Esta acción no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={actionLoading === removeConfirmMember?.id}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={actionLoading === removeConfirmMember?.id}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               onClick={confirmRemoveMember}
               disabled={actionLoading === removeConfirmMember?.id}
             >
-              Remove member
+              Eliminar miembro
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

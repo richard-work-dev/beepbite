@@ -12,18 +12,18 @@ import type { Assignment } from '@/services/driver';
 // rather than borrowing a fourth arbitrary hue — they're both just "this is
 // in motion", not signals a driver needs to act differently on.
 const STATUS_META: Record<string, { label: string; colour: string }> = {
-  offered:    { label: 'Offered',     colour: 'bg-warning/15 text-warning border-warning/30' },
-  accepted:   { label: 'Accepted',    colour: 'bg-primary/10 text-primary border-primary/25' },
-  picked_up:  { label: 'Picked up',   colour: 'bg-primary/15 text-primary border-primary/30' },
-  delivered:  { label: 'Delivered',   colour: 'bg-success/15 text-success border-success/30' },
-  cancelled:  { label: 'Cancelled',   colour: 'bg-muted text-muted-foreground border-border' },
+  offered:    { label: 'Ofrecido',       colour: 'bg-warning/15 text-warning border-warning/30' },
+  accepted:   { label: 'Aceptado',       colour: 'bg-primary/10 text-primary border-primary/25' },
+  picked_up:  { label: 'Retirado',       colour: 'bg-primary/15 text-primary border-primary/30' },
+  delivered:  { label: 'Entregado',      colour: 'bg-success/15 text-success border-success/30' },
+  cancelled:  { label: 'Cancelado',      colour: 'bg-muted text-muted-foreground border-border' },
 };
 
 // Which action button to show for each status
 const NEXT_ACTION: Record<string, { action: string; label: string; Icon: LucideIcon; variant: 'default' }> = {
-  offered:   { action: 'accept',  label: 'Accept',     Icon: CheckCircle,  variant: 'default' },
-  accepted:  { action: 'pickup',  label: 'Picked up',  Icon: Package,      variant: 'default' },
-  picked_up: { action: 'deliver', label: 'Delivered',  Icon: Truck,        variant: 'default' },
+  offered:   { action: 'accept',  label: 'Aceptar',    Icon: CheckCircle,  variant: 'default' },
+  accepted:  { action: 'pickup',  label: 'Retirado',   Icon: Package,      variant: 'default' },
+  picked_up: { action: 'deliver', label: 'Entregado',  Icon: Truck,        variant: 'default' },
 };
 
 interface AssignmentCardProps {
@@ -58,7 +58,7 @@ export default function AssignmentCard({ assignment, onAction }: AssignmentCardP
           <div className="flex items-center gap-2 min-w-0">
             <Store className="w-4 h-4 text-primary flex-shrink-0" />
             <span className="font-semibold text-foreground text-sm truncate">
-              {store_name || 'Restaurant'}
+              {store_name || 'Restaurante'}
             </span>
           </div>
           <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold flex-shrink-0 ${statusMeta.colour}`}>
@@ -69,7 +69,7 @@ export default function AssignmentCard({ assignment, onAction }: AssignmentCardP
         {/* Delivery address */}
         <div className="flex items-start gap-2 text-sm text-muted-foreground">
           <MapPin className="w-4 h-4 text-primary/60 flex-shrink-0 mt-0.5" />
-          <span className="leading-snug">{delivery_address || 'Address not provided'}</span>
+          <span className="leading-snug">{delivery_address || 'Dirección no informada'}</span>
         </div>
 
         {/* Order total */}
@@ -110,7 +110,7 @@ export default function AssignmentCard({ assignment, onAction }: AssignmentCardP
                   ? <Loader2 className="w-4 h-4 animate-spin" />
                   : <XCircle className="w-4 h-4" />
                 }
-                Cancel
+                Cancelar
               </Button>
             )}
           </div>

@@ -71,7 +71,7 @@ export default function DriverPortal() {
         // Backend signals this user has no driver role anywhere.
         setIsNotDriver(true);
       } else {
-        setAssignmentsError(err instanceof Error ? err.message : 'Failed to load assignments');
+        setAssignmentsError(err instanceof Error ? err.message : 'No se pudieron cargar las entregas');
       }
     } finally {
       setLoadingAssignments(false);
@@ -93,7 +93,7 @@ export default function DriverPortal() {
       if (!newValue) setGeoError(null); // clear geo banner when going offline
     } catch (err) {
       toast({
-        title: `Could not go ${targetStatus}`,
+        title: newValue ? 'No se pudo iniciar el turno' : 'No se pudo finalizar el turno',
         description: err instanceof Error ? err.message : undefined,
         variant: 'destructive',
       });
@@ -131,7 +131,7 @@ export default function DriverPortal() {
       }
     } catch (err) {
       toast({
-        title: 'Action failed',
+        title: 'No se pudo completar la acción',
         description: err instanceof Error ? err.message : undefined,
         variant: 'destructive',
       });
@@ -168,7 +168,7 @@ export default function DriverPortal() {
             className="mt-1"
           >
             <RefreshCw className="w-4 h-4" />
-            Retry
+            Reintentar
           </Button>
         </div>
       );
@@ -180,9 +180,9 @@ export default function DriverPortal() {
           <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
             <Truck className="w-7 h-7 text-primary/70" />
           </div>
-          <p className="text-sm text-muted-foreground">No active assignments right now.</p>
+          <p className="text-sm text-muted-foreground">No hay entregas activas en este momento.</p>
           <p className="text-xs text-muted-foreground/70">
-            {isOnline ? 'Hang tight — deliveries will appear here.' : 'Go online to start receiving deliveries.'}
+            {isOnline ? 'Las nuevas entregas aparecerán aquí.' : 'Iniciá tu turno para comenzar a recibir entregas.'}
           </p>
         </div>
       );
@@ -204,7 +204,7 @@ export default function DriverPortal() {
       <div className="bg-card border-b border-primary/15 shadow-sm px-4 py-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Truck className="w-5 h-5 text-primary" />
-          <h1 className="text-lg font-display text-foreground">Driver Portal</h1>
+          <h1 className="text-lg font-display text-foreground">Portal de repartidores</h1>
         </div>
         <Button
           variant="ghost"
@@ -212,7 +212,7 @@ export default function DriverPortal() {
           onClick={loadAssignments}
           disabled={loadingAssignments}
           className="h-8 w-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
-          title="Refresh"
+          title="Actualizar"
         >
           <RefreshCw className={`w-4 h-4 ${loadingAssignments ? 'animate-spin' : ''}`} />
         </Button>

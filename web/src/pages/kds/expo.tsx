@@ -271,7 +271,7 @@ function ExpoLoadingState() {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 text-gray-400">
       <Loader2 className="size-10 animate-spin text-orange-500" aria-hidden="true" />
-      <p className="text-lg font-medium">Loading orders…</p>
+      <p className="text-lg font-medium">Cargando pedidos…</p>
     </div>
   );
 }
@@ -282,9 +282,9 @@ function ExpoEmptyState() {
       <div className="flex size-20 items-center justify-center rounded-full bg-emerald-900/40">
         <ChefHat className="size-10 text-emerald-400" aria-hidden="true" />
       </div>
-      <p className="text-2xl font-extrabold text-gray-200">All caught up!</p>
+      <p className="text-2xl font-extrabold text-gray-200">¡Todo al día!</p>
       <p className="max-w-xs text-base text-gray-400">
-        No open orders right now. New tickets will appear automatically every 10 seconds.
+        No hay pedidos abiertos en este momento. Las nuevas comandas aparecerán automáticamente cada 10 segundos.
       </p>
     </div>
   );
@@ -295,7 +295,7 @@ function ExpoErrorState({ error, onRetry }: { error: string; onRetry: () => void
     <div className="mx-auto mt-12 flex max-w-md flex-col items-center gap-4 rounded-xl border border-red-800 bg-red-950/60 p-8 text-center">
       <AlertCircle className="size-10 text-red-400" aria-hidden="true" />
       <div>
-        <p className="text-lg font-bold text-red-300">Could not load expo</p>
+        <p className="text-lg font-bold text-red-300">No se pudo cargar la pantalla de despacho</p>
         <p className="mt-1 text-sm text-red-400">{error}</p>
       </div>
       <Button
@@ -303,7 +303,7 @@ function ExpoErrorState({ error, onRetry }: { error: string; onRetry: () => void
         onClick={onRetry}
         className="border-red-700 text-red-300 hover:bg-red-900"
       >
-        <RefreshCw className="mr-2 size-4" aria-hidden="true" /> Retry
+        <RefreshCw className="mr-2 size-4" aria-hidden="true" /> Reintentar
       </Button>
     </div>
   );

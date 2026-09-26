@@ -164,7 +164,7 @@ export function TicketCard({
         theme.card,
       )}
       role="article"
-      aria-label={`Ticket ${orderNumber}`}
+      aria-label={`Comanda ${orderNumber}`}
     >
       {/* ------------------------------------------------------------------ */}
       {/* Card header — order number, timer, urgency label                    */}
@@ -255,7 +255,7 @@ export function TicketCard({
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900',
                   'disabled:opacity-50 disabled:cursor-not-allowed',
                 )}
-                aria-label={`Mark ticket ${orderNumber} ready`}
+                aria-label={`Marcar la comanda ${orderNumber} como lista`}
               >
                 <Check className="size-6 shrink-0" aria-hidden="true" />
                 Mark Ready
@@ -267,7 +267,7 @@ export function TicketCard({
                 disabled={busy || ticket.priority > 0}
                 onClick={() => onRush?.(ticket)}
                 title="Mark as rush priority"
-                aria-label={`Rush ticket ${orderNumber}`}
+                aria-label={`Dar prioridad a la comanda ${orderNumber}`}
                 className={cn(
                   'flex h-14 items-center justify-center gap-2 rounded-xl px-4',
                   'border-2 border-orange-500 bg-orange-500/10 text-orange-400 text-sm font-bold',
@@ -293,7 +293,7 @@ export function TicketCard({
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
               )}
-              aria-label={`Refire ticket ${orderNumber}`}
+              aria-label={`Volver a preparar la comanda ${orderNumber}`}
             >
               <RotateCcw className="size-6 shrink-0" aria-hidden="true" />
               Refire
@@ -375,7 +375,7 @@ function TicketItem({ item, recipeDefaultOpen, storageKey }: TicketItemProps) {
       {allergens.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-red-500/50 bg-red-950/40 px-2 py-1.5">
           <AlertTriangle className="size-4 shrink-0 text-red-400" aria-hidden="true" />
-          <span className="text-[11px] font-bold uppercase tracking-wider text-red-400">Allergens</span>
+          <span className="text-[11px] font-bold uppercase tracking-wider text-red-400">Alérgenos</span>
           {allergens.map((a, i) => (
             <span
               key={`${a}-${i}`}

@@ -143,7 +143,7 @@ export function ExpoOrderCard({ order, now }: ExpoOrderCardProps) {
         theme.card,
       )}
       role="article"
-      aria-label={`Order ${displayId}`}
+      aria-label={`Pedido ${displayId}`}
     >
       {/* ------------------------------------------------------------------ */}
       {/* Orange top accent stripe                                            */}
@@ -170,17 +170,17 @@ export function ExpoOrderCard({ order, now }: ExpoOrderCardProps) {
             )}
             {order.max_priority > 0 && (
               <span className="inline-flex items-center gap-1 rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-extrabold text-white">
-                <Bell className="size-3" aria-hidden="true" /> Rush
+                <Bell className="size-3" aria-hidden="true" /> Urgente
               </span>
             )}
             {blocked && (
               <span className="inline-flex items-center rounded-full bg-amber-500 px-2.5 py-0.5 text-xs font-extrabold text-amber-950">
-                Waiting
+                Esperando
               </span>
             )}
             {allReady && !blocked && (
               <span className="inline-flex items-center rounded-full bg-emerald-500 px-2.5 py-0.5 text-xs font-extrabold text-emerald-950">
-                Ready to plate!
+                ¡Listo para servir!
               </span>
             )}
           </div>
@@ -202,7 +202,7 @@ export function ExpoOrderCard({ order, now }: ExpoOrderCardProps) {
       <div className="flex-1 space-y-2.5 p-4">
         {stations.length === 0 ? (
           <p className="py-4 text-center text-sm italic text-gray-500">
-            No station tickets yet.
+            Todavía no hay comandas de estación.
           </p>
         ) : (
           stations.map((st) => {
@@ -232,7 +232,7 @@ export function ExpoOrderCard({ order, now }: ExpoOrderCardProps) {
                     'text-sm font-extrabold truncate',
                     isSlowStation ? 'text-amber-200' : 'text-gray-100',
                   )}>
-                    {st.station_name || 'Station'}
+                    {st.station_name || 'Estación'}
                   </span>
                   <span className={cn(
                     'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold shrink-0',
@@ -260,7 +260,7 @@ export function ExpoOrderCard({ order, now }: ExpoOrderCardProps) {
                                 {qty > 1 && (
                                   <span className="font-black text-orange-400 mr-1.5">{qty}×</span>
                                 )}
-                                {it.name || it.item_name || 'Item'}
+                                {it.name || it.item_name || 'Producto'}
                               </span>
                               <span className="shrink-0 text-xs font-medium capitalize text-gray-400">
                                 {it.item_status?.replace('_', ' ') || ''}

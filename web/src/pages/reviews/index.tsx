@@ -22,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { formatDistanceToNow } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { useAuth } from '@/context/auth-context';
 import reviewsService, { type Review } from '@/services/reviews';
 
@@ -137,7 +138,7 @@ const Reviews = () => {
       setSelectedReview(null);
     } catch (error) {
       console.error('Error replying to review:', error);
-      setReplyError('Failed to save reply. Please try again.');
+      setReplyError('No se pudo guardar la respuesta. Intentá nuevamente.');
     } finally {
       setReplySaving(false);
     }
@@ -217,8 +218,8 @@ const Reviews = () => {
       <PageContainer>
         <PageHeader
           icon={Star}
-          title="Customer Reviews"
-          description="Manage and respond to customer feedback"
+          title="Opiniones de clientes"
+          description="Consultá y respondé las opiniones de tus clientes"
         />
 
         <Card className="p-8 sm:p-12 text-center">
@@ -227,9 +228,9 @@ const Reviews = () => {
               <MessageCircle className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
             </div>
             <div className="space-y-2">
-              <h3 className="text-base sm:text-lg font-medium text-foreground">No Restaurant Selected</h3>
+              <h3 className="text-base sm:text-lg font-medium text-foreground">No hay un restaurante seleccionado</h3>
               <p className="text-sm sm:text-base text-muted-foreground">
-                Please select a restaurant from the dropdown in the top navigation to view reviews.
+                Seleccioná un restaurante en la barra superior para ver sus opiniones.
               </p>
             </div>
           </div>
@@ -243,8 +244,8 @@ const Reviews = () => {
       {/* Header */}
       <PageHeader
         icon={Star}
-        title="Customer Reviews"
-        description="Manage and respond to customer feedback"
+        title="Opiniones de clientes"
+        description="Consultá y respondé las opiniones de tus clientes"
         actions={
           <div className="flex items-center gap-3">
             <Select value={timeRange} onValueChange={setTimeRange}>
@@ -252,11 +253,11 @@ const Reviews = () => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="1d">Last 24 hours</SelectItem>
-                <SelectItem value="7d">Last 7 days</SelectItem>
-                <SelectItem value="30d">Last 30 days</SelectItem>
-                <SelectItem value="90d">Last 3 months</SelectItem>
-                <SelectItem value="all">All time</SelectItem>
+                <SelectItem value="1d">Últimas 24 horas</SelectItem>
+                <SelectItem value="7d">Últimos 7 días</SelectItem>
+                <SelectItem value="30d">Últimos 30 días</SelectItem>
+                <SelectItem value="90d">Últimos 3 meses</SelectItem>
+                <SelectItem value="all">Todo el período</SelectItem>
               </SelectContent>
             </Select>
 
@@ -265,17 +266,17 @@ const Reviews = () => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Ratings</SelectItem>
-                <SelectItem value="10">10/10 Excellent</SelectItem>
-                <SelectItem value="9">9/10 Great</SelectItem>
-                <SelectItem value="8">8/10 Good</SelectItem>
-                <SelectItem value="7">7/10 Average</SelectItem>
-                <SelectItem value="6">6/10 Fair</SelectItem>
-                <SelectItem value="5">5/10 Poor</SelectItem>
-                <SelectItem value="4">4/10 Bad</SelectItem>
-                <SelectItem value="3">3/10 Terrible</SelectItem>
-                <SelectItem value="2">2/10 Awful</SelectItem>
-                <SelectItem value="1">1/10 Worst</SelectItem>
+                <SelectItem value="all">Todas las calificaciones</SelectItem>
+                <SelectItem value="10">10/10 Excelente</SelectItem>
+                <SelectItem value="9">9/10 Muy buena</SelectItem>
+                <SelectItem value="8">8/10 Buena</SelectItem>
+                <SelectItem value="7">7/10 Regular</SelectItem>
+                <SelectItem value="6">6/10 Aceptable</SelectItem>
+                <SelectItem value="5">5/10 Deficiente</SelectItem>
+                <SelectItem value="4">4/10 Mala</SelectItem>
+                <SelectItem value="3">3/10 Muy mala</SelectItem>
+                <SelectItem value="2">2/10 Pésima</SelectItem>
+                <SelectItem value="1">1/10 Muy deficiente</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -284,7 +285,7 @@ const Reviews = () => {
 
       {error && (
         <div className="text-sm text-warning bg-warning/10 px-3 py-2 rounded-md">
-          ⚠️ Using limited data: {error}
+          ⚠️ Usando datos limitados: {error}
         </div>
       )}
 
@@ -295,7 +296,7 @@ const Reviews = () => {
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <Star className="w-4 sm:w-5 h-4 sm:h-5 text-warning" />
-                Rating Overview
+                Resumen de calificaciones
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -307,7 +308,7 @@ const Reviews = () => {
                   {getStarDisplay(Math.round(parseFloat(String(ratingStats.average))))}
                 </div>
                 <p className="text-xs sm:text-sm text-muted-foreground">
-                  Based on {reviews.length} reviews
+                  Basado en {reviews.length} opiniones
                 </p>
               </div>
               
@@ -337,28 +338,28 @@ const Reviews = () => {
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <TrendingUp className="w-4 sm:w-5 h-4 sm:h-5" />
-                Quick Stats
+                Estadísticas rápidas
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 sm:space-y-4">
               <div className="flex justify-between">
-                <span className="text-xs sm:text-sm text-muted-foreground">Total Reviews</span>
+                <span className="text-xs sm:text-sm text-muted-foreground">Opiniones totales</span>
                 <span className="font-semibold text-sm sm:text-base">{reviews.length}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-xs sm:text-sm text-muted-foreground">Replied</span>
+                <span className="text-xs sm:text-sm text-muted-foreground">Respondidas</span>
                 <span className="font-semibold text-sm sm:text-base">
                   {reviews.filter(r => r.owner_reply != null).length}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-xs sm:text-sm text-muted-foreground">Pending</span>
+                <span className="text-xs sm:text-sm text-muted-foreground">Pendientes</span>
                 <span className="font-semibold text-sm sm:text-base">
                   {reviews.filter(r => r.owner_reply == null).length}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-xs sm:text-sm text-muted-foreground">10/10 Rate</span>
+                <span className="text-xs sm:text-sm text-muted-foreground">Calificación 10/10</span>
                 <span className="font-semibold text-sm sm:text-base text-success">
                   {ratingStats.distribution[0]?.percentage ?? '0'}%
                 </span>
@@ -373,7 +374,7 @@ const Reviews = () => {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
             <Input
-              placeholder="Search reviews by customer name, order number..."
+              placeholder="Buscar por cliente o número de pedido..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 text-sm sm:text-base"
@@ -389,9 +390,9 @@ const Reviews = () => {
                     <MessageCircle className="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground" />
                   </div>
                   <div className="space-y-2">
-                    <h3 className="text-base sm:text-lg font-medium text-foreground">No reviews found</h3>
+                    <h3 className="text-base sm:text-lg font-medium text-foreground">No se encontraron opiniones</h3>
                     <p className="text-sm sm:text-base text-muted-foreground">
-                      {searchTerm ? 'Try adjusting your search terms' : 'Customer reviews will appear here'}
+                      {searchTerm ? 'Probá con otros términos de búsqueda' : 'Las opiniones de clientes aparecerán aquí'}
                     </p>
                   </div>
                 </div>
@@ -413,13 +414,13 @@ const Reviews = () => {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 sm:gap-3 mb-1">
                               <h3 className="font-semibold text-foreground text-sm sm:text-base truncate">
-                                Customer
+                                Cliente
                               </h3>
                             </div>
 
                             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
                               <span className="shrink-0">
-                                {formatDistanceToNow(new Date(review.created_at), { addSuffix: true })}
+                                {formatDistanceToNow(new Date(review.created_at), { addSuffix: true, locale: es })}
                               </span>
                             </div>
                           </div>
@@ -434,11 +435,11 @@ const Reviews = () => {
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => openReplyModal(review)}>
                               <Reply className="w-4 h-4 mr-2" />
-                              Reply
+                              Responder
                             </DropdownMenuItem>
                             <DropdownMenuItem>
                               <Flag className="w-4 h-4 mr-2" />
-                              Report
+                              Reportar
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -467,7 +468,7 @@ const Reviews = () => {
                           <div className="flex items-center gap-2 mb-2">
                             <Reply className="w-3 sm:w-4 h-3 sm:h-4 text-primary" />
                             <span className="text-xs sm:text-sm font-medium text-primary">
-                              Restaurant Response
+                              Respuesta del restaurante
                             </span>
                           </div>
                           <p className="text-primary/90 text-xs sm:text-sm">
@@ -486,12 +487,12 @@ const Reviews = () => {
                             className="flex items-center gap-2 w-full sm:w-auto"
                           >
                             <Reply className="w-3 sm:w-4 h-3 sm:h-4" />
-                            <span className="text-xs sm:text-sm">Reply</span>
+                            <span className="text-xs sm:text-sm">Responder</span>
                           </Button>
                         )}
                         <Button variant="ghost" size="sm" className="flex items-center gap-2 w-full sm:w-auto">
                           <ThumbsUp className="w-3 sm:w-4 h-3 sm:h-4" />
-                          <span className="text-xs sm:text-sm">Helpful</span>
+                          <span className="text-xs sm:text-sm">Útil</span>
                         </Button>
                       </div>
                     </div>
@@ -507,7 +508,7 @@ const Reviews = () => {
       <Dialog open={isReplyModalOpen} onOpenChange={setIsReplyModalOpen}>
         <DialogContent className="max-w-md mx-4 sm:mx-auto">
           <DialogHeader>
-            <DialogTitle className="text-base sm:text-lg">Reply to Review</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">Responder la opinión</DialogTitle>
           </DialogHeader>
           
           {selectedReview && (
@@ -515,7 +516,7 @@ const Reviews = () => {
               {/* Original Review */}
               <div className="p-3 sm:p-4 bg-muted rounded-lg">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="font-medium text-sm sm:text-base">Customer</span>
+                  <span className="font-medium text-sm sm:text-base">Cliente</span>
                   <div className="flex">
                     {getStarDisplay(selectedReview.stars)}
                   </div>
@@ -529,11 +530,11 @@ const Reviews = () => {
 
               {/* Reply Input */}
               <div className="space-y-2">
-                <label className="text-xs sm:text-sm font-medium">Your Response</label>
+                <label className="text-xs sm:text-sm font-medium">Tu respuesta</label>
                 <Textarea
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
-                  placeholder="Write a thoughtful response to this review..."
+                  placeholder="Escribí una respuesta para esta opinión..."
                   rows={4}
                   className="resize-none text-sm"
                 />
@@ -552,14 +553,14 @@ const Reviews = () => {
                   disabled={replySaving}
                   className="flex-1"
                 >
-                  Cancel
+                  Cancelar
                 </Button>
                 <Button
                   onClick={() => handleReply(selectedReview.id)}
                   disabled={!replyText.trim() || replySaving}
                   className="flex-1 beepbite-gradient text-primary-foreground"
                 >
-                  {replySaving ? 'Saving...' : 'Send Reply'}
+                  {replySaving ? 'Guardando...' : 'Enviar respuesta'}
                 </Button>
               </div>
             </div>
@@ -570,4 +571,4 @@ const Reviews = () => {
   );
 };
 
-export default Reviews; 
+export default Reviews;

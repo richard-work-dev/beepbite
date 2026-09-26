@@ -34,12 +34,12 @@ export default function ShiftToggle({ isOnline, loading, onChange }: ShiftToggle
 
       <div className="flex-1 min-w-0">
         <p className={`text-sm font-semibold ${isOnline ? 'text-success' : 'text-foreground'}`}>
-          {isOnline ? 'Online — accepting deliveries' : 'Offline'}
+          {isOnline ? 'En línea — recibiendo entregas' : 'Sin conexión'}
         </p>
         <p className="text-xs text-muted-foreground/80 leading-tight">
           {isOnline
-            ? 'Your location is being shared while on a delivery.'
-            : 'Toggle on to start receiving delivery requests.'}
+            ? 'Tu ubicación se comparte mientras realizás una entrega.'
+            : 'Activá el turno para recibir solicitudes de entrega.'}
         </p>
       </div>
 

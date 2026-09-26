@@ -124,7 +124,7 @@ export function RecipeSection({
               Ingredients
             </div>
             {ingredients.length === 0 ? (
-              <p className="text-xs italic text-gray-600">None listed</p>
+              <p className="text-xs italic text-gray-600">Ninguno indicado</p>
             ) : (
               <ul className="space-y-1.5">
                 {ingredients.map((ing, idx) => (
@@ -148,7 +148,7 @@ export function RecipeSection({
               Steps
             </div>
             {steps.length === 0 ? (
-              <p className="text-xs italic text-gray-600">None listed</p>
+              <p className="text-xs italic text-gray-600">Ninguno indicado</p>
             ) : (
               <ol className="space-y-2">
                 {steps.map((step, idx) => {

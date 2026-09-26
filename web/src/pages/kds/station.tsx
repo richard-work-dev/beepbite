@@ -347,8 +347,8 @@ export default function StationPage() {
             size="sm"
             variant="ghost"
             onClick={() => setOverlayOpen((v) => !v)}
-            title="Keyboard shortcuts (?)"
-            aria-label="Toggle hotkey help"
+            title="Atajos de teclado (?)"
+            aria-label="Mostrar u ocultar la ayuda de atajos"
             className="text-gray-300 hover:bg-gray-800 hover:text-white"
           >
             <Keyboard className="size-4" />
@@ -372,7 +372,7 @@ export default function StationPage() {
               className="gap-1.5 border-amber-500 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 hover:text-amber-200"
             >
               <RotateCcw className="size-3.5" />
-              Recall #{lastBump.ticket.ticket_number}
+              Recuperar #{lastBump.ticket.ticket_number}
               <RecallCountdown bumpedAtMs={lastBump.bumpedAtMs} now={now} totalMs={RECALL_WINDOW_MS} />
             </Button>
           )}
@@ -391,7 +391,7 @@ export default function StationPage() {
             type="button"
             onClick={() => setActionError(null)}
             className="rounded p-0.5 transition-colors hover:bg-red-900"
-            aria-label="Dismiss error"
+            aria-label="Cerrar error"
           >
             <X className="size-3.5" />
           </button>
@@ -467,7 +467,7 @@ function RecallCountdown({ bumpedAtMs, now, totalMs }: { bumpedAtMs: number; now
   return (
     <span
       className="flex items-center gap-1 text-xs tabular-nums text-amber-400"
-      aria-label={`${secs}s to recall`}
+      aria-label={`${secs}s para recuperar`}
     >
       ({secs}s)
     </span>
@@ -478,12 +478,12 @@ function RecallCountdown({ bumpedAtMs, now, totalMs }: { bumpedAtMs: number; now
 
 function ConnectionPill({ status }: { status: SSEStatus }) {
   const map: Record<string, { icon: ComponentType<{ className?: string }>; label: string; cls: string }> = {
-    open:         { icon: Wifi,    label: 'Live',         cls: 'text-emerald-400' },
-    connecting:   { icon: Loader2, label: 'Connecting',   cls: 'text-gray-400 animate-pulse' },
-    reconnecting: { icon: Loader2, label: 'Reconnecting', cls: 'text-amber-400 animate-pulse' },
-    error:        { icon: WifiOff, label: 'Offline',      cls: 'text-red-400' },
-    closed:       { icon: WifiOff, label: 'Closed',       cls: 'text-gray-500' },
-    idle:         { icon: WifiOff, label: 'Idle',         cls: 'text-gray-500' },
+    open:         { icon: Wifi,    label: 'En vivo',       cls: 'text-emerald-400' },
+    connecting:   { icon: Loader2, label: 'Conectando',    cls: 'text-gray-400 animate-pulse' },
+    reconnecting: { icon: Loader2, label: 'Reconectando',  cls: 'text-amber-400 animate-pulse' },
+    error:        { icon: WifiOff, label: 'Sin conexión',  cls: 'text-red-400' },
+    closed:       { icon: WifiOff, label: 'Cerrado',       cls: 'text-gray-500' },
+    idle:         { icon: WifiOff, label: 'En espera',     cls: 'text-gray-500' },
   };
   const m = map[status] || map.idle;
   const Icon = m.icon;
@@ -501,7 +501,7 @@ function LoadingState() {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 text-gray-400">
       <Loader2 className="size-10 animate-spin text-orange-500" />
-      <p className="text-lg font-medium">Loading tickets…</p>
+      <p className="text-lg font-medium">Cargando comandas…</p>
     </div>
   );
 }
@@ -523,9 +523,9 @@ function EmptyState() {
           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
         </svg>
       </div>
-      <p className="text-2xl font-bold text-gray-200">All clear!</p>
+      <p className="text-2xl font-bold text-gray-200">¡Todo listo!</p>
       <p className="max-w-xs text-base text-gray-400">
-        No active tickets on this station. New orders will appear here in real time.
+        No hay comandas activas en esta estación. Los nuevos pedidos aparecerán aquí en tiempo real.
       </p>
     </div>
   );
@@ -536,7 +536,7 @@ function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) 
     <div className="mx-auto mt-12 flex max-w-md flex-col items-center gap-4 rounded-xl border border-red-800 bg-red-950/60 p-8 text-center">
       <AlertCircle className="size-10 text-red-400" aria-hidden="true" />
       <div>
-        <p className="text-lg font-bold text-red-300">Could not load station</p>
+        <p className="text-lg font-bold text-red-300">No se pudo cargar la estación</p>
         <p className="mt-1 text-sm text-red-400">{error}</p>
       </div>
       <Button
@@ -544,7 +544,7 @@ function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) 
         onClick={onRetry}
         className="border-red-700 text-red-300 hover:bg-red-900"
       >
-        <RefreshCw className="mr-2 size-4" /> Retry
+        <RefreshCw className="mr-2 size-4" /> Reintentar
       </Button>
     </div>
   );
@@ -556,13 +556,13 @@ function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) 
 // pressing Escape, clicking the close button, or clicking the backdrop.
 
 const HOTKEYS = [
-  { keys: ['1', '–', '9'], desc: 'Bump the Nth visible ticket' },
-  { keys: ['Space'],        desc: 'Bump the focused ticket' },
-  { keys: ['r'],            desc: 'Recall the last bumped ticket' },
-  { keys: ['←', '→'],      desc: 'Move focus left / right' },
-  { keys: ['↑', '↓'],      desc: 'Move focus up / down' },
-  { keys: ['?'],            desc: 'Toggle this help overlay' },
-  { keys: ['Esc'],          desc: 'Close this overlay' },
+  { keys: ['1', '–', '9'], desc: 'Completar la comanda visible en esa posición' },
+  { keys: ['Espacio'],      desc: 'Completar la comanda seleccionada' },
+  { keys: ['r'],            desc: 'Recuperar la última comanda completada' },
+  { keys: ['←', '→'],      desc: 'Mover la selección a izquierda o derecha' },
+  { keys: ['↑', '↓'],      desc: 'Mover la selección hacia arriba o abajo' },
+  { keys: ['?'],            desc: 'Mostrar u ocultar esta ayuda' },
+  { keys: ['Esc'],          desc: 'Cerrar esta ayuda' },
 ];
 
 function HotkeyOverlay({ onClose }: { onClose: () => void }) {
@@ -571,7 +571,7 @@ function HotkeyOverlay({ onClose }: { onClose: () => void }) {
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Keyboard shortcuts"
+      aria-label="Atajos de teclado"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
@@ -582,13 +582,13 @@ function HotkeyOverlay({ onClose }: { onClose: () => void }) {
             <div className="flex size-8 items-center justify-center rounded-lg bg-orange-500/20">
               <Keyboard className="size-4 text-orange-400" />
             </div>
-            <h2 className="text-lg font-bold text-white">Keyboard shortcuts</h2>
+            <h2 className="text-lg font-bold text-white">Atajos de teclado</h2>
           </div>
           <Button
             size="icon"
             variant="ghost"
             onClick={onClose}
-            aria-label="Close"
+            aria-label="Cerrar"
             className="text-gray-400 hover:bg-gray-800 hover:text-white"
           >
             <X className="size-4" />

@@ -18,11 +18,11 @@ export default function NotDriverCard({ userEmail }: { userEmail?: string }) {
 
         <div className="space-y-2">
           <h2 className="text-lg font-display text-foreground">
-            You&apos;re not set up as a driver yet
+            Todavía no estás registrado como repartidor
           </h2>
           <p className="text-sm text-muted-foreground leading-relaxed max-w-xs mx-auto">
-            Ask the restaurant that hired you to invite you as a driver using
-            the email address you signed up with.
+            Pedí al restaurante que te contrató que te invite como repartidor
+            usando el correo con el que te registraste.
           </p>
         </div>
 
@@ -34,7 +34,7 @@ export default function NotDriverCard({ userEmail }: { userEmail?: string }) {
         )}
 
         <p className="text-xs text-muted-foreground/70">
-          Once invited, your delivery assignments will appear here.
+          Cuando recibas la invitación, tus entregas aparecerán aquí.
         </p>
       </CardContent>
     </Card>

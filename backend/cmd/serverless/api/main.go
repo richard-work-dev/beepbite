@@ -27,10 +27,23 @@ import (
 )
 
 const (
-	accessTTL       = 15 * time.Minute
-	refreshTTL      = 30 * 24 * time.Hour
-	accountHashCost = 12
+	accessTTL         = 15 * time.Minute
+	refreshTTL        = 30 * 24 * time.Hour
+	accountHashCost   = 12
+	maxSignInFailures = int64(5)
+	signInLockout     = 15 * time.Minute
+	signInRecordTTL   = 24 * time.Hour
 )
+
+// A bcrypt comparison is deliberately performed for unknown accounts too, so
+// sign-in response time does not reveal whether an email address is registered.
+var missingAccountPasswordHash = func() string {
+	hash, err := bcrypt.GenerateFromPassword([]byte("not-a-valid-password"), accountHashCost)
+	if err != nil {
+		panic("could not initialize sign-in protection")
+	}
+	return string(hash)
+}()
 
 type application struct {
 	table          string
@@ -274,11 +287,29 @@ func (a *application) signIn(ctx context.Context, request events.APIGatewayV2HTT
 	if err != nil {
 		return errorResponse(401, "correo o contraseña incorrectos"), nil
 	}
+	now := time.Now().UTC()
+	locked, err := a.isSignInLocked(ctx, email, now)
+	if err != nil {
+		return errorResponse(503, "inicio de sesión no disponible"), nil
+	}
+	if locked {
+		return errorResponse(429, "demasiados intentos. esperá 15 minutos antes de volver a intentarlo"), nil
+	}
 	currentUser, err := a.findUserByEmail(ctx, email)
-	if err != nil || bcrypt.CompareHashAndPassword([]byte(currentUser.PasswordHash), []byte(input.Password)) != nil {
+	passwordHash := missingAccountPasswordHash
+	if err == nil {
+		passwordHash = currentUser.PasswordHash
+	}
+	if bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(input.Password)) != nil {
+		if recordErr := a.recordSignInFailure(ctx, email, now); recordErr != nil {
+			return errorResponse(503, "inicio de sesión no disponible"), nil
+		}
 		return errorResponse(401, "correo o contraseña incorrectos"), nil
 	}
-	session, refreshItem, err := a.newSession(ctx, currentUser, request.Headers["user-agent"], time.Now().UTC())
+	if err := a.clearSignInFailures(ctx, email); err != nil {
+		return errorResponse(503, "inicio de sesión no disponible"), nil
+	}
+	session, refreshItem, err := a.newSession(ctx, currentUser, request.Headers["user-agent"], now)
 	if err != nil {
 		return events.APIGatewayV2HTTPResponse{}, err
 	}
@@ -287,6 +318,56 @@ func (a *application) signIn(ctx context.Context, request events.APIGatewayV2HTT
 		return events.APIGatewayV2HTTPResponse{}, err
 	}
 	return jsonResponse(200, session)
+}
+
+func signInThrottleKey(email string) map[string]types.AttributeValue {
+	return map[string]types.AttributeValue{
+		"PK": &types.AttributeValueMemberS{Value: "AUTH_THROTTLE#" + email},
+		"SK": &types.AttributeValueMemberS{Value: "SIGNIN"},
+	}
+}
+
+func (a *application) isSignInLocked(ctx context.Context, email string, now time.Time) (bool, error) {
+	result, err := a.dynamo.GetItem(ctx, &dynamodb.GetItemInput{TableName: aws.String(a.table), ConsistentRead: aws.Bool(true), Key: signInThrottleKey(email)})
+	if err != nil || len(result.Item) == 0 {
+		return false, err
+	}
+	lockedUntil := numberValue(result.Item["locked_until"])
+	if lockedUntil > now.Unix() {
+		return true, nil
+	}
+	if lockedUntil != 0 {
+		_, err = a.dynamo.DeleteItem(ctx, &dynamodb.DeleteItemInput{TableName: aws.String(a.table), Key: signInThrottleKey(email)})
+		return false, err
+	}
+	return false, nil
+}
+
+func (a *application) recordSignInFailure(ctx context.Context, email string, now time.Time) error {
+	result, err := a.dynamo.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+		TableName: aws.String(a.table), Key: signInThrottleKey(email),
+		UpdateExpression: aws.String("SET entity_type = :type, last_failed_at = :now, expires_at = :expires ADD failed_attempts :one"),
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":type": &types.AttributeValueMemberS{Value: "signin_throttle"}, ":now": &types.AttributeValueMemberN{Value: integerString(now.Unix())},
+			":expires": &types.AttributeValueMemberN{Value: integerString(now.Add(signInRecordTTL).Unix())}, ":one": &types.AttributeValueMemberN{Value: "1"},
+		}, ReturnValues: types.ReturnValueUpdatedNew,
+	})
+	if err != nil {
+		return err
+	}
+	if numberValue(result.Attributes["failed_attempts"]) < maxSignInFailures {
+		return nil
+	}
+	_, err = a.dynamo.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+		TableName: aws.String(a.table), Key: signInThrottleKey(email), UpdateExpression: aws.String("SET locked_until = :until"),
+		ExpressionAttributeValues: map[string]types.AttributeValue{":until": &types.AttributeValueMemberN{Value: integerString(now.Add(signInLockout).Unix())}},
+	})
+	return err
+}
+
+func (a *application) clearSignInFailures(ctx context.Context, email string) error {
+	_, err := a.dynamo.DeleteItem(ctx, &dynamodb.DeleteItemInput{TableName: aws.String(a.table), Key: signInThrottleKey(email)})
+	return err
 }
 
 func (a *application) refresh(ctx context.Context, request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {

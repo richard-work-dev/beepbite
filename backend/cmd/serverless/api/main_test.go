@@ -41,3 +41,13 @@ func TestValidAccountPassword(t *testing.T) {
 		}
 	}
 }
+
+func TestSignInThrottleKey(t *testing.T) {
+	key := signInThrottleKey("usuario@example.com")
+	if got := stringValue(key["PK"]); got != "AUTH_THROTTLE#usuario@example.com" {
+		t.Fatalf("PK = %q", got)
+	}
+	if got := stringValue(key["SK"]); got != "SIGNIN" {
+		t.Fatalf("SK = %q", got)
+	}
+}

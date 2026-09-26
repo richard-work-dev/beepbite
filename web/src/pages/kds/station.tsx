@@ -316,6 +316,12 @@ export default function StationPage() {
     });
   }, [tickets, serviceFilter, delayedOnly, now]);
 
+  const statusSummary = useMemo(() => ({
+    pending: tickets.filter((ticket) => ticket.status === 'fired').length,
+    preparing: tickets.filter((ticket) => ticket.status === 'in_progress').length,
+    ready: tickets.filter((ticket) => ticket.status === 'ready').length,
+  }), [tickets]);
+
   // -------- per-ticket detail (ingredients, prep steps) --------
   // Stable list of ids so the details hook's effect only fires when membership
   // actually changes, not on every priority-sort reshuffle.
@@ -401,6 +407,13 @@ export default function StationPage() {
             <span className="rounded-full bg-primary px-2.5 py-0.5 text-sm font-bold tabular-nums text-primary-foreground">
               {sorted.length}
             </span>
+          )}
+          {!loading && tickets.length > 0 && (
+            <div className="hidden items-center gap-1.5 text-xs font-bold sm:flex" aria-label="Resumen de comandas">
+              {statusSummary.pending > 0 && <span className="rounded-full bg-orange-900/70 px-2 py-1 text-orange-200">Nuevas {statusSummary.pending}</span>}
+              {statusSummary.preparing > 0 && <span className="rounded-full bg-slate-700 px-2 py-1 text-slate-100">Preparando {statusSummary.preparing}</span>}
+              {statusSummary.ready > 0 && <span className="rounded-full bg-emerald-800/80 px-2 py-1 text-emerald-100">Listas {statusSummary.ready}</span>}
+            </div>
           )}
         </div>
 

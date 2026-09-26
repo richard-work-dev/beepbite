@@ -13,7 +13,7 @@ func TestMatchMemberRoute(t *testing.T) {
 }
 
 func TestMemberCapabilities(t *testing.T) {
-	if memberCapabilities("manager")["can_manage_staff"] != true || memberCapabilities("kitchen")["can_kds"] != true || memberCapabilities("staff")["can_view_reports"] != false {
+	if memberCapabilities("manager")["can_manage_staff"] != true || memberCapabilities("admin")["can_manage_staff"] != true || memberCapabilities("kitchen")["can_kds"] != true || memberCapabilities("staff")["can_view_reports"] != false {
 		t.Fatal("unexpected role capabilities")
 	}
 }

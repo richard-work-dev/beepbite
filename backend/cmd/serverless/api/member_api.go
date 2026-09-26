@@ -70,7 +70,7 @@ func memberCapabilities(role string) map[string]any {
 	// records and clients. New permission checks use can_kds consistently.
 	c := map[string]any{"can_pos": false, "can_kds": false, "can_kitchen": false, "can_manage_staff": false, "can_manage_menu": false, "can_view_reports": false}
 	switch role {
-	case "manager":
+	case "manager", "admin":
 		c["can_pos"], c["can_kds"], c["can_kitchen"], c["can_manage_staff"], c["can_manage_menu"], c["can_view_reports"] = true, true, true, true, true, true
 	case "staff", "pos":
 		c["can_pos"] = true

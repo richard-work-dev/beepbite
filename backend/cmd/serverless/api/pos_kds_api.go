@@ -548,6 +548,17 @@ func (a *application) fanoutKDSRows(ctx context.Context, orgID string, order map
 			stationByID[fmt.Sprint(station["id"])] = station
 		}
 	}
+	// A single-store kitchen needs a usable default on its first order. Later
+	// stations and item/category routing continue to override this fallback.
+	if len(stationByID) == 0 {
+		station, createErr := a.createStoredRow(ctx, orgID, "kitchen_stations", map[string]any{
+			"location_id": order["location_id"], "name": "Cocina principal", "is_active": true,
+		})
+		if createErr != nil {
+			return nil, createErr
+		}
+		stationByID[fmt.Sprint(station["id"])] = station
+	}
 	grouped := map[string][]map[string]any{}
 	for _, line := range lines {
 		if fmt.Sprint(line["order_id"]) != orderID {
@@ -818,12 +829,57 @@ func (a *application) transitionKDSTicket(ctx context.Context, orgID, ticketID, 
 			}
 		}
 	}
+	if action != "rush" {
+		if err := a.syncOrderStatusFromKDS(ctx, orgID, fmt.Sprint(ticket["order_id"])); err != nil {
+			return dataAccessError(err)
+		}
+	}
 	eventType := map[string]string{"start": "started", "ready": "ready", "bump": "bumped", "recall": "recalled", "refire": "re_fired", "rush": "rushed"}[action]
 	event, err := a.createStoredRow(ctx, orgID, "kds_ticket_events", map[string]any{"ticket_id": ticketID, "station_id": ticket["station_id"], "event_type": eventType, "performed_by": nil, "created_at": now})
 	if err != nil {
 		return dataAccessError(err)
 	}
 	return mustJSONResponse(200, map[string]any{"ticket": ticket, "event": event})
+}
+
+// syncOrderStatusFromKDS keeps the order aligned with its kitchen tickets.
+// Delivery and completed statuses are owned by front-of-house fulfillment.
+func (a *application) syncOrderStatusFromKDS(ctx context.Context, orgID, orderID string) error {
+	order, err := a.dataRowByID(ctx, orgID, "orders", orderID)
+	if err != nil {
+		return err
+	}
+	current := fmt.Sprint(order["status"])
+	if current == "cancelled" || current == "completed" || current == "out_for_delivery" || current == "delivered" {
+		return nil
+	}
+	tickets, err := a.queryDataRows(ctx, orgID, "kds_tickets")
+	if err != nil {
+		return err
+	}
+	hasTicket, allReady := false, true
+	for _, candidate := range tickets {
+		if fmt.Sprint(candidate["order_id"]) != orderID {
+			continue
+		}
+		hasTicket = true
+		status := fmt.Sprint(candidate["status"])
+		if status != "ready" && status != "bumped" {
+			allReady = false
+		}
+	}
+	if !hasTicket {
+		return nil
+	}
+	next := "preparing"
+	if allReady {
+		next = "ready"
+	}
+	if current == next {
+		return nil
+	}
+	order["status"], order["updated_at"] = next, time.Now().UTC().Format(time.RFC3339Nano)
+	return a.putDataRow(ctx, orgID, "orders", order, false)
 }
 
 func (a *application) getKDSExpo(ctx context.Context, orgID, orderID string) events.APIGatewayV2HTTPResponse {

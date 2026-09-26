@@ -1,4 +1,4 @@
-// ticket-card.jsx — one card in the per-station KDS grid.
+﻿// ticket-card.jsx â€” one card in the per-station KDS grid.
 //
 // Rendered by src/pages/kds/station.jsx. The parent owns the ticket list and
 // the bump/recall/refire/rush callbacks; this component is purely presentational
@@ -6,9 +6,9 @@
 // ticker so we don't run one interval per card) and the local
 // "Recipe panel open?/checkbox checked?" state inside each <RecipeSection/>.
 //
-// The summary `ticket` prop carries the SSE/list payload (id, items, fired_at…).
+// The summary `ticket` prop carries the SSE/list payload (id, items, fired_atâ€¦).
 // The optional `details` prop carries the GET /kds/tickets/{id}/details
-// payload — ingredients, prep steps, variations, per-item status. The card
+// payload â€” ingredients, prep steps, variations, per-item status. The card
 // gracefully renders without `details`; the parent fetches lazily and the
 // recipe panel shows a quiet placeholder until the data lands.
 
@@ -67,7 +67,7 @@ const CARD_BY_BUCKET: Record<string, {
     labelCls: 'bg-amber-600 text-amber-50',
     pulseDot: 'bg-amber-300 animate-pulse',
   },
-  // Late (>= 10 min): red header, bright ring — demands immediate attention
+  // Late (>= 10 min): red header, bright ring â€” demands immediate attention
   red: {
     card:   'bg-gray-900 border-2 border-red-500 ring-2 ring-red-500/50',
     header: 'bg-red-700',
@@ -89,7 +89,7 @@ const ITEM_STATUS_STYLES: Record<string, { dot: string; pill: string; label: str
   in_progress: {
     dot:   'bg-amber-400',
     pill:  'bg-amber-900/60 text-amber-300',
-    label: 'En preparación',
+    label: 'En preparaciÃ³n',
   },
   ready: {
     dot:   'bg-emerald-400',
@@ -160,10 +160,11 @@ export function TicketCard({
   const orderNumber = ticket.ticket_number
     ?? details?.order_number
     ?? ticket.order_number
-    ?? '—';
+    ?? 'â€”';
   const tableNumber = ticket.table_number || details?.table_number || null;
-  const serviceLabel = ({ dine_in: 'En salón', pickup: 'Para retirar', takeaway: 'Para retirar', delivery: 'Envío a domicilio' } as Record<string, string>)[details?.order_type || ticket.order_type || ''] || label;
-  const customerContext = [details?.customer_name, details?.customer_phone].filter(Boolean).join(' · ');
+  const serviceLabel = ({ dine_in: 'En salÃ³n', pickup: 'Para retirar', takeaway: 'Para retirar', delivery: 'EnvÃ­o a domicilio' } as Record<string, string>)[details?.order_type || ticket.order_type || ''] || label;
+  const customerContext = [details?.customer_name ?? ticket.customer_name, details?.customer_phone ?? ticket.customer_phone].filter(Boolean).join(' · ');
+  const deliveryAddress = details?.delivery_address ?? ticket.delivery_address;
 
   return (
     <div
@@ -176,7 +177,7 @@ export function TicketCard({
       aria-label={`Comanda ${orderNumber}`}
     >
       {/* ------------------------------------------------------------------ */}
-      {/* Card header — order number, timer, urgency label                    */}
+      {/* Card header â€” order number, timer, urgency label                    */}
       {/* ------------------------------------------------------------------ */}
       <div className={cn('relative flex items-center justify-between gap-3 px-4 py-3', theme.header)}>
         {/* Left: order number + location */}
@@ -221,7 +222,7 @@ export function TicketCard({
       </div>
 
       {/* ------------------------------------------------------------------ */}
-      {/* Card body — items, notes, actions                                   */}
+      {/* Card body â€” items, notes, actions                                   */}
       {/* ------------------------------------------------------------------ */}
       <div className="flex flex-1 flex-col gap-3 p-4">
         {/* Item list */}
@@ -248,10 +249,10 @@ export function TicketCard({
           </p>
         )}
 
-        {(customerContext || details?.delivery_address) && (
+        {(customerContext || deliveryAddress) && (
           <div className="space-y-1 rounded-lg border border-sky-800/50 bg-sky-950/30 px-3 py-2 text-xs text-sky-200">
             {customerContext && <p><span className="font-bold text-sky-300">Cliente:</span> {customerContext}</p>}
-            {details?.delivery_address && <p><span className="font-bold text-sky-300">Entrega:</span> {details.delivery_address}</p>}
+            {deliveryAddress && <p><span className="font-bold text-sky-300">Entrega:</span> {deliveryAddress}</p>}
           </div>
         )}
 
@@ -270,13 +271,13 @@ export function TicketCard({
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900',
                   'disabled:opacity-50 disabled:cursor-not-allowed',
                 )}
-                aria-label={`Iniciar la preparación de la comanda ${orderNumber}`}
+                aria-label={`Iniciar la preparaciÃ³n de la comanda ${orderNumber}`}
               >
                 <Play className="size-6 shrink-0" aria-hidden="true" />
-                Iniciar preparación
+                Iniciar preparaciÃ³n
               </button>
 
-              {/* Rush button — secondary, narrower */}
+              {/* Rush button â€” secondary, narrower */}
               <button
                 type="button"
                 disabled={busy || ticket.priority > 0}
@@ -424,18 +425,18 @@ function TicketItem({ item, recipeDefaultOpen, storageKey }: TicketItemProps) {
               {status.label}
             </span>
           )}
-          {/* Quantity badge — bold orange so it pops */}
+          {/* Quantity badge â€” bold orange so it pops */}
           <span className="rounded-lg bg-orange-500/20 px-3 py-1 font-mono text-lg font-black tabular-nums text-orange-400">
-            ×{qty}
+            Ã—{qty}
           </span>
         </div>
       </div>
 
-      {/* Allergens — safety-critical, rendered in red and high in the row */}
+      {/* Allergens â€” safety-critical, rendered in red and high in the row */}
       {allergens.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-red-500/50 bg-red-950/40 px-2 py-1.5">
           <AlertTriangle className="size-4 shrink-0 text-red-400" aria-hidden="true" />
-          <span className="text-[11px] font-bold uppercase tracking-wider text-red-400">Alérgenos</span>
+          <span className="text-[11px] font-bold uppercase tracking-wider text-red-400">AlÃ©rgenos</span>
           {allergens.map((a, i) => (
             <span
               key={`${a}-${i}`}
@@ -480,3 +481,4 @@ function TicketItem({ item, recipeDefaultOpen, storageKey }: TicketItemProps) {
 }
 
 export default TicketCard;
+

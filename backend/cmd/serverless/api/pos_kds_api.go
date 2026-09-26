@@ -637,6 +637,14 @@ func (a *application) listKDSTickets(ctx context.Context, orgID, stationID strin
 	if err != nil {
 		return dataAccessError(err)
 	}
+	orders, err := a.queryDataRows(ctx, orgID, "orders")
+	if err != nil {
+		return dataAccessError(err)
+	}
+	ordersByID := make(map[string]map[string]any, len(orders))
+	for _, order := range orders {
+		ordersByID[fmt.Sprint(order["id"])] = order
+	}
 	result := make([]map[string]any, 0)
 	for _, ticket := range rows {
 		if fmt.Sprint(ticket["station_id"]) != stationID || fmt.Sprint(ticket["status"]) == "bumped" {
@@ -651,6 +659,15 @@ func (a *application) listKDSTickets(ctx context.Context, orgID, stationID strin
 		copy := map[string]any{}
 		for key, value := range ticket {
 			copy[key] = value
+		}
+		if order := ordersByID[fmt.Sprint(ticket["order_id"])]; order != nil {
+			copy["order_number"] = order["order_number"]
+			copy["order_type"] = order["order_type"]
+			copy["table_number"] = order["table_number"]
+			copy["customer_name"] = valueOr(order, "customer_name", nil)
+			copy["customer_phone"] = valueOr(order, "customer_phone", nil)
+			copy["delivery_address"] = valueOr(order, "delivery_address", nil)
+			copy["notes"] = valueOr(order, "notes", ticket["notes"])
 		}
 		copy["items"] = ticketItems
 		result = append(result, copy)

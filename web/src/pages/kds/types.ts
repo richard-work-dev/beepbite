@@ -95,9 +95,12 @@ export interface KdsTicket {
   // — only TicketDetail carries table_number, and ticket_number /
   // details.order_number are the real sources for the order number.
   // Pre-existing dead defensive reads, flagged not fixed.
-  order_type?: string;
-  table_number?: string;
-  order_number?: string;
+	order_type?: string;
+	table_number?: string;
+	order_number?: string;
+	customer_name?: string | null;
+	customer_phone?: string | null;
+	delivery_address?: string | null;
 }
 
 // SSE payload shape, per kds/handler.go streamStation's doc comment:

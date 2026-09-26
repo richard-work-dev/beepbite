@@ -60,6 +60,11 @@ export interface KdsTicketDetail {
   order_number: string;
   station_name: string;
   table_number?: string | null;
+  order_type?: string | null;
+  customer_name?: string | null;
+  customer_phone?: string | null;
+  delivery_address?: string | null;
+  notes?: string | null;
   fired_at: string;
   items: KdsTicketItem[];
 }

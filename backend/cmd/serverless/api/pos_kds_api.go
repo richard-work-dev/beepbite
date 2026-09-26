@@ -45,7 +45,7 @@ func matchCommerceRoute(method, path string) (commerceRoute, bool) {
 		return commerceRoute{name: "kds_station_" + segments[3], params: []string{segments[2]}}, true
 	case len(segments) == 4 && segments[0] == "kds" && segments[1] == "tickets" && method == "GET" && segments[3] == "details":
 		return commerceRoute{name: "kds_details", params: []string{segments[2]}}, true
-	case len(segments) == 4 && segments[0] == "kds" && segments[1] == "tickets" && method == "POST" && (segments[3] == "bump" || segments[3] == "recall" || segments[3] == "refire" || segments[3] == "rush"):
+	case len(segments) == 4 && segments[0] == "kds" && segments[1] == "tickets" && method == "POST" && (segments[3] == "start" || segments[3] == "ready" || segments[3] == "bump" || segments[3] == "recall" || segments[3] == "refire" || segments[3] == "rush"):
 		return commerceRoute{name: "kds_" + segments[3], params: []string{segments[2]}}, true
 	case len(segments) == 4 && segments[0] == "kds" && segments[1] == "orders" && method == "GET" && segments[3] == "expo":
 		return commerceRoute{name: "kds_expo", params: []string{segments[2]}}, true
@@ -106,7 +106,7 @@ func (a *application) handleCommerceAPI(ctx context.Context, request events.APIG
 		response = events.APIGatewayV2HTTPResponse{StatusCode: 200, Headers: map[string]string{"content-type": "text/event-stream", "cache-control": "no-cache"}, Body: "retry: 5000\nevent: connected\ndata: {}\n\n"}
 	case "kds_details":
 		response = a.getKDSTicketDetails(ctx, orgID, route.params[0])
-	case "kds_bump", "kds_recall", "kds_refire", "kds_rush":
+	case "kds_start", "kds_ready", "kds_bump", "kds_recall", "kds_refire", "kds_rush":
 		response = a.transitionKDSTicket(ctx, orgID, route.params[0], strings.TrimPrefix(route.name, "kds_"))
 	case "kds_expo":
 		response = a.getKDSExpo(ctx, orgID, route.params[0])
@@ -691,7 +691,13 @@ func (a *application) getKDSTicketDetails(ctx context.Context, orgID, ticketID s
 			"variations": []string{}, "ingredients": []any{}, "prep_steps": []any{}, "allergens": []string{},
 		})
 	}
-	return mustJSONResponse(200, map[string]any{"ticket_id": ticketID, "order_number": order["order_number"], "station_name": station["name"], "table_number": order["table_number"], "fired_at": ticket["fired_at"], "items": resultItems})
+	return mustJSONResponse(200, map[string]any{
+		"ticket_id": ticketID, "order_number": order["order_number"], "station_name": station["name"],
+		"table_number": order["table_number"], "order_type": order["order_type"], "fired_at": ticket["fired_at"],
+		"customer_name": valueOr(order, "customer_name", nil), "customer_phone": valueOr(order, "customer_phone", nil),
+		"delivery_address": valueOr(order, "delivery_address", nil), "notes": valueOr(order, "notes", ticket["notes"]),
+		"items": resultItems,
+	})
 }
 
 func (a *application) transitionKDSTicket(ctx context.Context, orgID, ticketID, action string) events.APIGatewayV2HTTPResponse {
@@ -701,22 +707,57 @@ func (a *application) transitionKDSTicket(ctx context.Context, orgID, ticketID, 
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	switch action {
+	case "start":
+		if fmt.Sprint(ticket["status"]) != "fired" {
+			return errorResponse(409, "ticket must be fired before preparation starts")
+		}
+		ticket["status"], ticket["started_at"] = "in_progress", now
+	case "ready":
+		if fmt.Sprint(ticket["status"]) != "in_progress" && fmt.Sprint(ticket["status"]) != "fired" {
+			return errorResponse(409, "ticket is not being prepared")
+		}
+		ticket["status"], ticket["ready_at"] = "ready", now
 	case "bump":
+		if fmt.Sprint(ticket["status"]) != "ready" {
+			return errorResponse(409, "ticket must be ready before it is completed")
+		}
 		ticket["status"], ticket["ready_at"], ticket["bumped_at"] = "bumped", now, now
 	case "recall", "refire":
 		ticket["status"], ticket["fired_at"], ticket["started_at"], ticket["ready_at"], ticket["bumped_at"] = "fired", now, nil, nil, nil
 	case "rush":
 		priority, _ := integerValue(ticket["priority"])
 		ticket["priority"] = priority + 1
-		if fmt.Sprint(ticket["status"]) == "fired" {
-			ticket["status"], ticket["started_at"] = "in_progress", now
-		}
 	}
 	ticket["updated_at"] = now
 	if err := a.putDataRow(ctx, orgID, "kds_tickets", ticket, false); err != nil {
 		return dataAccessError(err)
 	}
-	eventType := map[string]string{"bump": "bumped", "recall": "recalled", "refire": "re_fired", "rush": "rushed"}[action]
+	itemStatus := map[string]string{"start": "in_progress", "ready": "ready", "recall": "fired", "refire": "fired"}[action]
+	if itemStatus != "" {
+		items, itemErr := a.queryDataRows(ctx, orgID, "kds_ticket_items")
+		if itemErr != nil {
+			return dataAccessError(itemErr)
+		}
+		for _, item := range items {
+			if fmt.Sprint(item["ticket_id"]) != ticketID {
+				continue
+			}
+			item["item_status"], item["updated_at"] = itemStatus, now
+			if itemStatus == "in_progress" {
+				item["started_at"] = now
+			}
+			if itemStatus == "ready" {
+				item["ready_at"] = now
+			}
+			if itemStatus == "fired" {
+				item["started_at"], item["ready_at"] = nil, nil
+			}
+			if err := a.putDataRow(ctx, orgID, "kds_ticket_items", item, false); err != nil {
+				return dataAccessError(err)
+			}
+		}
+	}
+	eventType := map[string]string{"start": "started", "ready": "ready", "bump": "bumped", "recall": "recalled", "refire": "re_fired", "rush": "rushed"}[action]
 	event, err := a.createStoredRow(ctx, orgID, "kds_ticket_events", map[string]any{"ticket_id": ticketID, "station_id": ticket["station_id"], "event_type": eventType, "performed_by": nil, "created_at": now})
 	if err != nil {
 		return dataAccessError(err)

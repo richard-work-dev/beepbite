@@ -44,6 +44,7 @@ export default function StationPage() {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [actionTicketId, setActionTicketId] = useState<string | null>(null);
 
   // Track the last-bumped ticket so we can show a Recall button briefly.
   // { ticket, snapshot, bumpedAtMs } — snapshot is the pre-bump row for rollback.
@@ -66,7 +67,7 @@ export default function StationPage() {
     try {
       const { data, error } = await api.request<KdsTicket[]>('GET', `/kds/stations/${encodeURIComponent(stationId as string)}/tickets`);
       if (error) {
-        setFetchError(error.message || 'Failed to load tickets');
+        setFetchError(error.message || 'No se pudieron cargar las comandas');
         return;
       }
       const list = Array.isArray(data) ? data : [];
@@ -74,7 +75,7 @@ export default function StationPage() {
       setTickets(list.filter((t) => t.status === 'fired' || t.status === 'in_progress' || t.status === 'ready'));
     } catch (err) {
       console.error('KDS refetch failed:', err);
-      setFetchError('Failed to load tickets');
+      setFetchError('No se pudieron cargar las comandas');
     } finally {
       setLoading(false);
     }
@@ -129,6 +130,7 @@ export default function StationPage() {
   // -------- mutation helpers --------
   const doAction = useCallback(async (action: string, ticket: KdsTicket, { optimistic }: { optimistic?: OptimisticActions } = {}) => {
     inFlightRef.current.add(ticket.id);
+    setActionTicketId(ticket.id);
     setActionError(null);
 
     // Apply optimistic UI before the request.
@@ -165,8 +167,31 @@ export default function StationPage() {
       return null;
     } finally {
       inFlightRef.current.delete(ticket.id);
+      setActionTicketId((current) => current === ticket.id ? null : current);
     }
   }, []);
+
+  const onStart = useCallback((ticket: KdsTicket) => {
+    void doAction('start', ticket, {
+      optimistic: {
+        apply: () => setTickets((prev) => prev.map((t) =>
+          t.id === ticket.id ? { ...t, status: 'in_progress', started_at: new Date().toISOString() } : t
+        )),
+        rollback: () => setTickets((prev) => prev.map((t) => t.id === ticket.id ? ticket : t)),
+      },
+    });
+  }, [doAction]);
+
+  const onReady = useCallback((ticket: KdsTicket) => {
+    void doAction('ready', ticket, {
+      optimistic: {
+        apply: () => setTickets((prev) => prev.map((t) =>
+          t.id === ticket.id ? { ...t, status: 'ready', ready_at: new Date().toISOString() } : t
+        )),
+        rollback: () => setTickets((prev) => prev.map((t) => t.id === ticket.id ? ticket : t)),
+      },
+    });
+  }, [doAction]);
 
   const onBump = useCallback((ticket: KdsTicket) => {
     const snapshot = ticket;
@@ -235,6 +260,16 @@ export default function StationPage() {
     });
   }, [doAction]);
 
+  const onAdvance = useCallback((ticket: KdsTicket) => {
+    if (ticket.status === 'fired') {
+      onStart(ticket);
+    } else if (ticket.status === 'in_progress') {
+      onReady(ticket);
+    } else if (ticket.status === 'ready') {
+      onBump(ticket);
+    }
+  }, [onBump, onReady, onStart]);
+
   // -------- recall window timing --------
   const recallVisible = useMemo(() => {
     if (!lastBump) return false;
@@ -272,7 +307,7 @@ export default function StationPage() {
     setOverlayOpen,
   } = useHotkeys({
     tickets: sorted,
-    onBump,
+    onBump: onAdvance,
     onRecall,
     lastBump,
     recallVisible,
@@ -302,14 +337,14 @@ export default function StationPage() {
         >
           <WifiOff className="size-4 shrink-0" />
           {sseOffline
-            ? 'Live feed disconnected — tickets may be stale. Attempting to reconnect…'
-            : 'Reconnecting to live feed…'}
+            ? 'La conexión en vivo se interrumpió. Las comandas podrían no estar actualizadas.'
+            : 'Reconectando la actualización en vivo…'}
           <button
             type="button"
             className="ml-2 rounded-md border border-current/40 px-2.5 py-0.5 text-xs font-bold transition-colors hover:bg-white/10"
             onClick={refetch}
           >
-            Refresh now
+            Actualizar ahora
           </button>
         </div>
       )}
@@ -323,7 +358,7 @@ export default function StationPage() {
           <div className="h-8 w-1.5 rounded-full bg-orange-500" aria-hidden="true" />
           <div className="flex flex-col leading-tight">
             <h1 className="text-xl font-extrabold tracking-tight text-white">
-              Kitchen Display
+              Pantalla de cocina
             </h1>
             <span className="font-mono text-xs uppercase tracking-wider text-gray-400">
               station {stationId?.slice(0, 8) || '—'}
@@ -440,10 +475,13 @@ export default function StationPage() {
                   details={getDetails(t.id)}
                   detailsLoading={detailsLoading(t.id)}
                   now={now}
+                  onStart={onStart}
+                  onReady={onReady}
                   onBump={onBump}
                   onRush={onRush}
                   onRefire={onRefire}
                   showRecall={false}
+                  busy={actionTicketId === t.id}
                 />
               </div>
             ))}
@@ -556,8 +594,8 @@ function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) 
 // pressing Escape, clicking the close button, or clicking the backdrop.
 
 const HOTKEYS = [
-  { keys: ['1', '–', '9'], desc: 'Completar la comanda visible en esa posición' },
-  { keys: ['Espacio'],      desc: 'Completar la comanda seleccionada' },
+  { keys: ['1', '–', '9'], desc: 'Avanzar el estado de la comanda en esa posición' },
+  { keys: ['Espacio'],      desc: 'Avanzar el estado de la comanda seleccionada' },
   { keys: ['r'],            desc: 'Recuperar la última comanda completada' },
   { keys: ['←', '→'],      desc: 'Mover la selección a izquierda o derecha' },
   { keys: ['↑', '↓'],      desc: 'Mover la selección hacia arriba o abajo' },
@@ -615,7 +653,7 @@ function HotkeyOverlay({ onClose }: { onClose: () => void }) {
         </ul>
 
         <p className="mt-6 text-center text-xs text-gray-500">
-          Shortcuts are inactive while an input field is focused.
+          Los atajos no están activos mientras se edita un campo.
         </p>
       </div>
     </div>

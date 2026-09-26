@@ -2,8 +2,8 @@
 //
 // Hotkey map (active whenever no <input>/<textarea>/<select> is focused):
 //
-//   1–9      Bump the Nth visible ticket (1 = leftmost/topmost in sorted order)
-//   Space    Bump the currently focused ticket (wraps to first if none)
+//   1–9      Advance the Nth visible ticket (1 = leftmost/topmost in sorted order)
+//   Space    Advance the currently focused ticket (wraps to first if none)
 //   r / R    Recall the last bumped ticket (if still within the recall window)
 //   ?        Toggle the hotkey-help overlay
 //
@@ -72,7 +72,7 @@ export function useHotkeys({ tickets, onBump, onRecall, lastBump, recallVisible 
     const idx = focusedIndexRef.current;
 
     switch (e.key) {
-      // ---- digit keys 1-9: bump the Nth ticket ----
+      // ---- digit keys 1-9: advance the Nth ticket ----
       case '1': case '2': case '3': case '4': case '5':
       case '6': case '7': case '8': case '9': {
         const n = parseInt(e.key, 10) - 1; // 0-based
@@ -85,7 +85,7 @@ export function useHotkeys({ tickets, onBump, onRecall, lastBump, recallVisible 
         break;
       }
 
-      // ---- Space: bump focused ticket ----
+      // ---- Space: advance the focused ticket ----
       case ' ': {
         e.preventDefault();
         const target = list[idx];

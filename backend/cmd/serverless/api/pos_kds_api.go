@@ -566,15 +566,17 @@ func (a *application) fanoutKDSRows(ctx context.Context, orgID string, order map
 		}
 		stationID := ""
 		for _, route := range itemRoutes {
-			if fmt.Sprint(route["item_id"]) == fmt.Sprint(line["item_id"]) && route["is_primary"] != false {
-				stationID = fmt.Sprint(route["station_id"])
+			candidateID := fmt.Sprint(route["station_id"])
+			if fmt.Sprint(route["item_id"]) == fmt.Sprint(line["item_id"]) && route["is_primary"] != false && stationByID[candidateID] != nil {
+				stationID = candidateID
 				break
 			}
 		}
 		if stationID == "" {
 			for _, route := range categoryRoutes {
-				if fmt.Sprint(route["category_id"]) == fmt.Sprint(line["category_id"]) && route["is_primary"] != false {
-					stationID = fmt.Sprint(route["station_id"])
+				candidateID := fmt.Sprint(route["station_id"])
+				if fmt.Sprint(route["category_id"]) == fmt.Sprint(line["category_id"]) && route["is_primary"] != false && stationByID[candidateID] != nil {
+					stationID = candidateID
 					break
 				}
 			}
@@ -620,20 +622,6 @@ func (a *application) fanoutKDS(ctx context.Context, orgID, orderID string) even
 	}
 	if order["held_at"] != nil {
 		return errorResponse(409, "the order is on hold and cannot be sent to kitchen")
-	}
-	stations, err := a.queryDataRows(ctx, orgID, "kitchen_stations")
-	if err != nil {
-		return dataAccessError(err)
-	}
-	hasActiveStation := false
-	for _, station := range stations {
-		if fmt.Sprint(station["location_id"]) == fmt.Sprint(order["location_id"]) && station["is_active"] != false {
-			hasActiveStation = true
-			break
-		}
-	}
-	if !hasActiveStation {
-		return errorResponse(409, "no active kitchen station is configured for this location")
 	}
 	ids, err := a.fanoutKDSRows(ctx, orgID, order)
 	if err != nil {

@@ -783,7 +783,8 @@ func (a *application) transitionKDSTicket(ctx context.Context, orgID, ticketID, 
 }
 
 func (a *application) getKDSExpo(ctx context.Context, orgID, orderID string) events.APIGatewayV2HTTPResponse {
-	if _, err := a.dataRowByID(ctx, orgID, "orders", orderID); err != nil {
+	order, err := a.dataRowByID(ctx, orgID, "orders", orderID)
+	if err != nil {
 		return errorResponse(404, "order not found")
 	}
 	tickets, err := a.queryDataRows(ctx, orgID, "kds_tickets")
@@ -830,7 +831,11 @@ func (a *application) getKDSExpo(ctx context.Context, orgID, orderID string) eve
 	if len(stationTickets) == 0 {
 		allReady = false
 	}
-	return mustJSONResponse(200, map[string]any{"order_id": orderID, "earliest_fired_at": earliest, "station_tickets": stationTickets, "max_priority": maxPriority, "all_ready": allReady, "any_in_progress": anyProgress})
+	return mustJSONResponse(200, map[string]any{
+		"order_id": orderID, "order_number": order["order_number"], "order_type": order["order_type"], "table_number": order["table_number"],
+		"customer_name": valueOr(order, "customer_name", nil), "customer_phone": valueOr(order, "customer_phone", nil), "delivery_address": valueOr(order, "delivery_address", nil), "notes": valueOr(order, "notes", nil),
+		"earliest_fired_at": earliest, "station_tickets": stationTickets, "max_priority": maxPriority, "all_ready": allReady, "any_in_progress": anyProgress,
+	})
 }
 
 func (a *application) openCashSession(ctx context.Context, orgID, drawerID, body string) events.APIGatewayV2HTTPResponse {

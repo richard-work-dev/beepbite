@@ -4,16 +4,8 @@
 // per-station ticket status. Highlights orders blocked on one station while
 // the others are done.
 //
-// Data source: we don't currently have a "list all open expo orders" endpoint —
-// only GET /kds/orders/{order_id}/expo for a single order. So this page:
-//   1. Polls the data layer (`orders` table via api.from) for open orders in
-//      this org/location.
-//   2. For each open order, fetches /kds/orders/{order_id}/expo and merges.
-// Refreshes every 10s and on the manual refresh button. SSE not required.
-//
-// NOTE for orchestrator: a future backend endpoint like
-//   GET /kds/expo  (all open orders for the current location)
-// would let us drop step (1) entirely. Filed as TODO below.
+// Data source: GET /kds/expo returns all active orders with their station tickets.
+// The page refreshes every 10 seconds and on manual reload.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertCircle, ChefHat, Loader2, RefreshCw } from 'lucide-react';
@@ -25,32 +17,6 @@ import { useTick } from './hooks/use-tick';
 import type { ExpoOrder, ExpoStationTicket } from './types';
 
 const POLL_MS = 10_000;
-// Must match the orders.status CHECK constraint
-// (migrations/20240101000002_init_schema.sql):
-//   pending | confirmed | preparing | ready | out_for_delivery
-//   | delivered | completed | cancelled
-// We show all in-flight statuses on the expo board.
-const OPEN_ORDER_STATUSES = ['pending', 'confirmed', 'preparing', 'ready', 'out_for_delivery'];
-
-// Mirrors the columns this page's own
-// `.select('id, order_number, order_type, status, created_at')` requests
-// from `orders` (backend/migrations/001_baseline.sql). `table_number` is
-// read below but is neither selected here nor a real column on `orders`
-// (dine-in seating lives on table_session_id instead) — pre-existing dead
-// read, flagged not fixed.
-interface OpenOrderRow {
-  id: string;
-  order_number?: string;
-  order_type?: string;
-  status?: string;
-  created_at?: string;
-	table_number?: string;
-	customer_name?: string | null;
-	customer_phone?: string | null;
-	delivery_address?: string | null;
-	notes?: string | null;
-}
-
 // Mirrors backend/internal/handlers/kds/store.go ExpoRow — the response of
 // GET /kds/orders/{order_id}/expo. `station_tickets` arrives as a
 // base64-encoded JSON string (Go []byte through json.Encoder); decoded by

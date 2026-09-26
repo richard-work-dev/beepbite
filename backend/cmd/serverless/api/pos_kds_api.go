@@ -697,15 +697,34 @@ func (a *application) getKDSTicketDetails(ctx context.Context, orgID, ticketID s
 	if err != nil {
 		return dataAccessError(err)
 	}
+	menuItems, _ := a.queryDataRows(ctx, orgID, "items")
+	recipeRows, _ := a.queryDataRows(ctx, orgID, "item_recipes")
+	prepRows, _ := a.queryDataRows(ctx, orgID, "item_prep_steps")
+	menuNames := map[string]string{}
+	for _, menuItem := range menuItems {
+		menuNames[displayString(menuItem["id"])] = displayString(menuItem["name"])
+	}
 	resultItems := make([]map[string]any, 0)
 	for _, item := range items {
 		if fmt.Sprint(item["ticket_id"]) != ticketID {
 			continue
 		}
+		ingredients := make([]map[string]any, 0)
+		for _, recipe := range recipeRows {
+			if displayString(recipe["parent_item_id"]) == displayString(item["item_id"]) {
+				ingredients = append(ingredients, map[string]any{"name": menuNames[displayString(recipe["child_item_id"])], "quantity": valueOr(recipe, "quantity_needed", 0), "unit": valueOr(recipe, "unit", "")})
+			}
+		}
+		prepSteps := make([]map[string]any, 0)
+		for _, step := range prepRows {
+			if displayString(step["item_id"]) == displayString(item["item_id"]) {
+				prepSteps = append(prepSteps, map[string]any{"step_number": valueOr(step, "step_number", len(prepSteps)+1), "instruction": valueOr(step, "instruction", step["description"])})
+			}
+		}
 		resultItems = append(resultItems, map[string]any{
 			"ticket_item_id": item["id"], "order_item_id": item["order_item_id"], "quantity": item["quantity"],
 			"item_status": item["item_status"], "notes": item["notes"], "item_name": item["item_name"],
-			"variations": []string{}, "ingredients": []any{}, "prep_steps": []any{}, "allergens": []string{},
+			"variations": []string{}, "ingredients": ingredients, "prep_steps": prepSteps, "allergens": []string{},
 		})
 	}
 	return mustJSONResponse(200, map[string]any{

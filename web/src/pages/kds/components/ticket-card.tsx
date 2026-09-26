@@ -162,9 +162,9 @@ export function TicketCard({
   // "user ticked a step" wins inside RecipeSection itself.
   const recipeDefaultOpen = ticket.status !== 'in_progress';
 
-  const orderNumber = ticket.ticket_number
-    ?? details?.order_number
+  const orderNumber = details?.order_number
     ?? ticket.order_number
+    ?? ticket.ticket_number
     ?? 'â€”';
   const tableNumber = ticket.table_number || details?.table_number || null;
   const serviceLabel = ({ dine_in: 'En salÃ³n', pickup: 'Para retirar', takeaway: 'Para retirar', delivery: 'EnvÃ­o a domicilio' } as Record<string, string>)[details?.order_type || ticket.order_type || ''] || label;

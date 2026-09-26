@@ -67,14 +67,14 @@ func (a *application) setStaffPassword(ctx context.Context, request events.APIGa
 		return errorResponse(400, "invalid request")
 	}
 	password := displayString(input["password"])
-	if len(password) < 8 {
-		return errorResponse(400, "password must be at least 8 characters")
+	if !validAccountPassword(password) {
+		return errorResponse(400, "password must have at least 12 characters, an uppercase letter, a lowercase letter, and a number")
 	}
 	row, err := a.dataRowByID(ctx, orgID, "staff", staffID)
 	if err != nil {
 		return errorResponse(404, "staff not found")
 	}
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), accountHashCost)
 	if err != nil {
 		return errorResponse(500, "could not set password")
 	}

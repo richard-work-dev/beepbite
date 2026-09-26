@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -26,8 +27,9 @@ import (
 )
 
 const (
-	accessTTL  = 15 * time.Minute
-	refreshTTL = 30 * 24 * time.Hour
+	accessTTL       = 15 * time.Minute
+	refreshTTL      = 30 * 24 * time.Hour
+	accountHashCost = 12
 )
 
 type application struct {
@@ -203,8 +205,8 @@ func (a *application) signUp(ctx context.Context, request events.APIGatewayV2HTT
 		return errorResponse(400, "solicitud inválida"), nil
 	}
 	email, err := normalizeEmail(input.Email)
-	if err != nil || len(input.Password) < 8 {
-		return errorResponse(400, "se requiere un correo válido y una contraseña de al menos 8 caracteres"), nil
+	if err != nil || !validAccountPassword(input.Password) {
+		return errorResponse(400, "se requiere un correo válido y una contraseña de al menos 12 caracteres, con mayúscula, minúscula y número"), nil
 	}
 	if a.singleStore.Enabled && !strings.EqualFold(email, a.singleStore.OwnerEmail) {
 		invited, inviteErr := a.hasPendingStoreInvite(ctx, email)
@@ -215,7 +217,7 @@ func (a *application) signUp(ctx context.Context, request events.APIGatewayV2HTT
 			return errorResponse(403, "el registro requiere una invitación"), nil
 		}
 	}
-	passwordHash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(input.Password), accountHashCost)
 	if err != nil {
 		return events.APIGatewayV2HTTPResponse{}, err
 	}
@@ -448,6 +450,24 @@ func normalizeEmail(value string) (string, error) {
 		return "", errors.New("invalid email")
 	}
 	return value, nil
+}
+
+func validAccountPassword(value string) bool {
+	if len(value) < 12 || len(value) > 128 {
+		return false
+	}
+	var hasUpper, hasLower, hasDigit bool
+	for _, character := range value {
+		switch {
+		case unicode.IsUpper(character):
+			hasUpper = true
+		case unicode.IsLower(character):
+			hasLower = true
+		case unicode.IsDigit(character):
+			hasDigit = true
+		}
+	}
+	return hasUpper && hasLower && hasDigit
 }
 
 func randomID() (string, error) {

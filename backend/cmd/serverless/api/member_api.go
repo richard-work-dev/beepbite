@@ -27,6 +27,8 @@ func matchMemberRoute(method, path string) (memberRoute, bool) {
 		return memberRoute{name: "list-members"}, true
 	case len(p) == 2 && p[0] == "members" && method == "DELETE":
 		return memberRoute{name: "remove-member", id: p[1]}, true
+	case len(p) == 2 && p[0] == "members" && method == "PATCH":
+		return memberRoute{name: "change-role", id: p[1]}, true
 	default:
 		return memberRoute{}, false
 	}
@@ -53,16 +55,53 @@ func (a *application) handleMemberAPI(ctx context.Context, request events.APIGat
 		response = a.listActiveMembers(ctx, request, claims.UserID)
 	case "remove-member":
 		response = a.removeActiveMember(ctx, request, claims.UserID, route.id)
+	case "change-role":
+		response = a.changeMemberRole(ctx, request, claims.UserID, route.id)
 	}
 	return response, true, nil
 }
 
 func validMemberInviteRole(role string) bool {
 	switch role {
-	case "manager", "staff", "kitchen", "pos":
+	case "admin", "manager", "staff", "kitchen", "pos":
 		return true
 	}
 	return false
+}
+
+func (a *application) changeMemberRole(ctx context.Context, request events.APIGatewayV2HTTPRequest, userID, profileID string) events.APIGatewayV2HTTPResponse {
+	orgID, response, ok := a.managerOrganization(ctx, request, userID)
+	if !ok {
+		return response
+	}
+	if profileID == userID {
+		return errorResponse(400, "cannot change your own role")
+	}
+	var input map[string]any
+	if decodeDataObject(request.Body, &input) != nil {
+		return errorResponse(400, "invalid request body")
+	}
+	role := strings.ToLower(strings.TrimSpace(displayString(input["role"])))
+	if !validMemberInviteRole(role) {
+		return errorResponse(400, "invalid member role")
+	}
+	membership, err := a.getMembership(ctx, profileID, orgID)
+	if err != nil || displayString(membership["role"]) == "owner" || displayString(membership["role"]) == "driver" {
+		return errorResponse(404, "member not found in this organization")
+	}
+	membership["role"], membership["capabilities"], membership["updated_at"] = role, memberCapabilities(role), time.Now().UTC().Format(time.RFC3339Nano)
+	userMembership, orgMembership, err := membershipItems(profileID, orgID, membership)
+	if err != nil {
+		return dataAccessError(err)
+	}
+	_, err = a.dynamo.TransactWriteItems(ctx, &dynamodb.TransactWriteItemsInput{TransactItems: []types.TransactWriteItem{
+		{Put: &types.Put{TableName: aws.String(a.table), Item: userMembership}},
+		{Put: &types.Put{TableName: aws.String(a.table), Item: orgMembership}},
+	}})
+	if err != nil {
+		return dataAccessError(err)
+	}
+	return mustJSONResponse(200, map[string]any{"profile_id": profileID, "role": role, "capabilities": membership["capabilities"]})
 }
 
 func memberCapabilities(role string) map[string]any {

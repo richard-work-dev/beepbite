@@ -38,8 +38,9 @@ const SignUpPage = () => {
 
   // Live password requirement checks for visual feedback
   const pwChecks = {
-    length: formData.password.length >= 8,
+    length: formData.password.length >= 12,
     upper: /[A-Z]/.test(formData.password),
+    lower: /[a-z]/.test(formData.password),
     number: /\d/.test(formData.password),
   };
   const pwStarted = formData.password.length > 0;
@@ -50,9 +51,9 @@ const SignUpPage = () => {
     if (!emailRegex.test(formData.email)) {
       newErrors.email = 'Ingresá un correo electrónico válido';
     }
-    const passwordRegex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
+    const passwordRegex = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d).{12,}$/;
     if (!passwordRegex.test(formData.password)) {
-      newErrors.password = 'La contraseña debe tener al menos 8 caracteres, una mayúscula y un número';
+      newErrors.password = 'La contraseña debe tener al menos 12 caracteres, mayúscula, minúscula y un número';
     }
     if (!formData.agreeToTerms) {
       newErrors.agreeToTerms = 'Debés aceptar los términos y condiciones';
@@ -168,8 +169,9 @@ const SignUpPage = () => {
               {/* Live password strength checklist */}
               <ul id="signup-password-reqs" className="space-y-0.5" aria-label="Password requirements">
                 {[
-                  { key: 'length', label: 'Al menos 8 caracteres', met: pwChecks.length },
+                  { key: 'length', label: 'Al menos 12 caracteres', met: pwChecks.length },
                   { key: 'upper', label: 'Una letra mayúscula', met: pwChecks.upper },
+                  { key: 'lower', label: 'Una letra minúscula', met: pwChecks.lower },
                   { key: 'number', label: 'Un número', met: pwChecks.number },
                 ].map(({ key, label, met }) => (
                   <li key={key} className={`text-xs flex items-center gap-1.5 transition-colors ${pwStarted ? (met ? 'text-success' : 'text-destructive') : 'text-muted-foreground'}`}>

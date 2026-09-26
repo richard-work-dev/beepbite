@@ -183,18 +183,6 @@ const SignInPage = () => {
             </Button>
           </form>
 
-          {/* Switch to sign-up */}
-          <p className="text-center text-sm text-muted-foreground">
-            {t('auth.signIn.noAccount')}{' '}
-            <button
-              type="button"
-              className="text-primary hover:text-primary/80 font-semibold underline underline-offset-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"
-              onClick={() => navigate('/signup')}
-              disabled={isLoading}
-            >
-              Crear cuenta con invitación
-            </button>
-          </p>
         </CardContent>
       </Card>
     </AuthLayout>

@@ -24,3 +24,20 @@ func TestHandlerAcceptsCORSPreflight(t *testing.T) {
 		t.Fatalf("body = %q, want empty", response.Body)
 	}
 }
+
+func TestValidAccountPassword(t *testing.T) {
+	for _, test := range []struct {
+		password string
+		valid    bool
+	}{
+		{password: "Corta1a", valid: false},
+		{password: "solominusculas123", valid: false},
+		{password: "SOLOMAYUSCULAS123", valid: false},
+		{password: "SinNumerosAqui", valid: false},
+		{password: "ClaveSegura2026", valid: true},
+	} {
+		if got := validAccountPassword(test.password); got != test.valid {
+			t.Errorf("validAccountPassword(%q) = %v, want %v", test.password, got, test.valid)
+		}
+	}
+}

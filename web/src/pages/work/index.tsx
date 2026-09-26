@@ -54,6 +54,7 @@ interface KdsStation {
 
 interface MembershipCaps {
   can_pos?: boolean;
+  can_kds?: boolean;
   can_kitchen?: boolean;
   [key: string]: unknown;
 }
@@ -106,7 +107,7 @@ const KDS_VIEWS: { id: KdsViewId; label: string }[] = [
 function resolveTabAccess(roles: string[], caps: MembershipCaps) {
   const isOwnerManager = roles.some((r) => r === 'owner' || r === 'manager');
   const hasPos = Boolean(caps.can_pos);
-  const hasKitchen = Boolean(caps.can_kitchen);
+  const hasKitchen = Boolean(caps.can_kds || caps.can_kitchen);
 
   return {
     showPOS: isOwnerManager || hasPos,

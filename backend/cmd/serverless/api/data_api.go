@@ -61,6 +61,11 @@ func (a *application) handleData(ctx context.Context, request events.APIGatewayV
 	if err != nil {
 		return errorResponse(401, "invalid token"), nil
 	}
+	if required, restricted := dataTableCapability(table, request.RequestContext.HTTP.Method); restricted {
+		if response, allowed := a.authorizeDataCapability(ctx, request, claims.UserID, required); !allowed {
+			return response, nil
+		}
+	}
 	query, err := parseDataQuery(request.RawQueryString)
 	if err != nil {
 		return errorResponse(400, err.Error()), nil
@@ -90,6 +95,44 @@ func (a *application) handleData(ctx context.Context, request events.APIGatewayV
 	default:
 		return errorResponse(405, "method not allowed"), nil
 	}
+}
+
+// dataTableCapability protects operational configuration and stock from the
+// generic data endpoint. POS and KDS retain their dedicated workflow APIs.
+func dataTableCapability(table, method string) (string, bool) {
+	menuTables := map[string]bool{"categories": true, "items": true, "item_recipes": true, "item_prep_steps": true, "allergens": true, "item_allergens": true, "dietary_tags": true, "item_dietary_tags": true, "menu_schedules": true, "menu_schedule_slots": true, "item_menu_schedules": true, "item_price_schedules": true}
+	stockTables := map[string]bool{"inventory_items": true, "stock_movements": true, "suppliers": true, "supplier_contacts": true, "supplier_locations": true, "supplier_inventory_items": true, "purchase_orders": true, "purchase_order_items": true, "goods_receipts": true, "goods_receipt_items": true, "supplier_invoices": true, "supplier_invoice_lines": true, "ingredient_price_history": true}
+	if menuTables[table] && method != "GET" {
+		return "can_manage_menu", true
+	}
+	if stockTables[table] {
+		return "manager", true
+	}
+	if table == "staff" || table == "organization_invites" || table == "locations" || table == "tax_rates" {
+		return "manager", true
+	}
+	return "", false
+}
+
+func (a *application) authorizeDataCapability(ctx context.Context, request events.APIGatewayV2HTTPRequest, userID, required string) (events.APIGatewayV2HTTPResponse, bool) {
+	orgID, err := a.authorizedOrganization(ctx, request, userID)
+	if err != nil {
+		return dataAccessError(err), false
+	}
+	membership, err := a.getMembership(ctx, userID, orgID)
+	if err != nil {
+		return dataAccessError(err), false
+	}
+	role := displayString(membership["role"])
+	if role == "owner" || role == "manager" || (required != "manager" && valueOr(membership, "capabilities", map[string]any{}) != nil && memberCapability(membership, required)) {
+		return events.APIGatewayV2HTTPResponse{}, true
+	}
+	return errorResponse(403, "requires appropriate role"), false
+}
+
+func memberCapability(membership map[string]any, capability string) bool {
+	caps, ok := membership["capabilities"].(map[string]any)
+	return ok && caps[capability] == true
 }
 
 func (a *application) listData(ctx context.Context, request events.APIGatewayV2HTTPRequest, userID, table string, query dataQuery) (events.APIGatewayV2HTTPResponse, error) {

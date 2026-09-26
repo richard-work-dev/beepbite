@@ -35,7 +35,7 @@ function resolvePostLoginPath(payload: { role?: string; staff?: { role?: string 
   const role = payload?.role ?? payload?.staff?.role ?? '';
   const caps: string[] = Array.isArray(payload?.capabilities) ? (payload.capabilities as string[]) : [];
   const hasPos = caps.includes('can_pos');
-  const hasKitchen = caps.includes('can_kitchen');
+  const hasKitchen = caps.includes('can_kds') || caps.includes('can_kitchen');
   const kitchenOnly = role === 'kitchen' || (!hasPos && hasKitchen);
   return kitchenOnly ? '/work' : '/pos/workspace';
 }

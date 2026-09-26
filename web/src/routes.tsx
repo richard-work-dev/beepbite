@@ -158,8 +158,8 @@ const CustomerTracking = lazyImport(() => import('./pages/track'));
 // Other pages
 const NotFound = lazyImport(() => import('./pages/not-found'));
 
-const Protected = ({ children }: { children: ReactNode }) => (
-  <ProtectedRoute>{children}</ProtectedRoute>
+const Protected = ({ children, capabilities }: { children: ReactNode; capabilities?: string[] }) => (
+  <ProtectedRoute capabilities={capabilities}>{children}</ProtectedRoute>
 );
 
 const AppRoutes = () => {
@@ -181,10 +181,10 @@ const AppRoutes = () => {
 
         {/* KDS station + expo screens run chrome-less for full-screen kitchen displays */}
         <Route element={<BlankLayout />}>
-          <Route path="/kds/expo" element={<Protected><KdsExpo /></Protected>} />
-          <Route path="/kds/:stationId" element={<Protected><KdsStation /></Protected>} />
+          <Route path="/kds/expo" element={<Protected capabilities={['can_kds']}><KdsExpo /></Protected>} />
+          <Route path="/kds/:stationId" element={<Protected capabilities={['can_kds']}><KdsStation /></Protected>} />
           {/* Dedicated cashier POS workspace — chrome-less kiosk view */}
-          <Route path="/pos/workspace" element={<Protected><PosWorkspace /></Protected>} />
+          <Route path="/pos/workspace" element={<Protected capabilities={['can_pos']}><PosWorkspace /></Protected>} />
         </Route>
 
         {/* Public routes with main layout */}
@@ -215,7 +215,7 @@ const AppRoutes = () => {
           {/* Customer live order tracking — public, token-scoped */}
           <Route path="/track/:token" element={<CustomerTracking />} />
           {/* Central driver portal — requires sign-in, chrome-less (mobile) */}
-          <Route path="/driver" element={<Protected><DriverPortal /></Protected>} />
+          <Route path="/driver" element={<Protected capabilities={['can_drive']}><DriverPortal /></Protected>} />
           {/* Remaining-roadmap public/customer-facing surfaces */}
           <Route path="/link-whatsapp/:token" element={<Protected><LinkWhatsApp /></Protected>} />
           <Route path="/legal/terms" element={<LegalTerms />} />
@@ -233,7 +233,7 @@ const AppRoutes = () => {
           } />
           <Route path="/reports" element={
             <Protected>
-              <Reports />
+              <Protected capabilities={['can_view_reports']}><Reports /></Protected>
             </Protected>
           } />
           <Route path="/reviews" element={
@@ -243,29 +243,29 @@ const AppRoutes = () => {
           } />
           <Route path="/members" element={
             <Protected>
-              <Members />
+              <Protected capabilities={['can_manage_staff']}><Members /></Protected>
             </Protected>
           } />
           <Route path="/staff" element={
             <Protected>
-              <Staff />
+              <Protected capabilities={['can_manage_staff']}><Staff /></Protected>
             </Protected>
           } />
           <Route path="/menu" element={
             <Protected>
-              <Menu />
+              <Protected capabilities={['can_manage_menu']}><Menu /></Protected>
             </Protected>
           } />
           <Route path="/categories" element={
             <Protected>
-              <Categories />
+              <Protected capabilities={['can_manage_menu']}><Categories /></Protected>
             </Protected>
           } />
           
           {/* Settings — all org-scoped admin pages share the SettingsLayout shell
               (grouped sidebar on the left, page in the right pane). Each child
               route renders inside the layout's <Outlet />. */}
-          <Route path="/settings" element={<Protected><SettingsLayout /></Protected>}>
+          <Route path="/settings" element={<Protected capabilities={['can_manage_menu']}><SettingsLayout /></Protected>}>
             <Route index element={<Navigate to="organization" replace />} />
             <Route path="organization" element={<OrganizationSettings />} />
             <Route path="location" element={<Navigate to="/settings/organization" replace />} />
@@ -322,11 +322,11 @@ const AppRoutes = () => {
           <Route path="/house-accounts/:id" element={<Protected><HouseAccountDetail /></Protected>} />
 
           {/* Inventory + procurement */}
-          <Route path="/inventory/suppliers" element={<Protected><InventorySuppliers /></Protected>} />
-          <Route path="/inventory/purchase-orders" element={<Protected><InventoryPOs /></Protected>} />
-          <Route path="/inventory/purchase-orders/auto-suggestions" element={<Protected><InventoryAutoPO /></Protected>} />
-          <Route path="/inventory/grns" element={<Protected><InventoryGRNs /></Protected>} />
-          <Route path="/inventory/invoice-match" element={<Protected><InventoryInvoiceMatch /></Protected>} />
+          <Route path="/inventory/suppliers" element={<Protected capabilities={['can_manage_menu']}><InventorySuppliers /></Protected>} />
+          <Route path="/inventory/purchase-orders" element={<Protected capabilities={['can_manage_menu']}><InventoryPOs /></Protected>} />
+          <Route path="/inventory/purchase-orders/auto-suggestions" element={<Protected capabilities={['can_manage_menu']}><InventoryAutoPO /></Protected>} />
+          <Route path="/inventory/grns" element={<Protected capabilities={['can_manage_menu']}><InventoryGRNs /></Protected>} />
+          <Route path="/inventory/invoice-match" element={<Protected capabilities={['can_manage_menu']}><InventoryInvoiceMatch /></Protected>} />
 
           {/* Manager + staff + reservations + delivery zones */}
           <Route path="/manager" element={<Protected><ManagerDashboard /></Protected>} />

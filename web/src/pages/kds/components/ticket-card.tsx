@@ -225,6 +225,11 @@ export function TicketCard({
       {/* Card body â€” items, notes, actions                                   */}
       {/* ------------------------------------------------------------------ */}
       <div className="flex flex-1 flex-col gap-3 p-4">
+        <div className="space-y-1 rounded-lg border border-sky-800/50 bg-sky-950/30 px-3 py-2 text-xs text-sky-200">
+          <p><span className="font-bold text-sky-300">Modalidad:</span> {serviceLabel}</p>
+          <p><span className="font-bold text-sky-300">Cliente:</span> {customerContext || 'Mostrador'}</p>
+          {deliveryAddress && <p><span className="font-bold text-sky-300">Entrega:</span> {deliveryAddress}</p>}
+        </div>
         {/* Item list */}
         {items.length === 0 ? (
           <p className="italic text-gray-500">(no items)</p>
@@ -247,13 +252,6 @@ export function TicketCard({
             <StickyNote className="mr-1.5 inline size-3.5 align-text-bottom text-amber-400" aria-hidden="true" />
             {ticket.notes || details?.notes}
           </p>
-        )}
-
-        {(customerContext || deliveryAddress) && (
-          <div className="space-y-1 rounded-lg border border-sky-800/50 bg-sky-950/30 px-3 py-2 text-xs text-sky-200">
-            {customerContext && <p><span className="font-bold text-sky-300">Cliente:</span> {customerContext}</p>}
-            {deliveryAddress && <p><span className="font-bold text-sky-300">Entrega:</span> {deliveryAddress}</p>}
-          </div>
         )}
 
         {/* Action buttons */}

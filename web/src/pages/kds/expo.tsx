@@ -44,7 +44,11 @@ interface OpenOrderRow {
   order_type?: string;
   status?: string;
   created_at?: string;
-  table_number?: string;
+	table_number?: string;
+	customer_name?: string | null;
+	customer_phone?: string | null;
+	delivery_address?: string | null;
+	notes?: string | null;
 }
 
 // Mirrors backend/internal/handlers/kds/store.go ExpoRow — the response of
@@ -58,7 +62,14 @@ interface ExpoViewResponse {
   all_ready?: boolean;
   any_in_progress?: boolean;
   station_tickets?: string | ExpoStationTicket[];
-  max_priority?: number;
+	max_priority?: number;
+	order_number?: string;
+	order_type?: string;
+	table_number?: string;
+	customer_name?: string | null;
+	customer_phone?: string | null;
+	delivery_address?: string | null;
+	notes?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -102,7 +113,7 @@ export default function ExpoPage() {
       // service ignores filters it doesn't know.
       const { data: rawOrders, error: ordersErr } = await api
         .from('orders')
-        .select('id, order_number, order_type, status, created_at')
+        .select('id, order_number, order_type, status, created_at, table_number, customer_name, customer_phone, delivery_address, notes')
         .in('status', OPEN_ORDER_STATUSES)
         .order('created_at', { ascending: true })
         .limit(100);
@@ -118,8 +129,9 @@ export default function ExpoPage() {
           return {
             order_id: o.id,
             order_number: o.order_number,
-            order_type: o.order_type,
-            table_number: o.table_number,
+			order_type: o.order_type,
+			table_number: o.table_number,
+			customer_name: o.customer_name, customer_phone: o.customer_phone, delivery_address: o.delivery_address, notes: o.notes,
             earliest_fired_at: o.created_at,
             station_tickets: [],
             max_priority: 0,
@@ -135,9 +147,11 @@ export default function ExpoPage() {
 
         return {
           order_id: data.order_id || o.id,
-          order_number: o.order_number,
-          order_type: o.order_type,
-          table_number: o.table_number,
+			order_number: o.order_number,
+			order_type: data.order_type || o.order_type,
+			table_number: data.table_number || o.table_number,
+			customer_name: data.customer_name || o.customer_name, customer_phone: data.customer_phone || o.customer_phone,
+			delivery_address: data.delivery_address || o.delivery_address, notes: data.notes || o.notes,
           earliest_fired_at: data.earliest_fired_at,
           station_tickets: Array.isArray(stations) ? stations : [],
           max_priority: data.max_priority || 0,

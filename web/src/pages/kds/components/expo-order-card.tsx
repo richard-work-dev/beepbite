@@ -196,6 +196,12 @@ export function ExpoOrderCard({ order, now }: ExpoOrderCardProps) {
         )}
       </div>
 
+      <div className="space-y-1 border-b border-gray-800 bg-gray-900/70 px-4 py-2.5 text-xs text-sky-100">
+        <p><span className="font-bold text-sky-300">Cliente:</span> {order.customer_name || 'Mostrador' }{order.customer_phone ? ` · ${order.customer_phone}` : ''}</p>
+        {order.delivery_address && <p><span className="font-bold text-sky-300">Entrega:</span> {order.delivery_address}</p>}
+        {order.notes && <p className="font-semibold text-amber-300">Nota: {order.notes}</p>}
+      </div>
+
       {/* ------------------------------------------------------------------ */}
       {/* Station tickets                                                      */}
       {/* ------------------------------------------------------------------ */}

@@ -147,7 +147,11 @@ export interface ExpoOrder {
   order_id: string;
   order_number?: string;
   order_type?: string;
-  table_number?: string;
+	table_number?: string;
+	customer_name?: string | null;
+	customer_phone?: string | null;
+	delivery_address?: string | null;
+	notes?: string | null;
   earliest_fired_at?: string | number | null;
   station_tickets: ExpoStationTicket[];
   max_priority: number;

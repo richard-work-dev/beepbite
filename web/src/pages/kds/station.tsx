@@ -177,7 +177,7 @@ export default function StationPage() {
       );
 
       if (error) {
-        setActionError(`${action} failed: ${error.message || 'unknown error'}`);
+        setActionError('No se pudo actualizar el estado de la comanda. Actualizá la pantalla e intentá nuevamente.');
         optimistic?.rollback();
         return null;
       }
@@ -185,7 +185,7 @@ export default function StationPage() {
       return data;
     } catch (err) {
       console.error(`KDS ${action} failed:`, err);
-      setActionError(`${action} failed: unable to reach the server`);
+      setActionError('No se pudo conectar para actualizar la comanda. Verificá la conexión e intentá nuevamente.');
       optimistic?.rollback();
       return null;
     } finally {
@@ -316,6 +316,12 @@ export default function StationPage() {
     });
   }, [tickets, serviceFilter, delayedOnly, now]);
 
+  const statusSummary = useMemo(() => ({
+    pending: tickets.filter((ticket) => ticket.status === 'fired').length,
+    preparing: tickets.filter((ticket) => ticket.status === 'in_progress').length,
+    ready: tickets.filter((ticket) => ticket.status === 'ready').length,
+  }), [tickets]);
+
   // -------- per-ticket detail (ingredients, prep steps) --------
   // Stable list of ids so the details hook's effect only fires when membership
   // actually changes, not on every priority-sort reshuffle.
@@ -392,8 +398,8 @@ export default function StationPage() {
             <h1 className="text-xl font-extrabold tracking-tight text-white">
               Pantalla de cocina
             </h1>
-            <span className="font-mono text-xs uppercase tracking-wider text-gray-400">
-              station {stationId?.slice(0, 8) || '—'}
+            <span className="text-xs font-medium tracking-wide text-gray-400">
+              Comandas activas
             </span>
           </div>
           {/* Ticket count pill */}
@@ -402,11 +408,18 @@ export default function StationPage() {
               {sorted.length}
             </span>
           )}
+          {!loading && tickets.length > 0 && (
+            <div className="hidden items-center gap-1.5 text-xs font-bold sm:flex" aria-label="Resumen de comandas">
+              {statusSummary.pending > 0 && <span className="rounded-full bg-orange-900/70 px-2 py-1 text-orange-200">Nuevas {statusSummary.pending}</span>}
+              {statusSummary.preparing > 0 && <span className="rounded-full bg-slate-700 px-2 py-1 text-slate-100">Preparando {statusSummary.preparing}</span>}
+              {statusSummary.ready > 0 && <span className="rounded-full bg-emerald-800/80 px-2 py-1 text-emerald-100">Listas {statusSummary.ready}</span>}
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
           <select value={serviceFilter} onChange={(event) => setServiceFilter(event.target.value as typeof serviceFilter)} aria-label="Filtrar comandas por modalidad" className="h-9 rounded-md border border-gray-700 bg-gray-800 px-2 text-xs font-semibold text-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-400">
-            <option value="all">Todas</option><option value="dine_in">Salón</option><option value="pickup">Retiro</option><option value="delivery">Delivery</option>
+            <option value="all">Todas</option><option value="dine_in">Salón</option><option value="pickup">Retiro</option><option value="delivery">A domicilio</option>
           </select>
           <Button size="sm" variant={delayedOnly ? 'default' : 'outline'} onClick={() => setDelayedOnly((value) => !value)} className="text-xs">Demoradas</Button>
           <Button size="sm" variant={soundEnabled ? 'default' : 'outline'} onClick={() => setSoundEnabled((value) => !value)} className="text-xs">{soundEnabled ? 'Sonido activo' : 'Activar sonido'}</Button>

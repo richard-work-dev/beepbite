@@ -37,6 +37,12 @@ export interface PendingInvite {
   [key: string]: unknown;
 }
 
+export interface OrganizationMembership {
+  organization_id: string;
+  role?: string;
+  capabilities?: Record<string, boolean> | string[] | string | null;
+}
+
 interface RespondInvitationResult {
   success: boolean;
   error?: string;
@@ -60,6 +66,7 @@ export interface AuthContextValue {
   userProfile: UserProfile | null;
   organizations: Organization[];
   activeOrganization: Organization | null;
+  activeMembership: OrganizationMembership | null;
   locations: Location[];
   activeLocation: Location | null;
   hasLoadedOrganizations: boolean;
@@ -153,6 +160,7 @@ export function AuthProvider({ children, onNavigate, pathname }: {
   const [loading, setLoading] = useState(true);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [activeOrganization, setActiveOrganization] = useState<Organization | null>(null);
+  const [memberships, setMemberships] = useState<OrganizationMembership[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [activeLocation, setActiveLocation] = useState<Location | null>(null);
   const [hasLoadedOrganizations, setHasLoadedOrganizations] = useState(false);
@@ -221,12 +229,14 @@ export function AuthProvider({ children, onNavigate, pathname }: {
       //   3. Otherwise IN-query only those org IDs.
       const { data: memberRows, error: memberError } = await supabase
         .from('organization_members')
-        .select('organization_id')
+        .select('organization_id,role,capabilities')
         .eq('profile_id', user.id);
 
       if (memberError) throw memberError;
 
-      const orgIds = (memberRows || []).map((m: { organization_id: string }) => m.organization_id).filter(Boolean);
+      const memberships = (memberRows || []) as OrganizationMembership[];
+      setMemberships(memberships);
+      const orgIds = memberships.map((m) => m.organization_id).filter(Boolean);
 
       let orgs: Organization[] = [];
       if (orgIds.length > 0) {
@@ -255,11 +265,17 @@ export function AuthProvider({ children, onNavigate, pathname }: {
       // On error treat as no orgs so onboarding still surfaces — better UX
       // than the user staring at a topbar with no popup and no recovery path.
       setOrganizations([]);
+      setMemberships([]);
       setNeedsOnboarding(true);
     } finally {
       setHasLoadedOrganizations(true);
     }
   }, [user, updateActiveOrganization]);
+
+  const activeMembership = useMemo(() => {
+    if (!activeOrganization?.id) return null;
+    return memberships.find((membership) => membership.organization_id === activeOrganization.id) ?? null;
+  }, [activeOrganization?.id, memberships]);
 
   const fetchLocations = useCallback(async () => {
     if (!activeOrganization) {
@@ -377,6 +393,7 @@ export function AuthProvider({ children, onNavigate, pathname }: {
       setUser(null);
       setUserProfile(null);
       setOrganizations([]);
+      setMemberships([]);
       setActiveOrganization(null);
       setLocations([]);
       setActiveLocation(null);
@@ -655,6 +672,7 @@ export function AuthProvider({ children, onNavigate, pathname }: {
     userProfile,
     organizations,
     activeOrganization,
+    activeMembership,
     locations,
     activeLocation,
     hasLoadedOrganizations,
@@ -687,6 +705,7 @@ export function AuthProvider({ children, onNavigate, pathname }: {
     userProfile,
     organizations,
     activeOrganization,
+    activeMembership,
     locations,
     activeLocation,
     hasLoadedOrganizations,

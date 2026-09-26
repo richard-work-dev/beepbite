@@ -143,7 +143,7 @@ const PosLoginPage = () => {
     const role = data?.role ?? '';
     const caps = Array.isArray(data?.capabilities) ? data.capabilities : [];
     const hasPos = caps.includes('can_pos');
-    const hasKitchen = caps.includes('can_kitchen');
+    const hasKitchen = caps.includes('can_kds') || caps.includes('can_kitchen');
     const kitchenOnly = role === 'kitchen' || (!hasPos && hasKitchen);
     return kitchenOnly ? '/work' : '/pos/workspace';
   };

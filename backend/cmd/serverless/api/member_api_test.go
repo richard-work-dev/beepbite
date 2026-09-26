@@ -3,7 +3,7 @@ package main
 import "testing"
 
 func TestMatchMemberRoute(t *testing.T) {
-	cases := []struct{ method, path, name string }{{"GET", "/member-invites", "list-invites"}, {"POST", "/member-invites", "create-invite"}, {"POST", "/member-invites/x/revoke", "revoke-invite"}, {"GET", "/members", "list-members"}, {"DELETE", "/members/u", "remove-member"}}
+	cases := []struct{ method, path, name string }{{"GET", "/member-invites", "list-invites"}, {"POST", "/member-invites", "create-invite"}, {"POST", "/member-invites/x/revoke", "revoke-invite"}, {"GET", "/members", "list-members"}, {"DELETE", "/members/u", "remove-member"}, {"PATCH", "/members/u", "change-role"}}
 	for _, c := range cases {
 		got, ok := matchMemberRoute(c.method, c.path)
 		if !ok || got.name != c.name {
@@ -13,7 +13,7 @@ func TestMatchMemberRoute(t *testing.T) {
 }
 
 func TestMemberCapabilities(t *testing.T) {
-	if memberCapabilities("manager")["can_manage_staff"] != true || memberCapabilities("kitchen")["can_kds"] != true || memberCapabilities("staff")["can_view_reports"] != false {
+	if memberCapabilities("manager")["can_manage_staff"] != true || memberCapabilities("admin")["can_manage_staff"] != true || memberCapabilities("kitchen")["can_kds"] != true || memberCapabilities("staff")["can_view_reports"] != false {
 		t.Fatal("unexpected role capabilities")
 	}
 }

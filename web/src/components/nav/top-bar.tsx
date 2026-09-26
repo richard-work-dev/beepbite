@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, type ComponentType } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { hasCapability } from '@/services/pos';
 import { LogOut, Users, ChevronDown, UserCircle, BarChart3, MessageSquare, Hash, X, MapPin, ChefHat, Building2, Check, Store, Folder, Receipt, MonitorPlay, Truck, LockKeyhole, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { useActor } from '@/context/actor-token-context';
+import { hasAnyAccess } from '@/lib/access-control';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,7 +44,8 @@ const TopBar = () => {
     switchLocation,
     organizations,
     activeOrganization,
-    switchOrganization
+    switchOrganization,
+    activeMembership,
   } = useAuth();
   const { actor } = useActor();
   const navigate = useNavigate();
@@ -103,6 +104,11 @@ const TopBar = () => {
     return location.pathname === path;
   };
 
+  const canAccess = (capability?: string) => {
+    if (!capability) return true;
+    return hasAnyAccess(activeMembership, [capability], actor?.capabilities);
+  };
+
   const closeSideNav = () => {
     setIsSideNavOpen(false);
   };
@@ -152,9 +158,9 @@ const TopBar = () => {
   // Top navigation items (2-3 most accessed)
   const topNavigationItems: NavItem[] = [
     { name: t('nav.topBar.home'), path: '/home', icon: Hash, description: t('nav.topBar.homeDesc') },
-    { name: t('nav.topBar.pos'), path: '/pos/workspace', icon: Receipt, description: t('nav.topBar.posDesc') },
-    { name: t('nav.topBar.kitchen'), path: '/kds/expo', icon: MonitorPlay, description: t('nav.topBar.kitchenDesc') },
-    { name: t('nav.topBar.reviews'), path: '/reviews', icon: MessageSquare, description: t('nav.topBar.reviewsDesc') },
+    { name: t('nav.topBar.pos'), path: '/pos/workspace', icon: Receipt, description: t('nav.topBar.posDesc'), capability: 'can_pos' },
+    { name: t('nav.topBar.kitchen'), path: '/kds/expo', icon: MonitorPlay, description: t('nav.topBar.kitchenDesc'), capability: 'can_kds' },
+    { name: t('nav.topBar.reviews'), path: '/reviews', icon: MessageSquare, description: t('nav.topBar.reviewsDesc'), capability: 'can_view_reports' },
   ];
 
   // Side navigation items (organized by category)
@@ -162,25 +168,25 @@ const TopBar = () => {
     {
       title: t('nav.sideBar.frontOfHouse'),
       items: [
-        { name: t('nav.sideBar.posWorkspace'), path: '/pos/workspace', icon: Receipt, description: t('nav.sideBar.posWorkspaceDesc') },
-        { name: t('nav.sideBar.kitchenWorkspace'), path: '/work', icon: LayoutDashboard, description: t('nav.sideBar.kitchenWorkspaceDesc') },
-        { name: t('nav.sideBar.kitchenDisplay'), path: '/kds/expo', icon: MonitorPlay, description: t('nav.sideBar.kitchenDisplayDesc') },
+        { name: t('nav.sideBar.posWorkspace'), path: '/pos/workspace', icon: Receipt, description: t('nav.sideBar.posWorkspaceDesc'), capability: 'can_pos' },
+        { name: t('nav.sideBar.kitchenWorkspace'), path: '/work', icon: LayoutDashboard, description: t('nav.sideBar.kitchenWorkspaceDesc'), capability: 'can_kds' },
+        { name: t('nav.sideBar.kitchenDisplay'), path: '/kds/expo', icon: MonitorPlay, description: t('nav.sideBar.kitchenDisplayDesc'), capability: 'can_kds' },
       ]
     },
     {
       title: t('nav.sideBar.operations'),
       items: [
         { name: t('nav.sideBar.reports'), path: '/reports', icon: BarChart3, description: t('nav.sideBar.reportsDesc'), capability: 'can_view_reports' },
-        { name: t('nav.sideBar.menu'), path: '/menu', icon: ChefHat, description: t('nav.sideBar.menuDesc') },
-        { name: t('nav.sideBar.categories'), path: '/categories', icon: Folder, description: t('nav.sideBar.categoriesDesc') },
+        { name: t('nav.sideBar.menu'), path: '/menu', icon: ChefHat, description: t('nav.sideBar.menuDesc'), capability: 'can_manage_menu' },
+        { name: t('nav.sideBar.categories'), path: '/categories', icon: Folder, description: t('nav.sideBar.categoriesDesc'), capability: 'can_manage_menu' },
       ]
     },
     {
       title: t('nav.sideBar.team'),
       items: [
-        { name: t('nav.sideBar.members'), path: '/members', icon: Users, description: t('nav.sideBar.membersDesc') },
-        { name: t('nav.sideBar.staff'), path: '/staff', icon: UserCircle, description: t('nav.sideBar.staffDesc') },
-        { name: t('nav.sideBar.driverPortal'), path: '/driver', icon: Truck, description: t('nav.sideBar.driverPortalDesc') },
+        { name: t('nav.sideBar.members'), path: '/members', icon: Users, description: t('nav.sideBar.membersDesc'), capability: 'can_manage_staff' },
+        { name: t('nav.sideBar.staff'), path: '/staff', icon: UserCircle, description: t('nav.sideBar.staffDesc'), capability: 'can_manage_staff' },
+        { name: t('nav.sideBar.driverPortal'), path: '/driver', icon: Truck, description: t('nav.sideBar.driverPortalDesc'), capability: 'can_drive' },
       ]
     },
     {
@@ -211,7 +217,7 @@ const TopBar = () => {
               {/* Desktop Navigation - Show for authenticated users */}
               {user && (
                 <nav className="hidden sm:flex items-center gap-1.5" aria-label="Navegación principal">
-                  {topNavigationItems.map((item) => {
+                  {topNavigationItems.filter((item) => canAccess(item.capability)).map((item) => {
                     const Icon = item.icon;
                     const isActive = isActivePath(item.path);
 
@@ -238,7 +244,7 @@ const TopBar = () => {
               {/* Mobile Navigation - Show for authenticated users */}
               {user && (
                 <nav className="flex sm:hidden items-center gap-1" aria-label="Navegación principal">
-                  {topNavigationItems.slice(0, 2).map((item) => {
+                  {topNavigationItems.filter((item) => canAccess(item.capability)).slice(0, 2).map((item) => {
                     const Icon = item.icon;
                     const isActive = isActivePath(item.path);
 
@@ -424,7 +430,7 @@ const TopBar = () => {
                         {section.title}
                       </h3>
                       <div className="space-y-1">
-                        {section.items.filter((item) => !item.capability || hasCapability(item.capability)).map((item) => {
+                        {section.items.filter((item) => canAccess(item.capability)).map((item) => {
                           const Icon = item.icon;
                           const isActive = isActivePath(item.path);
 

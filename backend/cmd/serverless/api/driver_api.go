@@ -81,8 +81,8 @@ func (a *application) managerOrganization(ctx context.Context, request events.AP
 	}
 	membership, err := a.getMembership(ctx, userID, orgID)
 	role := displayString(membership["role"])
-	if err != nil || (role != "owner" && role != "manager") {
-		return "", errorResponse(403, "requires owner or manager role"), false
+	if err != nil || !managerRole(role) {
+		return "", errorResponse(403, "requires owner, administrator, or manager role"), false
 	}
 	return orgID, events.APIGatewayV2HTTPResponse{}, true
 }

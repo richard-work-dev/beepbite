@@ -45,6 +45,12 @@ export default function StationPage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionTicketId, setActionTicketId] = useState<string | null>(null);
+  const [serviceFilter, setServiceFilter] = useState<'all' | 'dine_in' | 'pickup' | 'delivery'>('all');
+  const [delayedOnly, setDelayedOnly] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [newTicketAlert, setNewTicketAlert] = useState<string | null>(null);
+  const knownTicketIds = useRef<Set<string>>(new Set());
+  const hasLoadedOnce = useRef(false);
 
   // Track the last-bumped ticket so we can show a Recall button briefly.
   // { ticket, snapshot, bumpedAtMs } — snapshot is the pre-bump row for rollback.
@@ -72,7 +78,24 @@ export default function StationPage() {
       }
       const list = Array.isArray(data) ? data : [];
       // Keep only active statuses; the backend already filters but be defensive.
-      setTickets(list.filter((t) => t.status === 'fired' || t.status === 'in_progress' || t.status === 'ready'));
+      const active = list.filter((t) => t.status === 'fired' || t.status === 'in_progress' || t.status === 'ready');
+      const incoming = active.filter((ticket) => !knownTicketIds.current.has(ticket.id));
+      knownTicketIds.current = new Set(active.map((ticket) => ticket.id));
+      if (hasLoadedOnce.current && incoming.length) {
+        setNewTicketAlert(`${incoming.length} comanda${incoming.length === 1 ? '' : 's'} nueva${incoming.length === 1 ? '' : 's'}`);
+        if (soundEnabled && typeof window !== 'undefined') {
+          const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+          if (AudioContextClass) {
+            const audio = new AudioContextClass();
+            const oscillator = audio.createOscillator();
+            const gain = audio.createGain();
+            oscillator.frequency.value = 880; gain.gain.value = 0.08;
+            oscillator.connect(gain); gain.connect(audio.destination); oscillator.start(); oscillator.stop(audio.currentTime + 0.16);
+          }
+        }
+      }
+      hasLoadedOnce.current = true;
+      setTickets(active);
     } catch (err) {
       console.error('KDS refetch failed:', err);
       setFetchError('No se pudieron cargar las comandas');
@@ -283,12 +306,15 @@ export default function StationPage() {
 
   // -------- sort: priority desc, then fired_at asc --------
   const sorted = useMemo(() => {
-    return [...tickets].sort((a, b) => {
+    return tickets.filter((ticket) => {
+      if (serviceFilter !== 'all' && ticket.order_type !== serviceFilter) return false;
+      return !delayedOnly || now - Date.parse(ticket.fired_at || '') >= 5 * 60_000;
+    }).sort((a, b) => {
       const pa = a.priority || 0, pb = b.priority || 0;
       if (pa !== pb) return pb - pa;
       return Date.parse(a.fired_at || '0') - Date.parse(b.fired_at || '0');
     });
-  }, [tickets]);
+  }, [tickets, serviceFilter, delayedOnly, now]);
 
   // -------- per-ticket detail (ingredients, prep steps) --------
   // Stable list of ids so the details hook's effect only fires when membership
@@ -349,6 +375,12 @@ export default function StationPage() {
         </div>
       )}
 
+      {newTicketAlert && (
+        <div role="alert" className="flex items-center justify-between bg-emerald-600 px-4 py-2 text-sm font-bold text-white">
+          <span>{newTicketAlert}</span><button type="button" onClick={() => setNewTicketAlert(null)} className="rounded px-2 py-0.5 hover:bg-white/15">Cerrar</button>
+        </div>
+      )}
+
       {/* ------------------------------------------------------------------ */}
       {/* Header                                                              */}
       {/* ------------------------------------------------------------------ */}
@@ -373,6 +405,11 @@ export default function StationPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <select value={serviceFilter} onChange={(event) => setServiceFilter(event.target.value as typeof serviceFilter)} aria-label="Filtrar comandas por modalidad" className="h-9 rounded-md border border-gray-700 bg-gray-800 px-2 text-xs font-semibold text-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-400">
+            <option value="all">Todas</option><option value="dine_in">Salón</option><option value="pickup">Retiro</option><option value="delivery">Delivery</option>
+          </select>
+          <Button size="sm" variant={delayedOnly ? 'default' : 'outline'} onClick={() => setDelayedOnly((value) => !value)} className="text-xs">Demoradas</Button>
+          <Button size="sm" variant={soundEnabled ? 'default' : 'outline'} onClick={() => setSoundEnabled((value) => !value)} className="text-xs">{soundEnabled ? 'Sonido activo' : 'Activar sonido'}</Button>
           {/* Quiet connection indicator when connected */}
           {!sseOffline && !sseReconnecting && (
             <ConnectionPill status={sseStatus} />

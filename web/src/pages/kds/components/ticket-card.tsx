@@ -138,6 +138,11 @@ export function TicketCard({
   const isFired = ticket.status === 'fired';
   const isPreparing = ticket.status === 'in_progress';
   const isReady = ticket.status === 'ready';
+  const workflowStatus = isReady
+    ? { label: 'Lista para entregar', className: 'bg-emerald-500 text-emerald-950' }
+    : isPreparing
+      ? { label: 'En preparación', className: 'bg-sky-300 text-sky-950' }
+      : { label: 'Nueva comanda', className: 'bg-orange-300 text-orange-950' };
   const label = ticket.order_type
     || (ticket.table_number ? `Mesa ${ticket.table_number}` : null)
     || (details?.table_number ? `Mesa ${details.table_number}` : null)
@@ -191,6 +196,9 @@ export function TicketCard({
           <span className={cn('ml-7 flex items-center gap-1 text-sm font-medium opacity-90', theme.headerText)}>
             {tableNumber && <MapPin className="size-3.5 shrink-0" aria-hidden="true" />}
             {tableNumber ? `Mesa ${tableNumber}` : serviceLabel}
+          </span>
+          <span className={cn('ml-7 mt-1 w-fit rounded-full px-2 py-0.5 text-xs font-extrabold', workflowStatus.className)}>
+            {workflowStatus.label}
           </span>
         </div>
 
@@ -326,7 +334,7 @@ export function TicketCard({
                 )}
               >
                 <Check className="size-6 shrink-0" aria-hidden="true" />
-                Completar entrega
+                Entregar al mostrador
               </button>
               <button
                 type="button"

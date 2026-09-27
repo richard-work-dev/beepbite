@@ -308,6 +308,7 @@ export function TicketCard({
               type="button"
               disabled={busy}
               onClick={() => onReady?.(ticket)}
+              aria-label={`Marcar lista la comanda ${orderNumber}`}
               className={cn(
                 'flex h-14 flex-1 items-center justify-center gap-2 rounded-xl',
                 'bg-emerald-600 text-white text-lg font-extrabold transition-colors hover:bg-emerald-500',
@@ -326,6 +327,7 @@ export function TicketCard({
                 type="button"
                 disabled={busy}
                 onClick={() => onBump?.(ticket)}
+                aria-label={`Entregar al mostrador la comanda ${orderNumber}`}
                 className={cn(
                   'flex h-14 flex-1 items-center justify-center gap-2 rounded-xl',
                   'bg-emerald-600 text-white text-lg font-extrabold transition-colors hover:bg-emerald-500',
@@ -342,6 +344,7 @@ export function TicketCard({
                 onClick={() => onRefire?.(ticket)}
                 className="flex h-14 items-center justify-center rounded-xl border-2 border-gray-600 px-4 text-gray-200 transition-colors hover:bg-gray-700 disabled:opacity-50"
                 title="Volver a preparar"
+                aria-label={`Volver a preparar la comanda ${orderNumber}`}
               >
                 <RotateCcw className="size-5" aria-hidden="true" />
               </button>
@@ -373,6 +376,7 @@ export function TicketCard({
               disabled={busy}
               onClick={() => onRecall?.(ticket)}
               title="Recuperar la última comanda entregada"
+              aria-label={`Recuperar la comanda ${orderNumber}`}
               className={cn(
                 'flex h-10 items-center gap-1.5 rounded-lg px-3',
                 'border border-gray-600 bg-gray-800 text-gray-300 text-sm font-semibold',

@@ -133,6 +133,7 @@ export interface ExpoStationTicket {
   status?: string;
   fired_at?: string;
   ready_at?: string | null;
+  bumped_at?: string | null;
   course_number?: number | null;
   items?: ExpoStationItem[];
 }
@@ -157,4 +158,6 @@ export interface ExpoOrder {
   max_priority: number;
   all_ready?: boolean;
   any_in_progress?: boolean;
+  order_status?: string;
+  payment_status?: string;
 }

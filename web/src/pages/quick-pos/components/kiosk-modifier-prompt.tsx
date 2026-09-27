@@ -22,7 +22,7 @@ interface KioskModifierPromptProps {
 }
 
 const KioskModifierPrompt = ({ item, currency, onConfirm, onCancel }: KioskModifierPromptProps) => {
-  const groups = item?.modifier_groups || [];
+  const groups = useMemo(() => item?.modifier_groups || [], [item?.modifier_groups]);
 
   // selections: { [groupId]: Set<modifierId> }
   const [selections, setSelections] = useState<Record<string, Set<string>>>(() => {
@@ -136,7 +136,7 @@ const KioskModifierPrompt = ({ item, currency, onConfirm, onCancel }: KioskModif
         ref={modalRef}
         role="dialog"
         aria-modal="true"
-        aria-label={item?.name ? `Customise ${item.name}` : 'Customise item'}
+        aria-label={item?.name ? `Personalizar ${item.name}` : 'Personalizar producto'}
         className="bg-card rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md flex flex-col max-h-[85vh] overflow-hidden animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200"
       >
         {/* Header */}
@@ -149,7 +149,7 @@ const KioskModifierPrompt = ({ item, currency, onConfirm, onCancel }: KioskModif
           </div>
           <button
             onClick={onCancel}
-            aria-label="Close customisation options"
+            aria-label="Cerrar opciones de personalización"
             className="w-11 h-11 rounded-full bg-muted flex items-center justify-center hover:bg-muted/70 active:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors shrink-0"
           >
             <X className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
@@ -159,7 +159,7 @@ const KioskModifierPrompt = ({ item, currency, onConfirm, onCancel }: KioskModif
         {/* Groups */}
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
           {groups.length === 0 ? (
-            <p className="text-center text-muted-foreground py-6 text-sm">No customisation options.</p>
+            <p className="text-center text-muted-foreground py-6 text-sm">No hay opciones de personalización.</p>
           ) : (
             groups.map(group => {
               const sel = selections[group.id] || new Set();
@@ -170,11 +170,11 @@ const KioskModifierPrompt = ({ item, currency, onConfirm, onCancel }: KioskModif
                     <h3 className="text-base font-semibold text-foreground">{group.name}</h3>
                     {group.is_required && (
                       <span className="text-xs font-medium text-destructive-foreground bg-destructive px-2 py-0.5 rounded-full">
-                        Required
+                        Obligatorio
                       </span>
                     )}
                     <span className="ml-auto text-xs text-muted-foreground">
-                      {maxSelect === 1 ? 'Choose 1' : `Up to ${maxSelect}`}
+                      {maxSelect === 1 ? 'Elegí 1' : `Hasta ${maxSelect}`}
                     </span>
                   </div>
                   <div className="grid grid-cols-1 gap-2">
@@ -223,13 +223,13 @@ const KioskModifierPrompt = ({ item, currency, onConfirm, onCancel }: KioskModif
         <div className="px-6 pb-6 pt-3 shrink-0 border-t border-border">
           {requiredUnmet && (
             <p className="text-xs text-center text-destructive font-medium mb-2" role="alert">
-              Please select all required options above
+              Seleccioná todas las opciones obligatorias.
             </p>
           )}
           <button
             onClick={handleConfirm}
             disabled={requiredUnmet}
-            aria-label={requiredUnmet ? 'Select required options to continue' : `Add to order — ${formatPrice(linePriceCents, currency)}`}
+            aria-label={requiredUnmet ? 'Seleccioná las opciones obligatorias para continuar' : `Agregar al pedido: ${formatPrice(linePriceCents, currency)}`}
             aria-disabled={requiredUnmet}
             className={cn(
               'w-full h-14 rounded-2xl text-lg font-bold transition-all',
@@ -239,7 +239,7 @@ const KioskModifierPrompt = ({ item, currency, onConfirm, onCancel }: KioskModif
                 : 'bg-muted text-muted-foreground cursor-not-allowed',
             )}
           >
-            Add to Order — {formatPrice(linePriceCents, currency)}
+            Agregar al pedido — {formatPrice(linePriceCents, currency)}
           </button>
         </div>
       </div>

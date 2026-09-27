@@ -143,7 +143,7 @@ function SeatHeader({ seat, onRemove, canRemove }: SeatHeaderProps) {
           type="button"
           onClick={() => onRemove(seat.id)}
           className="text-muted-foreground hover:text-destructive ml-auto shrink-0"
-          aria-label={`Remove ${seat.label}`}
+          aria-label={`Quitar ${seat.label}`}
         >
           <X className="w-3 h-3" />
         </button>
@@ -203,8 +203,8 @@ export default function SplitBySeat({
     if (open) {
       _seatCounter = 0;
       const initial = [
-        { id: nextSeatId(), label: 'Seat 1' },
-        { id: nextSeatId(), label: 'Seat 2' },
+        { id: nextSeatId(), label: 'Asiento 1' },
+        { id: nextSeatId(), label: 'Asiento 2' },
       ];
       setSeats(initial);
       setAssignments({});
@@ -221,7 +221,7 @@ export default function SplitBySeat({
 
   const handleAddSeat = () => {
     const n = seats.length + 1;
-    setSeats((prev) => [...prev, { id: nextSeatId(), label: `Seat ${n}` }]);
+    setSeats((prev) => [...prev, { id: nextSeatId(), label: `Asiento ${n}` }]);
   };
 
   const handleRemoveSeat = (seatId: string) => {
@@ -392,6 +392,7 @@ export default function SplitBySeat({
                         <button
                           type="button"
                           onClick={() => handleRemoveSeat(seat.id)}
+                          aria-label={`Quitar ${seat.label}`}
                           className="text-muted-foreground hover:text-destructive"
                         >
                           <X className="w-3.5 h-3.5" />
@@ -512,7 +513,7 @@ export default function SplitBySeat({
 
                 {unallocatedItems.length > 0 && (
                   <p className="text-xs text-destructive">
-                    Hay {unallocatedItems.length} producto(s) sin asignar por completo. Asigná todas las cantidades antes de dividir.
+                    {unallocatedItems.length === 1 ? 'Hay 1 producto' : `Hay ${unallocatedItems.length} productos`} sin asignar por completo. Asigná todas las cantidades antes de dividir.
                   </p>
                 )}
                 {error && (
@@ -549,7 +550,10 @@ export default function SplitBySeat({
                           {isPaid && <CheckCircle2 className="w-3.5 h-3.5 text-success" />}
                         </div>
                         <span className="text-xs text-muted-foreground">
-                          {(appliedSplits.items.filter((i) => i.check_split_id === split.id)).length} producto(s)
+                          {(() => {
+                            const count = appliedSplits.items.filter((i) => i.check_split_id === split.id).length;
+                            return `${count} ${count === 1 ? 'producto' : 'productos'}`;
+                          })()}
                         </span>
                       </div>
                       <div className="flex items-center gap-3">

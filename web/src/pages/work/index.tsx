@@ -10,7 +10,7 @@
 //
 // Role-aware tab visibility:
 //   - members with ONLY can_kitchen see only the Kitchen tab
-//   - members with can_pos (or owners / managers) see both tabs
+//   - members with can_pos see the POS tab
 //   - owner / manager see both tabs regardless of capability flags
 //
 // Capabilities are read from the Go backend's auth/me scope by querying
@@ -34,7 +34,7 @@ import React, {
   useState,
 } from 'react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
-import { ChefHat, Loader2, Monitor } from 'lucide-react';
+import { ChefHat, Loader2, Monitor, RefreshCw, ShieldAlert } from 'lucide-react';
 
 import { useAuth } from '@/context/auth-context';
 import { api } from '@/lib/api-client';
@@ -96,9 +96,9 @@ const KDS_VIEWS: { id: KdsViewId; label: string }[] = [
  *
  * Logic (from migration 019_owner_default_capabilities.sql):
  *   - role owner/manager → both tabs
- *   - can_pos capability → both tabs
+ *   - can_pos capability → POS tab
  *   - can_kitchen only  → Kitchen tab only
- *   - no capabilities   → Kitchen only (safe default)
+ *   - no capabilities   → no workspace access
  *
  * @param {string[]} roles    — role strings from membership rows
  * @param {object}   caps     — merged capability flags { can_pos, can_kitchen, … }
@@ -110,7 +110,7 @@ function resolveTabAccess(roles: string[], caps: MembershipCaps) {
 
   return {
     showPOS: isOwnerManager || hasPos,
-    showKitchen: isOwnerManager || hasKitchen || !hasPos,
+    showKitchen: isOwnerManager || hasKitchen,
   };
 }
 
@@ -119,15 +119,24 @@ function resolveTabAccess(roles: string[], caps: MembershipCaps) {
 // ---------------------------------------------------------------------------
 
 function useMembership() {
-  const { user, activeOrganization } = useAuth();
-  const [state, setState] = useState<{ roles: string[]; caps: MembershipCaps; loading: boolean }>({ roles: [], caps: {}, loading: true });
+  const { user, activeOrganization, hasLoadedOrganizations } = useAuth();
+  const [state, setState] = useState<{ roles: string[]; caps: MembershipCaps; loading: boolean; error: string | null }>({ roles: [], caps: {}, loading: true, error: null });
 
   useEffect(() => {
-    if (!user?.id || !activeOrganization?.id) {
-      // No org yet → treat as owner so workspace isn't empty on first login.
-      setState({ roles: ['owner'], caps: { can_pos: true, can_kitchen: true }, loading: false });
+    if (!user?.id) {
+      setState({ roles: [], caps: {}, loading: false, error: 'No hay una sesión activa para validar tus permisos.' });
       return;
     }
+    if (!activeOrganization?.id) {
+      if (!hasLoadedOrganizations) {
+        setState({ roles: [], caps: {}, loading: true, error: null });
+        return;
+      }
+      setState({ roles: [], caps: {}, loading: false, error: 'No hay una organización activa para validar tus permisos.' });
+      return;
+    }
+
+    setState((current) => ({ ...current, loading: true, error: null }));
 
     let cancelled = false;
 
@@ -135,9 +144,8 @@ function useMembership() {
     // network-level failure (fetch() itself rejecting) throws instead.
     // Without this try/catch, that skipped setState() entirely, leaving
     // `loading: true` forever — and this hook drives showPOS/showKitchen
-    // gating for the whole /work page, so a network blip on mount could
-    // strand the page in a permanent loading state instead of falling back
-    // to open access like the existing error branch does.
+    // gating for the whole /work page, so a network blip on mount must end in
+    // an explicit retry state rather than a permanent loading spinner.
     (async () => {
       try {
         const { data, error } = await api
@@ -149,8 +157,7 @@ function useMembership() {
         if (cancelled) return;
 
         if (error || !data?.length) {
-          // Fallback: open access.
-          setState({ roles: ['owner'], caps: { can_pos: true, can_kitchen: true }, loading: false });
+          setState({ roles: [], caps: {}, loading: false, error: 'No se pudieron validar tus permisos de acceso.' });
           return;
         }
 
@@ -163,19 +170,17 @@ function useMembership() {
           }
           Object.assign(caps, parsed || {});
         }
-        setState({ roles, caps, loading: false });
+        setState({ roles, caps, loading: false, error: null });
       } catch (err) {
         console.error('Membership fetch failed:', err);
         if (!cancelled) {
-          // Same fallback as the { error } branch above: open access rather
-          // than stranding the page loading forever.
-          setState({ roles: ['owner'], caps: { can_pos: true, can_kitchen: true }, loading: false });
+          setState({ roles: [], caps: {}, loading: false, error: 'No se pudieron validar tus permisos de acceso.' });
         }
       }
     })();
 
     return () => { cancelled = true; };
-  }, [user?.id, activeOrganization?.id]);
+  }, [user?.id, activeOrganization?.id, hasLoadedOrganizations]);
 
   return state;
 }
@@ -433,7 +438,7 @@ function POSPanel({ posView }: { posView: PosViewId }) {
 // ---------------------------------------------------------------------------
 
 export default function WorkspacePage() {
-  const { roles, caps, loading: memberLoading } = useMembership();
+  const { roles, caps, loading: memberLoading, error: membershipError } = useMembership();
 
   const { showPOS, showKitchen } = useMemo(
     () => resolveTabAccess(roles, caps),
@@ -468,8 +473,9 @@ export default function WorkspacePage() {
   // Set initial active tab based on role access (once membership resolves).
   useEffect(() => {
     if (memberLoading || activeTab !== null) return;
-    setActiveTab(showPOS ? 'pos' : 'kitchen');
-  }, [memberLoading, showPOS, activeTab]);
+    if (showPOS) setActiveTab('pos');
+    else if (showKitchen) setActiveTab('kitchen');
+  }, [memberLoading, showPOS, showKitchen, activeTab]);
 
   // Handlers with preference persistence.
   const handlePosView = useCallback(
@@ -499,9 +505,29 @@ export default function WorkspacePage() {
   );
 
   // Show loader while membership resolves or prefs are loading.
-  if (memberLoading || !prefsLoaded || activeTab === null) {
+  if (memberLoading || !prefsLoaded) {
     return <ViewLoader />;
   }
+
+  if (membershipError || (!showPOS && !showKitchen)) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background p-6">
+        <div role="alert" className="w-full max-w-md rounded-xl border border-destructive/30 bg-card p-6 text-center shadow-sm">
+          <ShieldAlert className="mx-auto h-10 w-10 text-destructive" aria-hidden="true" />
+          <h1 className="mt-3 text-lg font-bold text-foreground">No se pudo habilitar el espacio de trabajo</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {membershipError || 'Tu usuario no tiene permisos para pedidos, caja ni cocina.'}
+          </p>
+          <Button type="button" variant="outline" className="mt-5" onClick={() => window.location.reload()}>
+            <RefreshCw className="mr-2 h-4 w-4" aria-hidden="true" />
+            Reintentar
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (activeTab === null) return <ViewLoader />;
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background">

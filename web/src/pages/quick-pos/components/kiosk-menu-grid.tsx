@@ -32,13 +32,13 @@ function KioskCountdownPill({ remaining }: { remaining: number | null | undefine
   if (remaining === 0) {
     return (
       <span className="absolute top-2 left-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-destructive text-destructive-foreground leading-none shadow">
-        Sold out
+        Agotado
       </span>
     );
   }
   return (
     <span className="absolute top-2 left-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-white leading-none shadow">
-      {remaining} left
+      Quedan {remaining}
     </span>
   );
 }
@@ -47,11 +47,11 @@ function KioskCountdownPill({ remaining }: { remaining: number | null | undefine
 const ITEM_EMOJI_KEYWORDS = [
   { match: /burger|patty|cheeseburger/i, emoji: '🍔' },
   { match: /pizza/i, emoji: '🍕' },
-  { match: /fries|chips/i, emoji: '🍟' },
+  { match: /fries|chips|papas fritas/i, emoji: '🍟' },
   { match: /onion ring/i, emoji: '🧅' },
   { match: /sweet potato/i, emoji: '🍠' },
-  { match: /chicken|wing|nugget/i, emoji: '🍗' },
-  { match: /salad|veggie|lettuce/i, emoji: '🥗' },
+  { match: /chicken|wing|nugget|pollo|broaster/i, emoji: '🍗' },
+  { match: /salad|veggie|lettuce|ensalada/i, emoji: '🥗' },
   { match: /hot dog|sausage/i, emoji: '🌭' },
   { match: /taco/i, emoji: '🌮' },
   { match: /burrito|wrap/i, emoji: '🌯' },
@@ -59,7 +59,7 @@ const ITEM_EMOJI_KEYWORDS = [
   { match: /noodle|ramen|pasta/i, emoji: '🍜' },
   { match: /rice/i, emoji: '🍚' },
   { match: /coke|cola|pepsi|soda|sprite|fanta/i, emoji: '🥤' },
-  { match: /water/i, emoji: '💧' },
+  { match: /water|agua/i, emoji: '💧' },
   { match: /coffee|espresso|latte|cappuccino/i, emoji: '☕' },
   { match: /tea/i, emoji: '🍵' },
   { match: /beer|lager|stout/i, emoji: '🍺' },
@@ -77,6 +77,8 @@ const CATEGORY_EMOJI: Record<string, string> = {
   burgers: '🍔', sides: '🍟', drinks: '🥤', desserts: '🍰',
   pizza: '🍕', salads: '🥗', chicken: '🍗', breakfast: '🍳',
   seafood: '🦐', coffee: '☕', alcohol: '🍺',
+  hamburguesas: '🍔', acompañamientos: '🍟', bebidas: '🥤', postres: '🍰',
+  ensaladas: '🥗', pollo: '🍗', desayunos: '🍳', café: '☕',
 };
 function emojiForItem(item: KioskItem) {
   const name = item?.name || '';
@@ -120,16 +122,16 @@ const KioskMenuGrid = ({ items, categories, loading, currency, onAddItem }: Kios
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5 pointer-events-none" aria-hidden="true" />
           <input
             type="search"
-            placeholder="Search items…"
+            placeholder="Buscar productos…"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            aria-label="Search menu items"
+            aria-label="Buscar productos del menú"
             className="w-full pl-11 pr-10 h-12 text-lg rounded-xl border-2 border-border focus:border-primary focus:ring-0 focus:outline-none bg-card"
           />
           {search && (
             <button
               onClick={() => setSearch('')}
-              aria-label="Clear search"
+              aria-label="Borrar búsqueda"
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1.5 rounded-full hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors"
             >
               <X className="w-4 h-4" />
@@ -141,7 +143,7 @@ const KioskMenuGrid = ({ items, categories, loading, currency, onAddItem }: Kios
       {/* Category pills */}
       <div
         role="group"
-        aria-label="Filter by category"
+        aria-label="Filtrar por categoría"
         className="px-4 py-2 bg-card border-b border-border shrink-0 overflow-x-auto scrollbar-none"
         style={{ scrollbarWidth: 'none' }}
       >
@@ -157,7 +159,7 @@ const KioskMenuGrid = ({ items, categories, loading, currency, onAddItem }: Kios
                 : 'bg-primary/5 text-foreground border border-primary/20 hover:bg-primary/10 active:bg-primary/15'
             )}
           >
-            All
+            Todas
           </button>
           {categories.map(cat => (
             <button
@@ -191,13 +193,13 @@ const KioskMenuGrid = ({ items, categories, loading, currency, onAddItem }: Kios
             <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
               <Utensils className="w-10 h-10 text-primary/40" />
             </div>
-            <p className="text-xl font-semibold text-muted-foreground">No items found</p>
+            <p className="text-xl font-semibold text-muted-foreground">No se encontraron productos</p>
             {search && (
               <button
                 onClick={() => setSearch('')}
                 className="mt-3 text-sm text-primary hover:text-primary/80 underline focus-visible:outline-none"
               >
-                Clear search
+                Borrar búsqueda
               </button>
             )}
           </div>
@@ -211,7 +213,7 @@ const KioskMenuGrid = ({ items, categories, loading, currency, onAddItem }: Kios
                   key={item.id}
                   onClick={() => !soldOutToday && onAddItem(item)}
                   disabled={soldOutToday}
-                  aria-label={`Add ${item.name} — ${formatPrice(parseFloat(String(item.price || 0)) * 100, currency)}${soldOutToday ? ' — sold out' : ''}`}
+                  aria-label={`Agregar ${item.name}: ${formatPrice(parseFloat(String(item.price || 0)) * 100, currency)}${soldOutToday ? ' — agotado' : ''}`}
                   className={cn(
                     'group relative flex flex-col overflow-hidden rounded-2xl border-2 bg-card shadow-sm transition-all duration-150 text-left',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',

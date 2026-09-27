@@ -50,13 +50,13 @@ function TableTile({ table, isActive, onSelect }: TableTileProps) {
   // A zero/absent subtotal stays null so the tile hides the line entirely.
   const subtotalCents = table.subtotal_cents
   const subtotal = subtotalCents ? format(subtotalCents) : null
-  const label = table.status === "occupied" ? "Occupied table" : table.status === "reserved" ? "Reserved table" : "Available table"
+  const label = table.status === "occupied" ? "Mesa ocupada" : table.status === "reserved" ? "Mesa reservada" : table.status === "out_of_service" ? "Mesa fuera de servicio" : "Mesa disponible"
 
   return (
     <button
       disabled={disabled}
       onClick={() => !disabled && onSelect(table.id, "table")}
-      aria-label={`${label}: ${table.label}${table.section_name ? ` in ${table.section_name}` : ''}${subtotal ? `, total ${subtotal}` : ''}`}
+      aria-label={`${label}: ${table.label}${table.section_name ? ` en ${table.section_name}` : ''}${subtotal ? `, total ${subtotal}` : ''}`}
       aria-pressed={isActive}
       className={cn(
         "relative flex-shrink-0 w-24 h-[4.5rem] rounded-xl border-2 overflow-hidden",
@@ -119,7 +119,7 @@ function WalkInTile({ walkIn, isActive, onSelect }: WalkInTileProps) {
   return (
     <button
       onClick={() => onSelect(walkIn.id, "walkin")}
-      aria-label={`Walk-in ticket: ${walkIn.label}${subtotal ? `, total ${subtotal}` : ''}`}
+      aria-label={`Pedido de mostrador: ${walkIn.label}${subtotal ? `, total ${subtotal}` : ''}`}
       aria-pressed={isActive}
       className={cn(
         "relative flex-shrink-0 w-24 h-[4.5rem] rounded-xl border-2 overflow-hidden",

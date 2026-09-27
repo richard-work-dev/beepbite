@@ -148,11 +148,11 @@ export default function StampCard({ customerId, onReward, className }: StampCard
         )}
       >
         <Gift className="h-12 w-12 text-orange-500" />
-        <p className="text-lg font-bold text-orange-700">Reward earned!</p>
+        <p className="text-lg font-bold text-orange-700">¡Premio ganado!</p>
         <p className="text-sm text-orange-600">
-          This customer has collected all {total} stamps — issue their free item.
+          El cliente completó los {total} sellos. Entregale su producto gratis.
         </p>
-        <p className="text-xs text-orange-400">Stamp counter has been reset.</p>
+        <p className="text-xs text-orange-400">El contador de sellos se reinició.</p>
       </div>
     );
   }
@@ -172,7 +172,7 @@ export default function StampCard({ customerId, onReward, className }: StampCard
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Stamp className="h-5 w-5 text-orange-500" />
-          <span className="font-semibold text-gray-800">Stamp card</span>
+          <span className="font-semibold text-gray-800">Tarjeta de sellos</span>
         </div>
         <span className="text-xs text-muted-foreground">
           {filled} / {total}
@@ -189,8 +189,8 @@ export default function StampCard({ customerId, onReward, className }: StampCard
       {/* Progress message */}
       <p className="text-sm text-gray-500">
         {remaining === 0
-          ? 'All stamps collected — reward due!'
-          : `${remaining} more stamp${remaining !== 1 ? 's' : ''} until a free item`}
+          ? '¡Completó todos los sellos! Corresponde un premio.'
+          : `Faltan ${remaining} ${remaining === 1 ? 'sello' : 'sellos'} para un producto gratis`}
       </p>
 
       {/* Action */}
@@ -201,7 +201,7 @@ export default function StampCard({ customerId, onReward, className }: StampCard
         className="w-full gap-2"
       >
         {accruing
-          ? <><Loader2 className="h-4 w-4 animate-spin" />Adding stamp…</>
+          ? <><Loader2 className="h-4 w-4 animate-spin" />Agregando sello…</>
           : <><Stamp className="h-4 w-4" />Agregar sello</>}
       </Button>
     </div>

@@ -102,7 +102,7 @@ export default function StationPage() {
     } finally {
       setLoading(false);
     }
-  }, [stationId]);
+  }, [stationId, soundEnabled]);
 
   useEffect(() => {
     if (!stationId) return;
@@ -444,6 +444,8 @@ export default function StationPage() {
             variant="ghost"
             onClick={refetch}
             disabled={loading}
+            title="Actualizar comandas"
+            aria-label="Actualizar comandas"
             className="text-gray-300 hover:bg-gray-800 hover:text-white"
           >
             <RefreshCw className={loading ? 'size-4 animate-spin' : 'size-4'} />
@@ -454,6 +456,7 @@ export default function StationPage() {
               size="sm"
               variant="outline"
               onClick={() => onRecall(lastBump.ticket)}
+              aria-label={`Recuperar la comanda ${lastBump.ticket.ticket_number}`}
               className="gap-1.5 border-amber-500 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 hover:text-amber-200"
             >
               <RotateCcw className="size-3.5" />
@@ -550,7 +553,6 @@ export default function StationPage() {
 
 function RecallCountdown({ bumpedAtMs, now, totalMs }: { bumpedAtMs: number; now: number; totalMs: number }) {
   const remaining = Math.max(0, totalMs - (now - bumpedAtMs));
-  const pct = Math.round((remaining / totalMs) * 100);
   const secs = Math.ceil(remaining / 1000);
   return (
     <span

@@ -16,9 +16,9 @@ import { formatMoney, parseMoney } from '@/lib/currency';
  * records the amount and the slip reference; it never processes a card.
  */
 export const PAYMENT_METHODS: { code: string; label: string; icon: string }[] = [
-  { code: 'cash',           label: 'Cash', icon: '💵' },
-  { code: 'card_in_person', label: 'Card', icon: '💳' },
-  { code: 'eft',            label: 'Transfer', icon: '🏦' },
+  { code: 'cash',           label: 'Efectivo', icon: '💵' },
+  { code: 'card_in_person', label: 'Tarjeta', icon: '💳' },
+  { code: 'eft',            label: 'Transferencia', icon: '🏦' },
 ];
 
 // ---- Charge -----------------------------------------------------------------
@@ -71,7 +71,7 @@ export async function chargeOrder({
   processedByStaffId,
   payments,
 }: ChargeOrderParams) {
-  if (!orderId) throw new Error('orderId required');
+  if (!orderId) throw new Error('Falta identificar el pedido');
 
   let body: {
     payments?: PaymentLeg[];
@@ -90,7 +90,7 @@ export async function chargeOrder({
     };
   } else {
     // Single-payment (backwards-compatible)
-    if (!paymentMethodCode) throw new Error('paymentMethodCode required');
+    if (!paymentMethodCode) throw new Error('Seleccioná un método de pago');
     body = {
       payment_method_code: paymentMethodCode,
       amount_paid_cents: amountPaidCents,
@@ -107,7 +107,7 @@ export async function chargeOrder({
     { body },
   );
   if (error) {
-    const e: FetchError = new Error(error.message || 'Failed to charge order');
+    const e: FetchError = new Error(error.message || 'No se pudo cobrar el pedido');
     e.status = error.status;
     throw e;
   }
@@ -139,8 +139,8 @@ export async function chargeOrdersWithLegs({ orders, legs, processedByStaffId }:
   legs: TenderLeg[];
   processedByStaffId?: string;
 }) {
-  if (!orders || orders.length === 0) throw new Error('No orders to charge');
-  if (!legs || legs.length === 0) throw new Error('No payment legs provided');
+  if (!orders || orders.length === 0) throw new Error('No hay pedidos pendientes de cobro');
+  if (!legs || legs.length === 0) throw new Error('Agregá al menos un método de pago');
 
   const results: unknown[] = [];
 

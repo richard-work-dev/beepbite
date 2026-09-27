@@ -210,8 +210,8 @@ const AppRoutes = () => {
           <Route path="/discover" element={<Discover />} />
           <Route path="/store/:slug" element={<StoreDetail />} />
           <Route path="/checkout" element={<Checkout />} />
-          {/* Quick POS kiosk — public, chrome-less, counter-service */}
-          <Route path="/q/:slug" element={<QuickPOS />} />
+          {/* Quick POS kiosk — chrome-less counter-service, restricted to POS staff */}
+          <Route path="/q/:slug" element={<Protected capabilities={['can_pos']}><QuickPOS /></Protected>} />
           {/* Customer live order tracking — public, token-scoped */}
           <Route path="/track/:token" element={<CustomerTracking />} />
           {/* Central driver portal — requires sign-in, chrome-less (mobile) */}

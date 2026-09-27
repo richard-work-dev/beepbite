@@ -375,8 +375,11 @@ func (a *application) chargePOSOrder(ctx context.Context, orgID, orderID, body s
 	if err != nil {
 		return errorResponse(404, "order not found")
 	}
-	if fmt.Sprint(order["status"]) == "completed" {
+	if fmt.Sprint(order["payment_status"]) == "paid" || fmt.Sprint(order["status"]) == "completed" {
 		return errorResponse(409, "order already paid")
+	}
+	if fmt.Sprint(order["status"]) == "cancelled" {
+		return errorResponse(409, "cancelled order cannot be paid")
 	}
 	var input map[string]any
 	if decodeDataObject(body, &input) != nil {
@@ -394,6 +397,13 @@ func (a *application) chargePOSOrder(ctx context.Context, orgID, orderID, body s
 	} else {
 		legs = append(legs, input)
 	}
+	// Read the kitchen state before creating payment rows so a transient data
+	// error cannot leave duplicate payment records on a retry.
+	tickets, err := a.queryDataRows(ctx, orgID, "kds_tickets")
+	if err != nil {
+		return dataAccessError(err)
+	}
+	statuses := kdsStatusesForOrder(tickets, orderID)
 	paymentIDs := make([]string, 0, len(legs))
 	for _, leg := range legs {
 		method := strings.TrimSpace(fmt.Sprint(leg["payment_method_code"]))
@@ -417,7 +427,12 @@ func (a *application) chargePOSOrder(ctx context.Context, orgID, orderID, body s
 			}
 		}
 	}
-	order["status"], order["payment_status"], order["updated_at"] = "completed", "paid", time.Now().UTC().Format(time.RFC3339Nano)
+	// Payment and kitchen fulfilment are separate lifecycles. A customer may
+	// pay before preparation finishes; marking the order completed here used
+	// to make it disappear from Expo even though its KDS ticket was active.
+	// Complete it now only when every kitchen ticket is already terminal.
+	order["status"] = orderStatusAfterPayment(fmt.Sprint(order["status"]), statuses)
+	order["payment_status"], order["updated_at"] = "paid", time.Now().UTC().Format(time.RFC3339Nano)
 	if len(legs) == 1 {
 		order["payment_method"] = legs[0]["payment_method_code"]
 	} else {
@@ -430,7 +445,7 @@ func (a *application) chargePOSOrder(ctx context.Context, orgID, orderID, body s
 	if len(paymentIDs) > 0 {
 		firstID = paymentIDs[0]
 	}
-	return mustJSONResponse(200, map[string]any{"order_id": orderID, "payment_id": firstID, "payment_ids": paymentIDs, "payment_status": "completed", "session_closed": false})
+	return mustJSONResponse(200, map[string]any{"order_id": orderID, "payment_id": firstID, "payment_ids": paymentIDs, "payment_status": "paid", "session_closed": false})
 }
 
 func (a *application) holdPOSOrder(ctx context.Context, orgID, orderID string, hold bool) events.APIGatewayV2HTTPResponse {
@@ -784,7 +799,9 @@ func (a *application) transitionKDSTicket(ctx context.Context, orgID, ticketID, 
 		if fmt.Sprint(ticket["status"]) != "ready" {
 			return errorResponse(409, "ticket must be ready before it is completed")
 		}
-		ticket["status"], ticket["ready_at"], ticket["bumped_at"] = "bumped", now, now
+		// Keep ready_at as the actual end-of-preparation timestamp. Overwriting
+		// it here made preparation-time reporting measure until handoff.
+		ticket["status"], ticket["bumped_at"] = "bumped", now
 	case "recall", "refire":
 		ticket["status"], ticket["fired_at"], ticket["started_at"], ticket["ready_at"], ticket["bumped_at"] = "fired", now, nil, nil, nil
 	case "rush":
@@ -795,7 +812,7 @@ func (a *application) transitionKDSTicket(ctx context.Context, orgID, ticketID, 
 	if err := a.putDataRow(ctx, orgID, "kds_tickets", ticket, false); err != nil {
 		return dataAccessError(err)
 	}
-	itemStatus := map[string]string{"start": "in_progress", "ready": "ready", "recall": "fired", "refire": "fired"}[action]
+	itemStatus := map[string]string{"start": "in_progress", "ready": "ready", "bump": "bumped", "recall": "fired", "refire": "fired"}[action]
 	if itemStatus != "" {
 		items, itemErr := a.queryDataRows(ctx, orgID, "kds_ticket_items")
 		if itemErr != nil {
@@ -812,8 +829,11 @@ func (a *application) transitionKDSTicket(ctx context.Context, orgID, ticketID, 
 			if itemStatus == "ready" {
 				item["ready_at"] = now
 			}
+			if itemStatus == "bumped" {
+				item["bumped_at"] = now
+			}
 			if itemStatus == "fired" {
-				item["started_at"], item["ready_at"] = nil, nil
+				item["started_at"], item["ready_at"], item["bumped_at"] = nil, nil, nil
 			}
 			if err := a.putDataRow(ctx, orgID, "kds_ticket_items", item, false); err != nil {
 				return dataAccessError(err)
@@ -833,8 +853,61 @@ func (a *application) transitionKDSTicket(ctx context.Context, orgID, ticketID, 
 	return mustJSONResponse(200, map[string]any{"ticket": ticket, "event": event})
 }
 
+// kdsStatusesForOrder returns the ticket states associated with one order.
+func kdsStatusesForOrder(tickets []map[string]any, orderID string) []string {
+	statuses := make([]string, 0)
+	for _, ticket := range tickets {
+		if fmt.Sprint(ticket["order_id"]) == orderID {
+			statuses = append(statuses, fmt.Sprint(ticket["status"]))
+		}
+	}
+	return statuses
+}
+
+// summarizeKDSStatuses reports whether an order is still active, ready as a
+// whole, and fully handed off/cancelled. Unknown states remain active so a
+// future state cannot silently hide a live order from the board.
+func summarizeKDSStatuses(statuses []string) (active, allReady, allFinished bool) {
+	if len(statuses) == 0 {
+		return false, false, false
+	}
+	allReady, allFinished = true, true
+	for _, status := range statuses {
+		switch status {
+		case "bumped", "cancelled":
+			// Terminal tickets are both ready and finished.
+		case "ready":
+			active = true
+			allFinished = false
+		default:
+			active = true
+			allReady = false
+			allFinished = false
+		}
+	}
+	return active, allReady, allFinished
+}
+
+func orderStatusAfterPayment(current string, statuses []string) string {
+	_, _, allFinished := summarizeKDSStatuses(statuses)
+	if len(statuses) == 0 || allFinished {
+		return "completed"
+	}
+	return current
+}
+
+func shouldListKDSExpoOrder(orderStatus string, statuses []string) bool {
+	active, _, _ := summarizeKDSStatuses(statuses)
+	if len(statuses) > 0 {
+		return active
+	}
+	// Keep orphaned open orders visible so Expo can offer its recovery action.
+	return map[string]bool{"pending": true, "confirmed": true, "preparing": true, "ready": true, "out_for_delivery": true}[orderStatus]
+}
+
 // syncOrderStatusFromKDS keeps the order aligned with its kitchen tickets.
-// Delivery and completed statuses are owned by front-of-house fulfillment.
+// Delivery statuses remain owned by front-of-house. A paid order becomes
+// completed only after every kitchen ticket has been handed off/cancelled.
 func (a *application) syncOrderStatusFromKDS(ctx context.Context, orgID, orderID string) error {
 	order, err := a.dataRowByID(ctx, orgID, "orders", orderID)
 	if err != nil {
@@ -848,22 +921,15 @@ func (a *application) syncOrderStatusFromKDS(ctx context.Context, orgID, orderID
 	if err != nil {
 		return err
 	}
-	hasTicket, allReady := false, true
-	for _, candidate := range tickets {
-		if fmt.Sprint(candidate["order_id"]) != orderID {
-			continue
-		}
-		hasTicket = true
-		status := fmt.Sprint(candidate["status"])
-		if status != "ready" && status != "bumped" {
-			allReady = false
-		}
-	}
-	if !hasTicket {
+	statuses := kdsStatusesForOrder(tickets, orderID)
+	if len(statuses) == 0 {
 		return nil
 	}
+	_, allReady, allFinished := summarizeKDSStatuses(statuses)
 	next := "preparing"
-	if allReady {
+	if allFinished && fmt.Sprint(order["payment_status"]) == "paid" {
+		next = "completed"
+	} else if allReady {
 		next = "ready"
 	}
 	if current == next {
@@ -917,7 +983,7 @@ func (a *application) getKDSExpo(ctx context.Context, orgID, orderID string) eve
 				ticketItems = append(ticketItems, item)
 			}
 		}
-		stationTickets = append(stationTickets, map[string]any{"ticket_id": ticket["id"], "station_name": stationNames[fmt.Sprint(ticket["station_id"])], "status": status, "fired_at": ticket["fired_at"], "ready_at": ticket["ready_at"], "course_number": ticket["course_number"], "items": ticketItems})
+		stationTickets = append(stationTickets, map[string]any{"ticket_id": ticket["id"], "station_name": stationNames[fmt.Sprint(ticket["station_id"])], "status": status, "fired_at": ticket["fired_at"], "ready_at": ticket["ready_at"], "bumped_at": ticket["bumped_at"], "course_number": ticket["course_number"], "items": ticketItems})
 	}
 	if len(stationTickets) == 0 {
 		allReady = false
@@ -925,6 +991,7 @@ func (a *application) getKDSExpo(ctx context.Context, orgID, orderID string) eve
 	return mustJSONResponse(200, map[string]any{
 		"order_id": orderID, "order_number": order["order_number"], "order_type": order["order_type"], "table_number": order["table_number"],
 		"customer_name": valueOr(order, "customer_name", nil), "customer_phone": valueOr(order, "customer_phone", nil), "delivery_address": valueOr(order, "delivery_address", nil), "notes": valueOr(order, "notes", nil),
+		"order_status": order["status"], "payment_status": valueOr(order, "payment_status", "pending"),
 		"earliest_fired_at": earliest, "station_tickets": stationTickets, "max_priority": maxPriority, "all_ready": allReady, "any_in_progress": anyProgress,
 	})
 }
@@ -936,13 +1003,22 @@ func (a *application) listKDSExpo(ctx context.Context, orgID string) events.APIG
 	if err != nil {
 		return dataAccessError(err)
 	}
-	open := map[string]bool{"pending": true, "confirmed": true, "preparing": true, "ready": true, "out_for_delivery": true}
+	tickets, err := a.queryDataRows(ctx, orgID, "kds_tickets")
+	if err != nil {
+		return dataAccessError(err)
+	}
+	statusesByOrder := make(map[string][]string)
+	for _, ticket := range tickets {
+		orderID := fmt.Sprint(ticket["order_id"])
+		statusesByOrder[orderID] = append(statusesByOrder[orderID], fmt.Sprint(ticket["status"]))
+	}
 	result := make([]map[string]any, 0)
 	for _, order := range orders {
-		if !open[fmt.Sprint(order["status"])] {
+		orderID := fmt.Sprint(order["id"])
+		if !shouldListKDSExpoOrder(fmt.Sprint(order["status"]), statusesByOrder[orderID]) {
 			continue
 		}
-		response := a.getKDSExpo(ctx, orgID, fmt.Sprint(order["id"]))
+		response := a.getKDSExpo(ctx, orgID, orderID)
 		if response.StatusCode != 200 {
 			continue
 		}

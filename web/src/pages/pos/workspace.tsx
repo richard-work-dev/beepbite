@@ -441,7 +441,6 @@ export default function PosWorkspacePage() {
   // ----- send/charge state ----------------------------------------------
   const [sending, setSending] = useState(false);
   const [chargeMethod, setChargeMethod] = useState<'cash' | 'card_in_person' | null>(null);
-  const [chargeError, setChargeError] = useState('');
   const [chargeBusy, setChargeBusy] = useState(false);
   const [showMethodPicker, setShowMethodPicker] = useState(false);
 
@@ -708,9 +707,28 @@ export default function PosWorkspacePage() {
 
     const syncKitchenStatuses = async () => {
       try {
+        const orderIds = sentOrderKey.split(',').filter(Boolean);
         const { data, error } = await api.request<KitchenOrderSnapshot[]>('GET', '/kds/expo');
-        if (cancelled || error || !Array.isArray(data)) return;
-        const snapshotByOrder = new Map(data.map((snapshot) => [snapshot.order_id, snapshot]));
+        if (cancelled) return;
+
+        // The board intentionally removes an order after every station hands
+        // it off. Fetch only those missing orders directly so the POS can
+        // still advance its last visible state from "Lista" to "Entregada".
+        // This also provides a fallback if the board request itself fails.
+        const snapshots = !error && Array.isArray(data) ? data : [];
+        const snapshotByOrder = new Map(snapshots.map((snapshot) => [snapshot.order_id, snapshot]));
+        const missingOrderIds = orderIds.filter((orderId) => !snapshotByOrder.has(orderId));
+        if (missingOrderIds.length > 0) {
+          const details = await Promise.all(missingOrderIds.map((orderId) =>
+            api.request<KitchenOrderSnapshot>('GET', `/kds/orders/${encodeURIComponent(orderId)}/expo`),
+          ));
+          if (cancelled) return;
+          for (const detail of details) {
+            if (!detail.error && detail.data?.order_id) {
+              snapshotByOrder.set(detail.data.order_id, detail.data);
+            }
+          }
+        }
         if (snapshotByOrder.size === 0) return;
 
         setTickets((previous) => {
@@ -1131,7 +1149,7 @@ export default function PosWorkspacePage() {
         toast({ title: `Asignado a la mesa ${table.label}` });
       } else if (activeTicket.kind === 'table') {
         if (table.id === activeTicket.tableId) {
-          toast({ title: 'Already on this table' });
+          toast({ title: 'El pedido ya está asignado a esta mesa' });
           return;
         }
         const newSession = await transferSession(activeTicket.sessionId!, {
@@ -1212,7 +1230,6 @@ export default function PosWorkspacePage() {
     );
   }
 
-  const activeTicketTotalCents = activeTicket ? subtotalCentsOfTicket(activeTicket, scale) : 0;
   const activeUnpaidCents = activeTicket
     ? activeTicket.sentOrders
         .filter((o) => o.payment_status !== 'paid')

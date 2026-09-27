@@ -24,8 +24,8 @@ export default function ManagerDashboard() {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-muted-foreground gap-3">
         <AlertCircle className="h-12 w-12 text-muted-foreground/40" />
-        <p className="font-medium text-foreground">No location selected</p>
-        <p className="text-sm">Select a location to view the manager dashboard.</p>
+        <p className="font-medium text-foreground">No hay un local seleccionado</p>
+        <p className="text-sm">Seleccioná un local para consultar el panel de gestión.</p>
       </div>
     );
   }
@@ -37,10 +37,10 @@ export default function ManagerDashboard() {
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <LayoutDashboard className="h-6 w-6 text-orange-500" />
-            Manager Overview
+            Panel de gestión
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {activeLocation.name} — {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+            {activeLocation.name} — {new Date().toLocaleDateString('es-AR', { weekday: 'long', month: 'long', day: 'numeric' })}
           </p>
         </div>
         <Button
@@ -51,7 +51,7 @@ export default function ManagerDashboard() {
           className="gap-1.5"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
+          Actualizar
         </Button>
       </div>
 

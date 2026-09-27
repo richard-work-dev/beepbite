@@ -29,7 +29,7 @@ export default function SuppliersPage() {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <AlertCircle className="w-12 h-12 text-muted-foreground mb-4" />
-        <p className="text-muted-foreground">Select an organisation to manage suppliers.</p>
+        <p className="text-muted-foreground">Seleccioná una organización para gestionar proveedores.</p>
       </div>
     );
   }
@@ -57,7 +57,7 @@ export default function SuppliersPage() {
       setModalOpen(false);
       setEditTarget(null);
     } catch (e) {
-      setSaveErr(e instanceof Error ? e.message : 'Failed to save supplier');
+      setSaveErr(e instanceof Error ? e.message : 'No se pudo guardar el proveedor');
     } finally {
       setSaving(false);
     }
@@ -81,11 +81,11 @@ export default function SuppliersPage() {
     <PageContainer>
       <PageHeader
         icon={Building2}
-        title="Suppliers"
-        description={`Manage vendor master for ${activeOrganization.name}`}
+        title="Proveedores"
+        description={`Contactos y condiciones comerciales de ${activeOrganization.name}`}
         actions={
           <Button onClick={openCreate}>
-            <Plus className="w-4 h-4 mr-2" /> New Supplier
+            <Plus className="w-4 h-4 mr-2" /> Nuevo proveedor
           </Button>
         }
       />
@@ -95,7 +95,7 @@ export default function SuppliersPage() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
           className="pl-9"
-          placeholder="Search suppliers…"
+          placeholder="Buscar proveedores…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -122,11 +122,11 @@ export default function SuppliersPage() {
           <CardContent className="p-10 text-center">
             <Building2 className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
             <p className="text-muted-foreground">
-              {search ? 'No suppliers match your search.' : 'No suppliers yet. Create the first one.'}
+              {search ? 'Ningún proveedor coincide con la búsqueda.' : 'Todavía no hay proveedores. Creá el primero.'}
             </p>
             {!search && (
               <Button onClick={openCreate} className="mt-4">
-                <Plus className="w-4 h-4 mr-2" /> New Supplier
+                <Plus className="w-4 h-4 mr-2" /> Nuevo proveedor
               </Button>
             )}
           </CardContent>
@@ -144,14 +144,14 @@ export default function SuppliersPage() {
                       warning or an error — success for active, a plain
                       secondary chip once a supplier is retired. */}
                   <Badge variant={sup.is_active ? 'success' : 'secondary'}>
-                    {sup.is_active ? 'Active' : 'Inactive'}
+                    {sup.is_active ? 'Activo' : 'Inactivo'}
                   </Badge>
                 </div>
                 {sup.display_name && <p className="text-xs text-muted-foreground">{sup.display_name}</p>}
               </CardHeader>
               <CardContent className="text-sm space-y-1 text-muted-foreground">
                 {sup.payment_terms_days != null && (
-                  <p>Net {sup.payment_terms_days} days</p>
+                  <p>Pago a {sup.payment_terms_days} días</p>
                 )}
                 {sup.website && (
                   <a href={sup.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline block truncate">
@@ -160,7 +160,7 @@ export default function SuppliersPage() {
                 )}
                 <div className="pt-2">
                   <Button size="sm" variant="outline" onClick={() => openEdit(sup)} className="border-primary/25 text-primary hover:bg-primary/10">
-                    <Edit className="w-3 h-3 mr-1" /> Edit
+                    <Edit className="w-3 h-3 mr-1" /> Editar
                   </Button>
                 </div>
               </CardContent>
@@ -173,9 +173,9 @@ export default function SuppliersPage() {
       <Dialog open={modalOpen} onOpenChange={(v) => { if (!v) { setModalOpen(false); setEditTarget(null); } }}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>{editTarget ? 'Edit Supplier' : 'New Supplier'}</DialogTitle>
+            <DialogTitle>{editTarget ? 'Editar proveedor' : 'Nuevo proveedor'}</DialogTitle>
             <DialogDescription>
-              {editTarget ? `Editing ${editTarget.name}` : 'Add a new supplier to your organisation.'}
+              {editTarget ? `Editando ${editTarget.name}` : 'Agregá un proveedor a la organización.'}
             </DialogDescription>
           </DialogHeader>
           {saveErr && <p className="text-sm text-destructive -mt-2">{saveErr}</p>}

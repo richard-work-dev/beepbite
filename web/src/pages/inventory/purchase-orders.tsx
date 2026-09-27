@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,7 +17,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { ShoppingCart, Plus, AlertCircle, ChevronRight, Send } from 'lucide-react';
+import { ShoppingCart, Plus, AlertCircle, ChevronRight, Send, PackageCheck } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { useDateTime, useLocale } from '@/context/locale-context';
 import { formatMoney } from '@/lib/currency';
@@ -24,16 +25,21 @@ import { usePOs, type POStatus, type PurchaseOrder } from './hooks/use-pos';
 import { useSuppliers } from './hooks/use-suppliers';
 import { POForm, type POFormPayload } from './components/po-form';
 import { PageContainer, PageHeader } from '@/components/ui/page-header';
+import { api } from '@/lib/api-client';
 
 const STATUS_OPTIONS: { value: POStatus | 'all'; label: string }[] = [
-  { value: 'all', label: 'All Statuses' },
-  { value: 'draft', label: 'Draft' },
-  { value: 'sent', label: 'Sent' },
-  { value: 'partially_received', label: 'Partially Received' },
-  { value: 'received', label: 'Received' },
-  { value: 'cancelled', label: 'Cancelled' },
-  { value: 'closed', label: 'Closed' },
+  { value: 'all', label: 'Todos los estados' },
+  { value: 'draft', label: 'Borrador' },
+  { value: 'sent', label: 'Enviada' },
+  { value: 'partially_received', label: 'Recepción parcial' },
+  { value: 'received', label: 'Recibida' },
+  { value: 'cancelled', label: 'Cancelada' },
+  { value: 'closed', label: 'Cerrada' },
 ];
+
+const PO_STATUS_LABEL: Record<string, string> = Object.fromEntries(
+  STATUS_OPTIONS.filter((option) => option.value !== 'all').map((option) => [option.value, option.label]),
+);
 
 // Badge variant per PO status — draft is a plain outline (nothing committed
 // yet), sent is the primary in-flight state, partially_received still needs
@@ -52,6 +58,7 @@ function poStatusVariant(status: string): 'outline' | 'default' | 'warning' | 's
 }
 
 export default function PurchaseOrdersPage() {
+  const navigate = useNavigate();
   const { activeLocation, activeOrganization } = useAuth();
   const { locale } = useLocale();
   const { formatDate } = useDateTime();
@@ -66,6 +73,7 @@ export default function PurchaseOrdersPage() {
   const [detailPO, setDetailPO] = useState<PurchaseOrder | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitErr, setSubmitErr] = useState('');
+  const [creatingReceipt, setCreatingReceipt] = useState(false);
 
   // Each PO carries its own currency: a supplier may invoice the store in a
   // currency the store does not trade in, so the record wins over the location.
@@ -78,7 +86,7 @@ export default function PurchaseOrdersPage() {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <AlertCircle className="w-12 h-12 text-muted-foreground mb-4" />
-        <p className="text-muted-foreground">Select a location to view purchase orders.</p>
+        <p className="text-muted-foreground">Seleccioná un local para consultar las órdenes de compra.</p>
       </div>
     );
   }
@@ -92,7 +100,7 @@ export default function PurchaseOrdersPage() {
       setNewPOOpen(false);
       setDetailPO(created);
     } catch (e) {
-      setSaveErr(e instanceof Error ? e.message : 'Failed to create purchase order');
+      setSaveErr(e instanceof Error ? e.message : 'No se pudo crear la orden de compra');
     } finally {
       setSaving(false);
     }
@@ -105,9 +113,25 @@ export default function PurchaseOrdersPage() {
       const updated = await submitPO(po.id);
       setDetailPO(updated);
     } catch (e) {
-      setSubmitErr(e instanceof Error ? e.message : 'Failed to submit purchase order');
+      setSubmitErr(e instanceof Error ? e.message : 'No se pudo enviar la orden de compra');
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleCreateReceipt(po: PurchaseOrder) {
+    setCreatingReceipt(true);
+    setSubmitErr('');
+    try {
+      const { error } = await api.request('POST', '/inventory/goods-receipts', {
+        body: { purchase_order_id: po.id },
+      });
+      if (error) throw new Error(error.message);
+      void navigate('/inventory/grns');
+    } catch (e) {
+      setSubmitErr(e instanceof Error ? e.message : 'No se pudo preparar la recepción');
+    } finally {
+      setCreatingReceipt(false);
     }
   }
 
@@ -117,11 +141,11 @@ export default function PurchaseOrdersPage() {
     <PageContainer>
       <PageHeader
         icon={ShoppingCart}
-        title="Purchase Orders"
+        title="Órdenes de compra"
         description={activeLocation.name}
         actions={
           <Button onClick={() => { setSaveErr(''); setNewPOOpen(true); }}>
-            <Plus className="w-4 h-4 mr-2" /> New PO
+            <Plus className="w-4 h-4 mr-2" /> Nueva orden
           </Button>
         }
       />
@@ -160,7 +184,7 @@ export default function PurchaseOrdersPage() {
         <Card>
           <CardContent className="p-10 text-center">
             <ShoppingCart className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-            <p className="text-muted-foreground">No purchase orders found. Create the first one.</p>
+            <p className="text-muted-foreground">No hay órdenes de compra. Creá la primera.</p>
           </CardContent>
         </Card>
       )}
@@ -179,12 +203,12 @@ export default function PurchaseOrdersPage() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-foreground">{po.po_number}</span>
                     <Badge variant={poStatusVariant(po.status)}>
-                      {po.status}
+                      {PO_STATUS_LABEL[po.status] || po.status}
                     </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {supplierMap[String(po.supplier_id)] || 'No supplier'} &middot; {fmtDate(po.created_at)}
-                    {po.expected_delivery_date && ` &middot; ETA ${fmtDate(po.expected_delivery_date)}`}
+                    {supplierMap[String(po.supplier_id)] || 'Sin proveedor'} &middot; {fmtDate(po.created_at)}
+                    {po.expected_delivery_date && ` &middot; Entrega estimada: ${fmtDate(po.expected_delivery_date)}`}
                   </p>
                 </div>
                 <div className="text-right shrink-0">
@@ -202,8 +226,8 @@ export default function PurchaseOrdersPage() {
       <Dialog open={newPOOpen} onOpenChange={(v) => { if (!v) setNewPOOpen(false); }}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>New Purchase Order</DialogTitle>
-            <DialogDescription>Create a purchase order for {activeLocation.name}</DialogDescription>
+            <DialogTitle>Nueva orden de compra</DialogTitle>
+            <DialogDescription>Creá una orden de compra para {activeLocation.name}</DialogDescription>
           </DialogHeader>
           {saveErr && <p className="text-sm text-destructive">{saveErr}</p>}
           <POForm
@@ -222,23 +246,23 @@ export default function PurchaseOrdersPage() {
           {detailPO && (
             <>
               <DialogHeader>
-                <DialogTitle>PO {detailPO.po_number}</DialogTitle>
+                <DialogTitle>Orden {detailPO.po_number}</DialogTitle>
                 <DialogDescription>
-                  <Badge variant={poStatusVariant(detailPO.status)}>{detailPO.status}</Badge>
+                  <Badge variant={poStatusVariant(detailPO.status)}>{PO_STATUS_LABEL[detailPO.status] || detailPO.status}</Badge>
                 </DialogDescription>
               </DialogHeader>
 
               <div className="space-y-2 text-sm text-foreground">
                 <div className="grid grid-cols-2 gap-2">
-                  <div><span className="text-muted-foreground">Supplier</span><br />{supplierMap[String(detailPO.supplier_id)] || '—'}</div>
-                  <div><span className="text-muted-foreground">Created</span><br />{fmtDate(detailPO.created_at)}</div>
-                  <div><span className="text-muted-foreground">Expected delivery</span><br />{fmtDate(detailPO.expected_delivery_date)}</div>
-                  <div><span className="text-muted-foreground">Currency</span><br />{detailPO.currency}</div>
+                  <div><span className="text-muted-foreground">Proveedor</span><br />{supplierMap[String(detailPO.supplier_id)] || '—'}</div>
+                  <div><span className="text-muted-foreground">Creada</span><br />{fmtDate(detailPO.created_at)}</div>
+                  <div><span className="text-muted-foreground">Entrega estimada</span><br />{fmtDate(detailPO.expected_delivery_date)}</div>
+                  <div><span className="text-muted-foreground">Moneda</span><br />{detailPO.currency}</div>
                 </div>
                 <div className="border border-border rounded p-3 space-y-1 mt-2 tabular-nums">
                   <div className="flex justify-between"><span>Subtotal</span><span>{fmtCents(detailPO.subtotal_cents, detailPO.currency)}</span></div>
-                  <div className="flex justify-between"><span>Tax</span><span>{fmtCents(detailPO.tax_cents, detailPO.currency)}</span></div>
-                  <div className="flex justify-between"><span>Shipping</span><span>{fmtCents(detailPO.shipping_cents, detailPO.currency)}</span></div>
+                  <div className="flex justify-between"><span>Impuestos</span><span>{fmtCents(detailPO.tax_cents, detailPO.currency)}</span></div>
+                  <div className="flex justify-between"><span>Envío</span><span>{fmtCents(detailPO.shipping_cents, detailPO.currency)}</span></div>
                   <div className="flex justify-between font-semibold border-t border-border pt-1"><span>Total</span><span>{fmtCents(detailPO.total_cents, detailPO.currency)}</span></div>
                 </div>
                 {detailPO.notes && <p className="text-muted-foreground italic">{detailPO.notes}</p>}
@@ -247,7 +271,7 @@ export default function PurchaseOrdersPage() {
               {submitErr && <p className="text-sm text-destructive">{submitErr}</p>}
 
               <div className="flex gap-3 pt-2">
-                <Button variant="outline" onClick={() => setDetailPO(null)} className="flex-1">Close</Button>
+                <Button variant="outline" onClick={() => setDetailPO(null)} className="flex-1">Cerrar</Button>
                 {detailPO.status === 'draft' && (
                   <Button
                     onClick={() => handleSubmitPO(detailPO)}
@@ -255,7 +279,13 @@ export default function PurchaseOrdersPage() {
                     className="flex-1"
                   >
                     <Send className="w-4 h-4 mr-2" />
-                    {submitting ? 'Submitting…' : 'Submit PO'}
+                    {submitting ? 'Enviando…' : 'Enviar al proveedor'}
+                  </Button>
+                )}
+                {(detailPO.status === 'sent' || detailPO.status === 'partially_received') && (
+                  <Button onClick={() => void handleCreateReceipt(detailPO)} disabled={creatingReceipt} className="flex-1">
+                    <PackageCheck className="w-4 h-4 mr-2" />
+                    {creatingReceipt ? 'Preparando…' : 'Registrar recepción'}
                   </Button>
                 )}
               </div>

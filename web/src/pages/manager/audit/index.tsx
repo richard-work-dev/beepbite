@@ -94,7 +94,7 @@ function FilterPanel({ filters, onChange, onApply, onReset }: FilterPanelProps) 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-4 bg-muted/40 rounded-lg border">
       <div className="space-y-1">
-        <Label className="text-xs" htmlFor="f-actor">Actor ID</Label>
+        <Label className="text-xs" htmlFor="f-actor">ID del actor</Label>
         <Input
           id="f-actor"
           placeholder="UUID"
@@ -104,17 +104,17 @@ function FilterPanel({ filters, onChange, onApply, onReset }: FilterPanelProps) 
         />
       </div>
       <div className="space-y-1">
-        <Label className="text-xs" htmlFor="f-action">Action</Label>
+        <Label className="text-xs" htmlFor="f-action">Acción</Label>
         <Input
           id="f-action"
-          placeholder="e.g. order.void"
+          placeholder="Ej.: order.void"
           value={filters.action}
           onChange={(e) => onChange('action', e.target.value)}
           className="h-8 text-xs"
         />
       </div>
       <div className="space-y-1">
-        <Label className="text-xs" htmlFor="f-from">From</Label>
+        <Label className="text-xs" htmlFor="f-from">Desde</Label>
         <Input
           id="f-from"
           type="datetime-local"
@@ -124,7 +124,7 @@ function FilterPanel({ filters, onChange, onApply, onReset }: FilterPanelProps) 
         />
       </div>
       <div className="space-y-1">
-        <Label className="text-xs" htmlFor="f-to">To</Label>
+        <Label className="text-xs" htmlFor="f-to">Hasta</Label>
         <Input
           id="f-to"
           type="datetime-local"
@@ -136,10 +136,10 @@ function FilterPanel({ filters, onChange, onApply, onReset }: FilterPanelProps) 
       <div className="sm:col-span-2 lg:col-span-4 flex gap-2">
         <Button size="sm" onClick={onApply} className="gap-1.5">
           <Filter className="h-3.5 w-3.5" />
-          Apply filters
+          Aplicar filtros
         </Button>
         <Button size="sm" variant="ghost" onClick={onReset}>
-          Reset
+          Restablecer
         </Button>
       </div>
     </div>
@@ -183,14 +183,14 @@ export default function AuditViewer() {
     try {
       const { data, error: err } = await listAuditLog(params);
       if (err) {
-        setError(err.message || 'Failed to load audit log');
+        setError(err.message || 'No se pudo cargar el registro de auditoría');
         return;
       }
       setEntries(data?.data ?? []);
       setTotal(data?.total ?? 0);
     } catch (err) {
-      console.error('Error loading audit log:', err);
-      setError('Failed to load audit log');
+      console.error('No se pudo cargar el registro de auditoría:', err);
+      setError('No se pudo cargar el registro de auditoría');
     } finally {
       setLoading(false);
     }
@@ -224,10 +224,10 @@ export default function AuditViewer() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <ClipboardList className="h-6 w-6 text-orange-500" />
-            Audit Log
+            Registro de auditoría
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            All activity for your organisation — newest first.
+            Toda la actividad de la organización, ordenada desde la más reciente.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -238,10 +238,10 @@ export default function AuditViewer() {
             className={`gap-1.5 ${hasActiveFilters ? 'border-orange-300 text-orange-700' : ''}`}
           >
             <Filter className="h-3.5 w-3.5" />
-            Filters
+            Filtros
             {hasActiveFilters && (
               <Badge className="ml-1 bg-orange-100 text-orange-700 border-orange-300 text-xs px-1 py-0">
-                on
+                activos
               </Badge>
             )}
           </Button>
@@ -253,7 +253,7 @@ export default function AuditViewer() {
             className="gap-1.5"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
+            Actualizar
           </Button>
         </div>
       </div>
@@ -283,11 +283,11 @@ export default function AuditViewer() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-base">
-                  {loading ? 'Loading…' : `${total.toLocaleString()} entries`}
+                  {loading ? 'Cargando…' : `${total.toLocaleString()} ${total === 1 ? 'registro' : 'registros'}`}
                 </CardTitle>
                 {hasActiveFilters && !loading && (
                   <CardDescription className="text-xs mt-0.5">
-                    Filters active — showing filtered results
+                    Filtros activos — se muestran resultados filtrados
                   </CardDescription>
                 )}
               </div>
@@ -330,10 +330,10 @@ export default function AuditViewer() {
             ) : entries.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
                 <ClipboardList className="h-10 w-10 opacity-30" />
-                <p className="text-sm">No audit log entries found</p>
+                <p className="text-sm">No se encontraron registros de auditoría</p>
                 {hasActiveFilters && (
                   <Button size="sm" variant="ghost" onClick={handleResetFilters}>
-                    Clear filters
+                    Limpiar filtros
                   </Button>
                 )}
               </div>
@@ -343,10 +343,10 @@ export default function AuditViewer() {
                   <thead>
                     <tr className="border-b bg-muted/30 text-xs text-muted-foreground text-left">
                       <th className="px-4 py-2.5 font-medium">Actor</th>
-                      <th className="px-4 py-2.5 font-medium">Action</th>
-                      <th className="px-4 py-2.5 font-medium">Entity</th>
-                      <th className="px-4 py-2.5 font-medium">Entity ID</th>
-                      <th className="px-4 py-2.5 font-medium text-right">When</th>
+                      <th className="px-4 py-2.5 font-medium">Acción</th>
+                      <th className="px-4 py-2.5 font-medium">Entidad</th>
+                      <th className="px-4 py-2.5 font-medium">ID de entidad</th>
+                      <th className="px-4 py-2.5 font-medium text-right">Fecha</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -390,7 +390,7 @@ export default function AuditViewer() {
         {!loading && total > PER_PAGE && (
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <span>
-              Showing {(page - 1) * PER_PAGE + 1}–{Math.min(page * PER_PAGE, total)} of {total.toLocaleString()}
+              Mostrando {(page - 1) * PER_PAGE + 1}–{Math.min(page * PER_PAGE, total)} de {total.toLocaleString()}
             </span>
             <div className="flex gap-1">
               <Button
@@ -401,7 +401,7 @@ export default function AuditViewer() {
                 className="gap-1"
               >
                 <ChevronLeft className="h-3.5 w-3.5" />
-                Previous
+                Anterior
               </Button>
               <Button
                 variant="outline"
@@ -410,7 +410,7 @@ export default function AuditViewer() {
                 onClick={() => setPage((p) => p + 1)}
                 className="gap-1"
               >
-                Next
+                Siguiente
                 <ChevronRight className="h-3.5 w-3.5" />
               </Button>
             </div>

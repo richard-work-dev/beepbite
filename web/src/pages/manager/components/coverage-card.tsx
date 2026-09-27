@@ -40,7 +40,7 @@ export default function CoverageCard({ allItems, itemAllergens, itemDietaryTags,
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <ShieldCheck className="h-4 w-4 text-teal-500" />
-          Allergen & Dietary Coverage
+          Información alimentaria
         </CardTitle>
       </CardHeader>
 
@@ -51,7 +51,7 @@ export default function CoverageCard({ allItems, itemAllergens, itemDietaryTags,
             <Skeleton className="h-8 w-full" />
           </div>
         ) : stats.total === 0 ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">No active menu items found</p>
+          <p className="text-sm text-muted-foreground py-4 text-center">No hay productos activos en el menú</p>
         ) : (
           <>
             {/* Allergen coverage */}
@@ -59,7 +59,7 @@ export default function CoverageCard({ allItems, itemAllergens, itemDietaryTags,
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
                   <ShieldCheck className="h-3.5 w-3.5 text-teal-500" />
-                  <span className="text-sm font-medium">Allergen data</span>
+                  <span className="text-sm font-medium">Datos de alérgenos</span>
                 </div>
                 <span className="text-sm font-semibold tabular-nums">
                   {stats.allergenPct}%
@@ -70,7 +70,7 @@ export default function CoverageCard({ allItems, itemAllergens, itemDietaryTags,
               </div>
               <Progress value={stats.allergenPct} className="h-2" />
               <p className="text-xs text-muted-foreground">
-                {stats.total - stats.withAllergen} item{stats.total - stats.withAllergen !== 1 ? 's' : ''} missing allergen info
+                {stats.total - stats.withAllergen} {stats.total - stats.withAllergen === 1 ? 'producto sin información de alérgenos' : 'productos sin información de alérgenos'}
               </p>
             </div>
 
@@ -79,7 +79,7 @@ export default function CoverageCard({ allItems, itemAllergens, itemDietaryTags,
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
                   <Leaf className="h-3.5 w-3.5 text-green-500" />
-                  <span className="text-sm font-medium">Dietary tags</span>
+                  <span className="text-sm font-medium">Etiquetas alimentarias</span>
                 </div>
                 <span className="text-sm font-semibold tabular-nums">
                   {stats.dietaryPct}%
@@ -90,7 +90,7 @@ export default function CoverageCard({ allItems, itemAllergens, itemDietaryTags,
               </div>
               <Progress value={stats.dietaryPct} className="h-2" />
               <p className="text-xs text-muted-foreground">
-                {stats.total - stats.withDietary} item{stats.total - stats.withDietary !== 1 ? 's' : ''} missing dietary tags
+                {stats.total - stats.withDietary} {stats.total - stats.withDietary === 1 ? 'producto sin etiquetas alimentarias' : 'productos sin etiquetas alimentarias'}
               </p>
             </div>
           </>
@@ -104,7 +104,7 @@ export default function CoverageCard({ allItems, itemAllergens, itemDietaryTags,
           className="ml-auto gap-1 text-xs"
           onClick={() => navigate('/menu')}
         >
-          Manage items <ArrowRight className="h-3 w-3" />
+          Gestionar productos <ArrowRight className="h-3 w-3" />
         </Button>
       </CardFooter>
     </Card>

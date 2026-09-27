@@ -36,6 +36,16 @@ function matchStatusVariant(status: string | undefined): 'success' | 'warning' |
   }
 }
 
+const INVOICE_STATUS_LABEL: Record<string, string> = {
+  pending: 'Pendiente', matched: 'Conciliada', disputed: 'Con diferencias',
+  approved: 'Aprobada', paid: 'Pagada', cancelled: 'Cancelada',
+};
+
+const MATCH_STATUS_LABEL: Record<string, string> = {
+  unmatched: 'Sin conciliar', matched: 'Coincide',
+  price_variance: 'Diferencia de precio', qty_variance: 'Diferencia de cantidad',
+};
+
 export default function InvoiceMatchPage() {
   const { activeLocation } = useAuth();
   const { locale } = useLocale();
@@ -57,7 +67,7 @@ export default function InvoiceMatchPage() {
       if (err) throw new Error(err.message);
       setInvoices(data || []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load invoices');
+      setError(e instanceof Error ? e.message : 'No se pudieron cargar las facturas');
     } finally {
       setLoading(false);
     }
@@ -88,7 +98,7 @@ export default function InvoiceMatchPage() {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <AlertCircle className="w-12 h-12 text-muted-foreground mb-4" />
-        <p className="text-muted-foreground">Select a location to view supplier invoices.</p>
+        <p className="text-muted-foreground">Seleccioná un local para consultar las facturas de proveedores.</p>
       </div>
     );
   }
@@ -97,11 +107,11 @@ export default function InvoiceMatchPage() {
     <PageContainer>
       <PageHeader
         icon={FileText}
-        title="Invoice Match (3-Way)"
-        description={activeLocation.name}
+        title="Conciliación de facturas"
+        description={`Comparación entre factura, orden y recepción de ${activeLocation.name}`}
         actions={
           <Button variant="outline" onClick={fetchInvoices}>
-            Refresh
+            Actualizar
           </Button>
         }
       />
@@ -125,7 +135,7 @@ export default function InvoiceMatchPage() {
         <Card>
           <CardContent className="p-10 text-center">
             <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-            <p className="text-muted-foreground">No supplier invoices found for this location.</p>
+            <p className="text-muted-foreground">No hay facturas de proveedores para este local.</p>
           </CardContent>
         </Card>
       )}
@@ -144,15 +154,15 @@ export default function InvoiceMatchPage() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-foreground">{inv.invoice_number}</span>
                     <Badge variant={invoiceStatusVariant(inv.status)}>
-                      {inv.status}
+                      {INVOICE_STATUS_LABEL[inv.status] || inv.status}
                     </Badge>
                     <Badge variant={matchStatusVariant(inv.match_status)}>
-                      {inv.match_status?.replace('_', ' ') || 'unmatched'}
+                      {MATCH_STATUS_LABEL[inv.match_status] || 'Sin conciliar'}
                     </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Date: {fmtDate(inv.invoice_date)}
-                    {inv.due_date && ` · Due: ${fmtDate(inv.due_date)}`}
+                    Fecha: {fmtDate(inv.invoice_date)}
+                    {inv.due_date && ` · Vence: ${fmtDate(inv.due_date)}`}
                   </p>
                 </div>
                 <div className="text-right shrink-0">
@@ -165,7 +175,7 @@ export default function InvoiceMatchPage() {
                   onClick={(e) => { e.stopPropagation(); setSelectedInvoice(inv); }}
                   className="border-primary/25 text-primary hover:bg-primary/10 shrink-0"
                 >
-                  Review
+                  Revisar
                 </Button>
               </CardContent>
             </Card>

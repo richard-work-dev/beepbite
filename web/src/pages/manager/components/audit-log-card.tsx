@@ -31,11 +31,11 @@ function formatRelativeTime(iso: string) {
   if (!iso) return '';
   const delta = Date.now() - new Date(iso).getTime();
   const minutes = Math.floor(delta / 60000);
-  if (minutes < 1) return 'just now';
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 1) return 'recién';
+  if (minutes < 60) return `hace ${minutes} min`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  if (hours < 24) return `hace ${hours} h`;
+  return new Date(iso).toLocaleDateString('es-AR', { month: 'short', day: 'numeric' });
 }
 
 interface AuditLogCardProps {
@@ -49,7 +49,7 @@ export default function AuditLogCard({ entries, loading }: AuditLogCardProps) {
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <ClipboardList className="h-4 w-4 text-gray-500" />
-          Recent Activity
+          Actividad reciente
         </CardTitle>
       </CardHeader>
 
@@ -61,16 +61,16 @@ export default function AuditLogCard({ entries, loading }: AuditLogCardProps) {
             ))}
           </div>
         ) : entries.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">No recent activity</p>
+          <p className="text-sm text-muted-foreground py-4 text-center">No hay actividad reciente</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-xs text-muted-foreground">
                   <th className="pb-2 pr-4 font-medium">Actor</th>
-                  <th className="pb-2 pr-4 font-medium">Action</th>
-                  <th className="pb-2 pr-4 font-medium">Entity</th>
-                  <th className="pb-2 font-medium text-right">When</th>
+                  <th className="pb-2 pr-4 font-medium">Acción</th>
+                  <th className="pb-2 pr-4 font-medium">Entidad</th>
+                  <th className="pb-2 font-medium text-right">Cuándo</th>
                 </tr>
               </thead>
               <tbody>

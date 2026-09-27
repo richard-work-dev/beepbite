@@ -3,6 +3,7 @@
 // fetch + error handling for the same routes.
 
 import { api } from '@/lib/api-client';
+import { _actorRef } from '@/context/actor-token-context';
 
 const STORAGE_KEY = 'bb.auth';
 const REGISTER_SESSION_KEY = 'pos.register_session_id';
@@ -62,9 +63,18 @@ export function getStaff(): StaffRecord | null {
  * granted all capabilities.
  */
 export function hasCapability(name: string): boolean {
+  const actor = _actorRef.current;
+  if (actor) {
+    const actorRole = actor.role.trim().toLowerCase();
+    if (['owner', 'manager', 'admin'].includes(actorRole)) return true;
+    return actor.capabilities.includes(name);
+  }
   const session = readStaffSession();
   // No staff session at all means an owner/admin Supabase login — full access.
   if (!session) return true;
+  const rawRole = session.staff?.role ?? session.role;
+  const role = typeof rawRole === 'string' ? rawRole.trim().toLowerCase() : '';
+  if (['owner', 'manager', 'admin'].includes(role)) return true;
   const caps = session.capabilities || session.staff?.capabilities || [];
   // Support both array form (new actor-overlay tokens) and legacy object form
   if (Array.isArray(caps)) return caps.includes(name);
@@ -225,7 +235,7 @@ export async function openRegisterSession({
 /**
  * Submit a cart as a POS order. Contract:
  *   POST /pos/orders
- *   { location_id, order_type, table_number?, register_session_id, items: [...] }
+ *   { location_id, order_type, table_number?, table_session_id?, register_session_id, items: [...] }
  *   response: { order_id, order_number, total, kds_ticket_ids: [] }
  */
 interface FetchError extends Error {
@@ -266,6 +276,7 @@ export async function submitPosOrder({
   locationId,
   orderType = 'dine_in',
   tableNumber,
+  tableSessionId,
   registerSessionId,
   items,
   notes,
@@ -273,6 +284,7 @@ export async function submitPosOrder({
   locationId: string;
   orderType?: string;
   tableNumber?: string;
+  tableSessionId?: string;
   registerSessionId?: string;
   items: unknown[];
   notes?: string;
@@ -281,6 +293,7 @@ export async function submitPosOrder({
     location_id: string;
     order_type: string;
     register_session_id?: string;
+    table_session_id?: string;
     items: unknown[];
     table_number?: string;
     notes?: string;
@@ -291,6 +304,7 @@ export async function submitPosOrder({
     items,
   };
   if (tableNumber) body.table_number = tableNumber;
+  if (tableSessionId) body.table_session_id = tableSessionId;
   if (notes) body.notes = notes;
 
   const { data, error } = await api.request<CreatedOrder>('POST', '/pos/orders', { body });

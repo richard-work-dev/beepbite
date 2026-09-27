@@ -86,6 +86,17 @@ func TestOrganizationRolesMatchSchema(t *testing.T) {
 	}
 }
 
+func TestManagerRoleIncludesAdministrator(t *testing.T) {
+	for _, role := range []string{"owner", "manager", "admin"} {
+		if !managerRole(role) {
+			t.Fatalf("expected %q to have full administrative access", role)
+		}
+	}
+	if managerRole("staff") {
+		t.Fatal("staff must not receive full administrative access")
+	}
+}
+
 func TestOrganizationMustRetainOwner(t *testing.T) {
 	if hasOrganizationOwner([]map[string]any{{"role": "manager"}}) {
 		t.Fatal("organization without owner was accepted")

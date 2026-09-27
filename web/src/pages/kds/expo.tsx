@@ -14,7 +14,7 @@ import { api } from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
 import { ExpoOrderCard } from './components/expo-order-card';
 import { useTick } from './hooks/use-tick';
-import type { ExpoOrder, ExpoStationTicket } from './types';
+import type { ExpoOrder, ExpoStationTicket, KdsTicketAction } from './types';
 
 const POLL_MS = 10_000;
 // Mirrors backend/internal/handlers/kds/store.go ExpoRow — the response of
@@ -58,8 +58,10 @@ export default function ExpoPage() {
   const [orders, setOrders] = useState<ExpoOrder[]>([]); // merged: order + station_tickets[]
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [sendingOrderID, setSendingOrderID] = useState<string | null>(null);
+  const [actingTicketIDs, setActingTicketIDs] = useState<Set<string>>(() => new Set());
   const now = useTick();
   const mountedRef = useRef(true);
 
@@ -73,7 +75,7 @@ export default function ExpoPage() {
 
   const load = useCallback(async ({ background = false }: { background?: boolean } = {}) => {
     if (background) setRefreshing(true); else setLoading(true);
-    setError(null);
+    setLoadError(null);
 
     try {
       const { data, error: expoError } = await api.request<ExpoViewResponse[]>('GET', '/kds/expo');
@@ -87,7 +89,7 @@ export default function ExpoPage() {
       if (!mountedRef.current) return;
       setOrders(results);
     } catch (e) {
-      if (mountedRef.current) setError(e instanceof Error ? e.message : 'No se pudo cargar la pantalla de despacho');
+      if (mountedRef.current) setLoadError(e instanceof Error ? e.message : 'No se pudo cargar la pantalla de despacho');
     } finally {
       if (mountedRef.current) {
         setLoading(false);
@@ -107,9 +109,9 @@ export default function ExpoPage() {
 
   const sendToKitchen = useCallback(async (order: ExpoOrder) => {
     setSendingOrderID(order.order_id);
-    setError(null);
+    setActionError(null);
     try {
-      const { error: fanoutError } = await api.request('POST', `/orders/${encodeURIComponent(order.order_id)}/kds/fanout`);
+      const { error: fanoutError } = await api.request('POST', `/kds/orders/${encodeURIComponent(order.order_id)}/fanout`);
       if (fanoutError) {
         const message = fanoutError.message || 'No se pudo enviar la comanda a cocina.';
         if (message.includes('no active kitchen station')) {
@@ -119,9 +121,37 @@ export default function ExpoPage() {
       }
       await load({ background: true });
     } catch (e) {
-      if (mountedRef.current) setError(e instanceof Error ? e.message : 'No se pudo enviar la comanda a cocina.');
+      if (mountedRef.current) setActionError(e instanceof Error ? e.message : 'No se pudo enviar la comanda a cocina.');
     } finally {
       if (mountedRef.current) setSendingOrderID(null);
+    }
+  }, [load]);
+
+  const transitionTickets = useCallback(async (ticketIDs: string[], action: KdsTicketAction) => {
+    const uniqueIDs = Array.from(new Set(ticketIDs.filter(Boolean)));
+    if (uniqueIDs.length === 0) return;
+    setActionError(null);
+    setActingTicketIDs((current) => new Set([...current, ...uniqueIDs]));
+    try {
+      const results = await Promise.all(uniqueIDs.map((ticketID) =>
+        api.request('POST', `/kds/tickets/${encodeURIComponent(ticketID)}/${action}`),
+      ));
+      const failed = results.find((result) => result.error);
+      if (failed?.error) throw new Error(failed.error.message || 'No se pudo actualizar la comanda');
+      await load({ background: true });
+    } catch (e) {
+      if (mountedRef.current) {
+        setActionError(e instanceof Error ? e.message : 'No se pudo actualizar la comanda');
+        await load({ background: true });
+      }
+    } finally {
+      if (mountedRef.current) {
+        setActingTicketIDs((current) => {
+          const next = new Set(current);
+          uniqueIDs.forEach((ticketID) => next.delete(ticketID));
+          return next;
+        });
+      }
     }
   }, [load]);
 
@@ -164,7 +194,7 @@ export default function ExpoPage() {
           </div>
 
           {/* Status pills — only when we have data */}
-          {!loading && !error && orders.length > 0 && (
+          {!loading && !loadError && orders.length > 0 && (
             <div className="flex items-center gap-2">
               {readyCount > 0 && (
                 <span className="rounded-full bg-emerald-700 px-3 py-0.5 text-xs font-bold text-emerald-100">
@@ -205,10 +235,18 @@ export default function ExpoPage() {
       {/* Main content                                                        */}
       {/* ------------------------------------------------------------------ */}
       <main className="flex-1 overflow-auto p-5">
+        {actionError && (
+          <div role="alert" className="mx-auto mb-4 flex max-w-3xl items-center justify-between gap-3 rounded-lg border border-red-700 bg-red-950/70 px-4 py-3 text-sm font-semibold text-red-200">
+            <span>{actionError}</span>
+            <Button type="button" size="sm" variant="outline" onClick={() => setActionError(null)} className="border-red-700 text-red-200 hover:bg-red-900">
+              Cerrar
+            </Button>
+          </div>
+        )}
         {loading ? (
           <ExpoLoadingState />
-        ) : error ? (
-          <ExpoErrorState error={error} onRetry={() => load()} />
+        ) : loadError ? (
+          <ExpoErrorState error={loadError} onRetry={() => load()} />
         ) : orders.length === 0 ? (
           <ExpoEmptyState />
         ) : (
@@ -220,6 +258,8 @@ export default function ExpoPage() {
                 now={now}
                 onSendToKitchen={sendToKitchen}
                 sendingToKitchen={sendingOrderID === o.order_id}
+                onTransition={transitionTickets}
+                actingTicketIDs={actingTicketIDs}
               />
             ))}
           </div>

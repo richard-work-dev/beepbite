@@ -11,7 +11,7 @@
 // Role-aware tab visibility:
 //   - members with ONLY can_kitchen see only the Kitchen tab
 //   - members with can_pos see the POS tab
-//   - owner / manager see both tabs regardless of capability flags
+//   - owner / manager / admin see both tabs regardless of capability flags
 //
 // Capabilities are read from the Go backend's auth/me scope by querying
 // organization_members for the current user's membership row.
@@ -95,16 +95,16 @@ const KDS_VIEWS: { id: KdsViewId; label: string }[] = [
  * Determine which top-level tabs the user can access.
  *
  * Logic (from migration 019_owner_default_capabilities.sql):
- *   - role owner/manager → both tabs
- *   - can_pos capability → POS tab
- *   - can_kitchen only  → Kitchen tab only
- *   - no capabilities   → no workspace access
+ *   - role owner/manager/admin → ambas pestañas
+ *   - capacidad can_pos → pestaña POS
+ *   - solo can_kitchen → pestaña Cocina
+ *   - sin capacidades → sin acceso al espacio de trabajo
  *
  * @param {string[]} roles    — role strings from membership rows
  * @param {object}   caps     — merged capability flags { can_pos, can_kitchen, … }
  */
 function resolveTabAccess(roles: string[], caps: MembershipCaps) {
-  const isOwnerManager = roles.some((r) => r === 'owner' || r === 'manager');
+  const isOwnerManager = roles.some((r) => ['owner', 'manager', 'admin'].includes(String(r).toLowerCase()));
   const hasPos = Boolean(caps.can_pos);
   const hasKitchen = Boolean(caps.can_kds || caps.can_kitchen);
 

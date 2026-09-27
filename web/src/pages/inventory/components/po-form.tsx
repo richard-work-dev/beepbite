@@ -42,10 +42,6 @@ export interface POFormPayload {
   }[];
 }
 
-function centsToMajor(cents: number | null | undefined): string {
-  return cents != null ? (cents / 100).toFixed(2) : '';
-}
-
 function majorToCents(str: string): number {
   const v = parseFloat(str);
   return isNaN(v) ? 0 : Math.round(v * 100);
@@ -60,7 +56,7 @@ interface POFormProps {
 }
 
 export function POForm({ locationId, suppliers, onSubmit, onCancel, saving }: POFormProps) {
-  const [supplierId, setSupplierId] = useState('');
+  const [supplierId, setSupplierId] = useState('none');
   const [poNumber, setPoNumber] = useState('');
   const [expectedDate, setExpectedDate] = useState('');
   const [notes, setNotes] = useState('');
@@ -80,7 +76,8 @@ export function POForm({ locationId, suppliers, onSubmit, onCancel, saving }: PO
         // left this as an unhandled rejection — there's no dedicated
         // loading/error state for this dropdown either way (it just stays
         // empty), but this at least logs it instead of failing silently.
-        console.error('Failed to fetch inventory items for PO form:', err);
+        console.error('No se pudieron cargar los insumos para la orden:', err);
+		setErr('No se pudieron cargar los insumos. Cerrá el formulario e intentá nuevamente.');
       });
   }, [locationId]);
 
@@ -110,19 +107,19 @@ export function POForm({ locationId, suppliers, onSubmit, onCancel, saving }: PO
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!poNumber.trim()) { setErr('PO number is required'); return; }
-    if (lines.length === 0) { setErr('At least one line item is required'); return; }
+    if (!poNumber.trim()) { setErr('El número de orden es obligatorio'); return; }
+    if (lines.length === 0) { setErr('Agregá al menos un producto'); return; }
     for (let i = 0; i < lines.length; i++) {
       const l = lines[i];
-      if (!l.inventory_item_id) { setErr(`Line ${i + 1}: select an inventory item`); return; }
-      if (!l.ordered_quantity || parseFloat(l.ordered_quantity) <= 0) { setErr(`Line ${i + 1}: quantity must be > 0`); return; }
-      if (!l.ordered_unit.trim()) { setErr(`Line ${i + 1}: unit is required`); return; }
+      if (!l.inventory_item_id) { setErr(`Producto ${i + 1}: seleccioná un insumo`); return; }
+      if (!l.ordered_quantity || parseFloat(l.ordered_quantity) <= 0) { setErr(`Producto ${i + 1}: la cantidad debe ser mayor que cero`); return; }
+      if (!l.ordered_unit.trim()) { setErr(`Producto ${i + 1}: la unidad es obligatoria`); return; }
     }
     setErr('');
 
     const payload = {
       location_id: locationId,
-      supplier_id: supplierId || '',
+      supplier_id: supplierId === 'none' ? '' : supplierId,
       po_number: poNumber.trim(),
       expected_delivery_date: expectedDate || '',
       notes: notes.trim(),
@@ -143,17 +140,17 @@ export function POForm({ locationId, suppliers, onSubmit, onCancel, saving }: PO
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1">
-          <Label htmlFor="po_number">PO Number <span className="text-destructive">*</span></Label>
+          <Label htmlFor="po_number">Número de orden <span className="text-destructive">*</span></Label>
           <Input id="po_number" value={poNumber} onChange={(e) => setPoNumber(e.target.value)} placeholder="PO-2024-001" required />
         </div>
         <div className="space-y-1">
-          <Label>Supplier</Label>
+          <Label>Proveedor</Label>
           <Select value={supplierId} onValueChange={setSupplierId}>
             <SelectTrigger>
-              <SelectValue placeholder="Select supplier" />
+              <SelectValue placeholder="Seleccionar proveedor" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">— None —</SelectItem>
+              <SelectItem value="none">— Sin proveedor —</SelectItem>
               {suppliers.map((s) => (
                 <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
               ))}
@@ -164,11 +161,11 @@ export function POForm({ locationId, suppliers, onSubmit, onCancel, saving }: PO
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1">
-          <Label htmlFor="expected_date">Expected Delivery Date</Label>
+          <Label htmlFor="expected_date">Fecha estimada de entrega</Label>
           <Input id="expected_date" type="date" value={expectedDate} onChange={(e) => setExpectedDate(e.target.value)} />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="notes">Notes</Label>
+          <Label htmlFor="notes">Notas</Label>
           <Input id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
         </div>
       </div>
@@ -176,23 +173,23 @@ export function POForm({ locationId, suppliers, onSubmit, onCancel, saving }: PO
       {/* Line items */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label>Line Items</Label>
+          <Label>Productos</Label>
           <Button type="button" size="sm" variant="outline" onClick={addLine} className="border-primary/25 text-primary hover:bg-primary/10">
-            <Plus className="w-4 h-4 mr-1" /> Add Line
+            <Plus className="w-4 h-4 mr-1" /> Agregar producto
           </Button>
         </div>
 
         {lines.map((line, idx) => (
           <div key={idx} className="grid grid-cols-12 gap-2 items-end border border-border rounded p-2 bg-muted/30">
             <div className="col-span-4 space-y-1">
-              <Label className="text-xs">Item</Label>
+              <Label className="text-xs">Insumo</Label>
               <Select value={line.inventory_item_id} onValueChange={(v) => {
                 const item = inventoryItems.find((i) => i.id === v);
                 setLine(idx, 'inventory_item_id', v);
                 if (item && !line.ordered_unit) setLine(idx, 'ordered_unit', item.unit);
               }}>
                 <SelectTrigger className="h-8 text-sm">
-                  <SelectValue placeholder="Select item" />
+                  <SelectValue placeholder="Seleccionar" />
                 </SelectTrigger>
                 <SelectContent>
                   {inventoryItems.map((it) => (
@@ -203,22 +200,22 @@ export function POForm({ locationId, suppliers, onSubmit, onCancel, saving }: PO
             </div>
 
             <div className="col-span-2 space-y-1">
-              <Label className="text-xs">Qty</Label>
+              <Label className="text-xs">Cantidad</Label>
               <Input className="h-8 text-sm" type="number" min="0.001" step="0.001" value={line.ordered_quantity} onChange={(e) => setLine(idx, 'ordered_quantity', e.target.value)} />
             </div>
 
             <div className="col-span-2 space-y-1">
-              <Label className="text-xs">Unit</Label>
+              <Label className="text-xs">Unidad</Label>
               <Input className="h-8 text-sm" value={line.ordered_unit} onChange={(e) => setLine(idx, 'ordered_unit', e.target.value)} placeholder="kg" />
             </div>
 
             <div className="col-span-2 space-y-1">
-              <Label className="text-xs">Unit Cost</Label>
+              <Label className="text-xs">Costo unitario</Label>
               <Input className="h-8 text-sm" type="number" min="0" step="0.01" value={line.ordered_unit_price} onChange={(e) => setLine(idx, 'ordered_unit_price', e.target.value)} placeholder="0.00" />
             </div>
 
             <div className="col-span-1 space-y-1">
-              <Label className="text-xs">Total</Label>
+              <Label className="text-xs">Subtotal</Label>
               <p className="text-sm font-medium h-8 flex items-center tabular-nums">{lineTotal(line)}</p>
             </div>
 
@@ -231,16 +228,16 @@ export function POForm({ locationId, suppliers, onSubmit, onCancel, saving }: PO
         ))}
 
         <div className="flex justify-end text-sm font-semibold text-foreground pr-2 tabular-nums">
-          Grand Total: {grandTotal()}
+          Total: {grandTotal()}
         </div>
       </div>
 
       <div className="flex gap-3 pt-2">
         <Button type="button" variant="outline" onClick={onCancel} className="flex-1" disabled={saving}>
-          Cancel
+          Cancelar
         </Button>
         <Button type="submit" className="flex-1" disabled={saving}>
-          {saving ? 'Creating…' : 'Create Purchase Order'}
+          {saving ? 'Creando…' : 'Crear orden de compra'}
         </Button>
       </div>
     </form>

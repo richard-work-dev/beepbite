@@ -65,7 +65,7 @@ export function usePOs(locationId: string | undefined, statusFilter: POStatus | 
       if (err) throw new Error(err.message);
       setPOs(data || []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load purchase orders');
+      setError(e instanceof Error ? e.message : 'No se pudieron cargar las órdenes de compra');
     } finally {
       setLoading(false);
     }

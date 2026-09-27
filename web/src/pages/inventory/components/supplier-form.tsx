@@ -108,7 +108,7 @@ export function SupplierForm({ initial, onSubmit, onCancel, saving }: SupplierFo
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!form.name.trim()) { setErr('Name is required'); return; }
+    if (!form.name.trim()) { setErr('El nombre es obligatorio'); return; }
     setErr('');
     await onSubmit(toPayload(form));
   }
@@ -119,18 +119,18 @@ export function SupplierForm({ initial, onSubmit, onCancel, saving }: SupplierFo
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1">
-          <Label htmlFor="name">Name <span className="text-destructive">*</span></Label>
+          <Label htmlFor="name">Nombre <span className="text-destructive">*</span></Label>
           <Input id="name" value={form.name} onChange={(e) => set('name', e.target.value)} required />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="display_name">Display Name</Label>
+          <Label htmlFor="display_name">Nombre comercial</Label>
           <Input id="display_name" value={form.display_name} onChange={(e) => set('display_name', e.target.value)} />
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1">
-          <Label htmlFor="contact_name">Contact Name</Label>
+          <Label htmlFor="contact_name">Persona de contacto</Label>
           <Input id="contact_name" value={form.contact_name} onChange={(e) => set('contact_name', e.target.value)} />
         </div>
         <div className="space-y-1">
@@ -141,31 +141,31 @@ export function SupplierForm({ initial, onSubmit, onCancel, saving }: SupplierFo
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1">
-          <Label htmlFor="phone">Phone</Label>
+          <Label htmlFor="phone">Teléfono</Label>
           <Input id="phone" type="tel" value={form.phone} onChange={(e) => set('phone', e.target.value)} />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="payment_terms_days">Payment Terms (days)</Label>
+          <Label htmlFor="payment_terms_days">Plazo de pago (días)</Label>
           <Input id="payment_terms_days" type="number" min={0} value={form.payment_terms_days} onChange={(e) => set('payment_terms_days', e.target.value)} />
         </div>
       </div>
 
       <div className="space-y-1">
-        <Label>Address</Label>
+        <Label>Dirección</Label>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          <Input placeholder="Street" value={form.address_street} onChange={(e) => set('address_street', e.target.value)} />
-          <Input placeholder="City" value={form.address_city} onChange={(e) => set('address_city', e.target.value)} />
-          <Input placeholder="Country" value={form.address_country} onChange={(e) => set('address_country', e.target.value)} />
+          <Input placeholder="Calle" value={form.address_street} onChange={(e) => set('address_street', e.target.value)} />
+          <Input placeholder="Ciudad" value={form.address_city} onChange={(e) => set('address_city', e.target.value)} />
+          <Input placeholder="País" value={form.address_country} onChange={(e) => set('address_country', e.target.value)} />
         </div>
       </div>
 
       <div className="space-y-1">
-        <Label htmlFor="website">Website</Label>
+        <Label htmlFor="website">Sitio web</Label>
         <Input id="website" type="url" placeholder="https://" value={form.website} onChange={(e) => set('website', e.target.value)} />
       </div>
 
       <div className="space-y-1">
-        <Label htmlFor="notes">Notes</Label>
+        <Label htmlFor="notes">Notas</Label>
         <Textarea id="notes" rows={3} value={form.notes} onChange={(e) => set('notes', e.target.value)} />
       </div>
 
@@ -177,15 +177,15 @@ export function SupplierForm({ initial, onSubmit, onCancel, saving }: SupplierFo
           onChange={(e) => set('is_active', e.target.checked)}
           className="w-4 h-4"
         />
-        <Label htmlFor="is_active">Active</Label>
+        <Label htmlFor="is_active">Activo</Label>
       </div>
 
       <div className="flex gap-3 pt-2">
         <Button type="button" variant="outline" onClick={onCancel} className="flex-1" disabled={saving}>
-          Cancel
+          Cancelar
         </Button>
         <Button type="submit" className="flex-1" disabled={saving}>
-          {saving ? 'Saving…' : initial ? 'Update Supplier' : 'Create Supplier'}
+          {saving ? 'Guardando…' : initial ? 'Actualizar proveedor' : 'Crear proveedor'}
         </Button>
       </div>
     </form>

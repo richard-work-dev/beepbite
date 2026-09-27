@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ComponentType } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { LogOut, Users, ChevronDown, UserCircle, BarChart3, MessageSquare, Hash, X, MapPin, ChefHat, Building2, Check, Store, Folder, Receipt, MonitorPlay, Truck, LockKeyhole, LayoutDashboard } from 'lucide-react';
+import { LogOut, Users, ChevronDown, UserCircle, BarChart3, MessageSquare, Hash, X, MapPin, ChefHat, Building2, Check, Store, Folder, Receipt, MonitorPlay, Truck, LockKeyhole, LayoutDashboard, PackageSearch, ClipboardList, PackageCheck, FileCheck2, Zap } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { useActor } from '@/context/actor-token-context';
 import { hasAnyAccess } from '@/lib/access-control';
@@ -179,6 +179,16 @@ const TopBar = () => {
         { name: t('nav.sideBar.reports'), path: '/reports', icon: BarChart3, description: t('nav.sideBar.reportsDesc'), capability: 'can_view_reports' },
         { name: t('nav.sideBar.menu'), path: '/menu', icon: ChefHat, description: t('nav.sideBar.menuDesc'), capability: 'can_manage_menu' },
         { name: t('nav.sideBar.categories'), path: '/categories', icon: Folder, description: t('nav.sideBar.categoriesDesc'), capability: 'can_manage_menu' },
+      ]
+    },
+    {
+      title: 'Inventario y compras',
+      items: [
+        { name: 'Proveedores', path: '/inventory/suppliers', icon: PackageSearch, description: 'Contactos y condiciones de compra', capability: 'can_manage_menu' },
+        { name: 'Órdenes de compra', path: '/inventory/purchase-orders', icon: ClipboardList, description: 'Pedidos y seguimiento a proveedores', capability: 'can_manage_menu' },
+        { name: 'Reposición sugerida', path: '/inventory/purchase-orders/auto-suggestions', icon: Zap, description: 'Compras sugeridas por stock mínimo', capability: 'can_manage_menu' },
+        { name: 'Recepciones', path: '/inventory/grns', icon: PackageCheck, description: 'Ingreso de mercadería y actualización de stock', capability: 'can_manage_menu' },
+        { name: 'Conciliar facturas', path: '/inventory/invoice-match', icon: FileCheck2, description: 'Comparar factura, compra y recepción', capability: 'can_manage_menu' },
       ]
     },
     {

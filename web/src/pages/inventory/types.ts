@@ -53,25 +53,30 @@ export interface SupplierInvoice {
 }
 
 // Mirrors backend/migrations/001_baseline.sql `goods_receipts` table.
-//
-// NOTE: `received_at` is declared NOT NULL DEFAULT now() in the migration
-// (always set at row-creation time), but
-// backend/internal/handlers/inventory/store.go ReceiveGRN scans it as a
-// nullable *time.Time and treats non-nil as "already received" for its
-// double-receive guard. Per the migration's actual constraint, every row
-// returned by the generic /data/goods_receipts read this page uses already
-// has a non-null received_at, which would make isReceived() below always
-// true and the "Receive" button never appear via this list view. Backend
-// schema/code mismatch — flagged, not fixed (Go backend out of scope).
+export interface GoodsReceiptLine {
+  id: string;
+  inventory_item_id: string;
+  item_name: string;
+  quantity_received: number;
+  unit: string;
+  unit_price_cents?: number;
+}
+
 export interface GoodsReceipt {
   id: string;
   purchase_order_id: string;
   receipt_number?: string | null;
   received_by?: string | null;
-  received_at: string;
+  received_at: string | null;
   delivery_note_number?: string | null;
   notes?: string | null;
   created_at: string;
+  po_number?: string;
+  supplier_name?: string;
+  line_count?: number;
+  total_quantity?: number;
+  status?: 'pending' | 'received';
+  lines?: GoodsReceiptLine[];
 }
 
 // Mirrors backend/internal/handlers/inventory/handler.go's receiveGRN 200 response.
@@ -108,6 +113,10 @@ export interface MatchResult {
 // Mirrors backend/internal/handlers/inventory/store.go POLineInput.
 export interface POSuggestionLine {
   inventory_item_id: string;
+  item_name?: string;
+  current_stock?: number;
+  minimum_stock?: number;
+  on_order_quantity?: number;
   supplier_inventory_item_id?: string;
   ordered_quantity: number;
   ordered_unit: string;

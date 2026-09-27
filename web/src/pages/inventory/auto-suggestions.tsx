@@ -46,7 +46,7 @@ export default function AutoSuggestionsPage() {
       // Pre-select all
       setSelected(new Set(list.map((_, i) => i)));
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load suggestions');
+      setError(e instanceof Error ? e.message : 'No se pudieron cargar las sugerencias');
     } finally {
       setLoading(false);
     }
@@ -88,7 +88,7 @@ export default function AutoSuggestionsPage() {
         if (err) throw new Error(err.message);
         results.push({ supplier: sug.supplier_name, ok: true, po_number: data?.po_number });
       } catch (e) {
-        results.push({ supplier: sug.supplier_name, ok: false, message: e instanceof Error ? e.message : 'Failed to create PO' });
+        results.push({ supplier: sug.supplier_name, ok: false, message: e instanceof Error ? e.message : 'No se pudo crear la orden' });
       }
     }
     setCreateResults(results);
@@ -101,7 +101,7 @@ export default function AutoSuggestionsPage() {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <AlertCircle className="w-12 h-12 text-muted-foreground mb-4" />
-        <p className="text-muted-foreground">Select a location to view auto-PO suggestions.</p>
+        <p className="text-muted-foreground">Seleccioná un local para consultar las sugerencias de reposición.</p>
       </div>
     );
   }
@@ -110,15 +110,15 @@ export default function AutoSuggestionsPage() {
     <PageContainer>
       <PageHeader
         icon={Zap}
-        title="Auto-PO Suggestions"
-        description={`Low-stock items at ${activeLocation.name} with a preferred supplier`}
+        title="Reposición sugerida"
+        description={`Insumos bajo el stock mínimo de ${activeLocation.name} con proveedor preferido`}
         actions={
           <Button
             onClick={createSelected}
             disabled={creating || selected.size === 0 || suggestions.length === 0}
           >
             <ShoppingCart className="w-4 h-4 mr-2" />
-            {creating ? 'Creating…' : `Create ${selected.size} selected PO${selected.size !== 1 ? 's' : ''}`}
+            {creating ? 'Creando…' : `Crear ${selected.size} ${selected.size === 1 ? 'orden seleccionada' : 'órdenes seleccionadas'}`}
           </Button>
         }
       />
@@ -132,8 +132,8 @@ export default function AutoSuggestionsPage() {
               className={`flex items-center gap-2 rounded p-2 text-sm ${r.ok ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}
             >
               {r.ok
-                ? <span>Created PO <strong>{r.po_number}</strong> for {r.supplier}</span>
-                : <span>Failed for {r.supplier}: {r.message}</span>}
+                ? <span>Orden <strong>{r.po_number}</strong> creada para {r.supplier}</span>
+                : <span>No se pudo crear la orden para {r.supplier}: {r.message}</span>}
             </div>
           ))}
         </div>
@@ -158,7 +158,7 @@ export default function AutoSuggestionsPage() {
         <Card>
           <CardContent className="p-10 text-center">
             <Zap className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-            <p className="text-muted-foreground">No low-stock items with a preferred supplier found.</p>
+            <p className="text-muted-foreground">No hay insumos bajo el stock mínimo con un proveedor preferido.</p>
           </CardContent>
         </Card>
       )}
@@ -177,24 +177,26 @@ export default function AutoSuggestionsPage() {
                   <label htmlFor={`sug-${idx}`} className="cursor-pointer flex-1">
                     <CardTitle className="text-base">{sug.supplier_name}</CardTitle>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Estimated total: {fmtCents(sug.estimated_total_cents)} &middot; {sug.lines.length} line{sug.lines.length !== 1 ? 's' : ''}
+                      Total estimado: {fmtCents(sug.estimated_total_cents)} &middot; {sug.lines.length} {sug.lines.length === 1 ? 'producto' : 'productos'}
                     </p>
                   </label>
                   {/* Every suggestion on this page is a not-yet-created draft
                       PO — a neutral secondary badge, not a status that needs
                       attention. */}
-                  <Badge variant="secondary">Draft</Badge>
+                  <Badge variant="secondary">Borrador</Badge>
                 </div>
               </CardHeader>
               <CardContent>
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-xs text-muted-foreground border-b border-border">
-                      <th className="text-left py-1">Item ID</th>
-                      <th className="text-right py-1">Qty</th>
-                      <th className="text-left py-1 pl-2">Unit</th>
-                      <th className="text-right py-1">Unit Price</th>
-                      <th className="text-right py-1">Line Total</th>
+                      <th className="text-left py-1">Insumo</th>
+                      <th className="text-right py-1">Stock</th>
+                      <th className="text-right py-1">Ya pedido</th>
+                      <th className="text-right py-1">A pedir</th>
+                      <th className="text-left py-1 pl-2">Unidad</th>
+                      <th className="text-right py-1">Precio unitario</th>
+                      <th className="text-right py-1">Subtotal</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -206,7 +208,9 @@ export default function AutoSuggestionsPage() {
                       );
                       return (
                         <tr key={li} className="border-b border-border/60 last:border-0">
-                          <td className="py-1 text-foreground font-mono text-xs truncate max-w-[120px]">{line.inventory_item_id}</td>
+                          <td className="py-1 text-foreground font-medium truncate max-w-[180px]" title={line.item_name || line.inventory_item_id}>{line.item_name || line.inventory_item_id}</td>
+                          <td className="py-1 text-right text-muted-foreground tabular-nums">{line.current_stock ?? '—'} / {line.minimum_stock ?? '—'}</td>
+                          <td className="py-1 text-right text-muted-foreground tabular-nums">{line.on_order_quantity ?? 0}</td>
                           <td className="py-1 text-right text-foreground tabular-nums">{line.ordered_quantity}</td>
                           <td className="py-1 pl-2 text-muted-foreground">{line.ordered_unit}</td>
                           <td className="py-1 text-right text-foreground tabular-nums">{fmtCents(line.ordered_unit_price_cents)}</td>
@@ -226,7 +230,7 @@ export default function AutoSuggestionsPage() {
               disabled={creating || selected.size === 0}
             >
               <ShoppingCart className="w-4 h-4 mr-2" />
-              {creating ? 'Creating…' : `Create ${selected.size} selected PO${selected.size !== 1 ? 's' : ''}`}
+              {creating ? 'Creando…' : `Crear ${selected.size} ${selected.size === 1 ? 'orden seleccionada' : 'órdenes seleccionadas'}`}
             </Button>
           </div>
         </div>

@@ -29,9 +29,13 @@ function matchStatusVariant(status: string | undefined): 'success' | 'warning' |
 }
 
 function matchStatusBadge(status: string | undefined) {
+	const labels: Record<string, string> = {
+		unmatched: 'Sin conciliar', matched: 'Coincide',
+		price_variance: 'Diferencia de precio', qty_variance: 'Diferencia de cantidad',
+	};
   return (
     <Badge variant={matchStatusVariant(status)}>
-      {status?.replace('_', ' ')}
+      {labels[status || 'unmatched'] || status}
     </Badge>
   );
 }
@@ -69,7 +73,7 @@ export function MatchModal({ invoice, open, onClose, onMatched }: MatchModalProp
       // empty body would crash downstream in onMatched, exactly as before.
       if (onMatched) onMatched(data as MatchResult);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Match failed');
+      setErr(e instanceof Error ? e.message : 'No se pudo ejecutar la conciliación');
     } finally {
       setRunning(false);
     }
@@ -83,16 +87,13 @@ export function MatchModal({ invoice, open, onClose, onMatched }: MatchModalProp
 
   if (!invoice) return null;
 
-  const poTotal = invoice.total_cents ?? 0; // PO total from invoice record
-  const invoiceTotal = invoice.total_cents ?? 0;
-
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>3-Way Match — Invoice {invoice.invoice_number}</DialogTitle>
+          <DialogTitle>Conciliación — Factura {invoice.invoice_number}</DialogTitle>
           <DialogDescription>
-            Supplier invoice dated {invoice.invoice_date}. Current match status:{' '}
+            Factura del proveedor con fecha {invoice.invoice_date}. Estado actual:{' '}
             {matchStatusBadge(result?.match_status ?? invoice.match_status)}
           </DialogDescription>
         </DialogHeader>
@@ -100,7 +101,7 @@ export function MatchModal({ invoice, open, onClose, onMatched }: MatchModalProp
         {/* Invoice summary */}
         <div className="grid grid-cols-3 gap-4 text-sm border border-border rounded p-3 bg-muted/40">
           <div>
-            <p className="text-muted-foreground text-xs">Invoice Total</p>
+            <p className="text-muted-foreground text-xs">Total de factura</p>
             <p className="font-semibold tabular-nums">{fmtCents(invoice.total_cents)}</p>
           </div>
           <div>
@@ -108,7 +109,7 @@ export function MatchModal({ invoice, open, onClose, onMatched }: MatchModalProp
             <p className="font-semibold tabular-nums">{fmtCents(invoice.subtotal_cents)}</p>
           </div>
           <div>
-            <p className="text-muted-foreground text-xs">Tax</p>
+            <p className="text-muted-foreground text-xs">Impuestos</p>
             <p className="font-semibold tabular-nums">{fmtCents(invoice.tax_cents)}</p>
           </div>
         </div>
@@ -117,21 +118,21 @@ export function MatchModal({ invoice, open, onClose, onMatched }: MatchModalProp
         {result && (
           <div className="space-y-2">
             <p className="text-sm font-semibold text-foreground">
-              Match result: {matchStatusBadge(result.match_status)} (tolerance {fmtPct(result.tolerance_pct)})
+              Resultado: {matchStatusBadge(result.match_status)} (tolerancia {fmtPct(result.tolerance_pct)})
             </p>
             <div className="overflow-x-auto">
               <table className="w-full text-xs border-collapse">
                 <thead>
                   <tr className="bg-muted text-muted-foreground">
-                    <th className="text-left p-2 border border-border">Line</th>
-                    <th className="text-right p-2 border border-border">Inv Qty</th>
-                    <th className="text-right p-2 border border-border">PO Qty</th>
-                    <th className="text-right p-2 border border-border">GRN Qty</th>
-                    <th className="text-right p-2 border border-border">Inv Price</th>
-                    <th className="text-right p-2 border border-border">PO Price</th>
-                    <th className="text-right p-2 border border-border">Qty Var</th>
-                    <th className="text-right p-2 border border-border">Price Var</th>
-                    <th className="text-center p-2 border border-border">OK?</th>
+                    <th className="text-left p-2 border border-border">Línea</th>
+                    <th className="text-right p-2 border border-border">Cant. factura</th>
+                    <th className="text-right p-2 border border-border">Cant. orden</th>
+                    <th className="text-right p-2 border border-border">Cant. recibida</th>
+                    <th className="text-right p-2 border border-border">Precio factura</th>
+                    <th className="text-right p-2 border border-border">Precio orden</th>
+                    <th className="text-right p-2 border border-border">Dif. cantidad</th>
+                    <th className="text-right p-2 border border-border">Dif. precio</th>
+                    <th className="text-center p-2 border border-border">¿Coincide?</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -166,14 +167,14 @@ export function MatchModal({ invoice, open, onClose, onMatched }: MatchModalProp
 
         <div className="flex gap-3 pt-2">
           <Button variant="outline" onClick={handleClose} className="flex-1">
-            Close
+            Cerrar
           </Button>
           <Button
             onClick={runMatch}
             disabled={running}
             className="flex-1"
           >
-            {running ? 'Running match…' : 'Run Match'}
+            {running ? 'Conciliando…' : 'Ejecutar conciliación'}
           </Button>
         </div>
       </DialogContent>

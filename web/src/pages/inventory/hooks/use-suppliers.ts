@@ -95,7 +95,7 @@ export function useSuppliers(organizationId: string | undefined) {
       if (err) throw new Error(err.message);
       setSuppliers(data || []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load suppliers');
+      setError(e instanceof Error ? e.message : 'No se pudieron cargar los proveedores');
     } finally {
       setLoading(false);
     }

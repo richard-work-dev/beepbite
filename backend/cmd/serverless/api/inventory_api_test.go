@@ -12,6 +12,8 @@ func TestMatchInventoryRoute(t *testing.T) {
 		{"GET", "/inventory/auto-po-suggestions", "auto_po", ""},
 		{"POST", "/inventory/purchase-orders", "po_create", ""},
 		{"POST", "/inventory/purchase-orders/po-1/submit", "po_submit", "po-1"},
+		{"GET", "/inventory/goods-receipts", "grn_list", ""},
+		{"POST", "/inventory/goods-receipts", "grn_create", ""},
 		{"POST", "/inventory/goods-receipts/grn-1/receive", "grn_receive", "grn-1"},
 		{"POST", "/inventory/supplier-invoices/inv-1/match", "invoice_match", "inv-1"},
 	}
@@ -23,6 +25,29 @@ func TestMatchInventoryRoute(t *testing.T) {
 	}
 	if _, ok := matchInventoryRoute("DELETE", "/inventory/purchase-orders/po-1"); ok {
 		t.Fatal("unexpected route match")
+	}
+}
+
+func TestPurchaseOrderReceiptStatus(t *testing.T) {
+	items := []map[string]any{
+		{"id": "line-1", "ordered_quantity": float64(4)},
+		{"id": "line-2", "ordered_quantity": float64(2)},
+	}
+	tests := []struct {
+		name     string
+		received map[string]float64
+		want     string
+	}{
+		{name: "sin recepción", received: map[string]float64{}, want: "sent"},
+		{name: "recepción parcial", received: map[string]float64{"line-1": 4}, want: "partially_received"},
+		{name: "recepción completa", received: map[string]float64{"line-1": 4, "line-2": 2}, want: "received"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := purchaseOrderReceiptStatus(items, test.received); got != test.want {
+				t.Fatalf("expected %s, got %s", test.want, got)
+			}
+		})
 	}
 }
 

@@ -11,19 +11,19 @@ type PromoType = 'percent_off' | 'fixed_off' | 'bogo' | 'free_item' | 'happy_hou
 type PromoScope = 'order' | 'item' | 'category' | 'delivery';
 
 const PROMO_TYPE_LABELS: Record<PromoType, string> = {
-  percent_off: 'Percent off',
-  fixed_off: 'Fixed off',
-  bogo: 'BOGO',
-  free_item: 'Free item',
-  happy_hour_price: 'Happy-hour price',
-  free_delivery: 'Free delivery',
+  percent_off: 'Descuento porcentual',
+  fixed_off: 'Descuento fijo',
+  bogo: 'Dos por uno',
+  free_item: 'Producto gratis',
+  happy_hour_price: 'Precio de horario especial',
+  free_delivery: 'Envío gratis',
 };
 
 const SCOPE_LABELS: Record<PromoScope, string> = {
-  order: 'Order',
-  item: 'Item',
-  category: 'Category',
-  delivery: 'Delivery',
+  order: 'Pedido',
+  item: 'Producto',
+  category: 'Categoría',
+  delivery: 'Envío',
 };
 
 // Subset of backend/migrations/001_baseline.sql `promotions` table relevant
@@ -56,7 +56,7 @@ export default function PromotionsCard({ promotions, loading }: PromotionsCardPr
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <Megaphone className="h-4 w-4 text-orange-500" />
-          Active Promotions
+          Promociones activas
         </CardTitle>
       </CardHeader>
 
@@ -68,7 +68,7 @@ export default function PromotionsCard({ promotions, loading }: PromotionsCardPr
             ))}
           </div>
         ) : promotions.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">No active promotions</p>
+          <p className="text-sm text-muted-foreground py-4 text-center">No hay promociones activas</p>
         ) : (
           <ul className="space-y-2">
             {promotions.map(p => (
@@ -84,14 +84,14 @@ export default function PromotionsCard({ promotions, loading }: PromotionsCardPr
                     </Badge>
                     {p.location_id == null && (
                       <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">
-                        Org-wide
+                        Toda la organización
                       </Badge>
                     )}
                   </div>
                 </div>
                 {p.active_until && (
                   <p className="text-xs text-muted-foreground shrink-0 mt-0.5">
-                    Ends {formatDate(p.active_until)}
+                    Finaliza {formatDate(p.active_until)}
                   </p>
                 )}
               </li>
@@ -107,7 +107,7 @@ export default function PromotionsCard({ promotions, loading }: PromotionsCardPr
           className="ml-auto gap-1 text-xs"
           onClick={() => navigate('/settings/promotions')}
         >
-          Manage promotions <ArrowRight className="h-3 w-3" />
+          Gestionar promociones <ArrowRight className="h-3 w-3" />
         </Button>
       </CardFooter>
     </Card>

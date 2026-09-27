@@ -20,10 +20,10 @@ export interface EightySixedItem {
 
 // Determine whether the 86 was auto (inventory) or manual.
 function reason86(item: EightySixedItem) {
-  if (item.auto_86_when_inventory_empty) return 'Low inventory';
+  if (item.auto_86_when_inventory_empty) return 'Stock bajo';
   if (item.available_until) {
     const until = new Date(item.available_until);
-    if (until > new Date()) return `Until ${until.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+    if (until > new Date()) return `Hasta ${until.toLocaleDateString('es-AR', { month: 'short', day: 'numeric' })}`;
   }
   return 'Manual';
 }
@@ -41,7 +41,7 @@ export default function EightySixCard({ items, loading }: EightySixCardProps) {
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <Ban className="h-4 w-4 text-red-500" />
-          86'd Items
+          Productos no disponibles
           {!loading && items.length > 0 && (
             <Badge variant="destructive" className="ml-auto text-xs">
               {items.length}
@@ -60,7 +60,7 @@ export default function EightySixCard({ items, loading }: EightySixCardProps) {
         ) : items.length === 0 ? (
           <div className="flex flex-col items-center py-6 text-muted-foreground gap-1">
             <AlertTriangle className="h-8 w-8 text-green-400" />
-            <p className="text-sm font-medium text-green-700">All items available</p>
+            <p className="text-sm font-medium text-green-700">Todos los productos están disponibles</p>
           </div>
         ) : (
           <ul className="space-y-1.5">
@@ -91,7 +91,7 @@ export default function EightySixCard({ items, loading }: EightySixCardProps) {
           className="ml-auto gap-1 text-xs"
           onClick={() => navigate('/menu')}
         >
-          Edit menu <ArrowRight className="h-3 w-3" />
+          Editar menú <ArrowRight className="h-3 w-3" />
         </Button>
       </CardFooter>
     </Card>

@@ -67,7 +67,7 @@ export default function ScheduleCard({ schedules, loading }: ScheduleCardProps) 
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <CalendarClock className="h-4 w-4 text-blue-500" />
-          Today's Menu Schedule
+          Horarios del menú de hoy
         </CardTitle>
       </CardHeader>
 
@@ -79,19 +79,19 @@ export default function ScheduleCard({ schedules, loading }: ScheduleCardProps) 
             ))}
           </div>
         ) : schedules.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">No schedules configured</p>
+          <p className="text-sm text-muted-foreground py-4 text-center">No hay horarios configurados</p>
         ) : (
           <div className="space-y-2">
             {active.length > 0 && (
               <div>
                 <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-1">
-                  Currently active
+                  Activos ahora
                 </p>
                 <ul className="space-y-1">
                   {active.map(s => (
                     <li key={s.id} className="flex items-center justify-between rounded-lg bg-green-50 border border-green-200 px-3 py-2">
                       <span className="text-sm font-medium text-green-900">{s.name}</span>
-                      <Badge className="bg-green-600 text-white text-xs">Live</Badge>
+                      <Badge className="bg-green-600 text-white text-xs">Activo</Badge>
                     </li>
                   ))}
                 </ul>
@@ -100,7 +100,7 @@ export default function ScheduleCard({ schedules, loading }: ScheduleCardProps) 
             {inactive.length > 0 && (
               <div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 mt-2">
-                  Not active now
+                  Inactivos ahora
                 </p>
                 <ul className="space-y-1">
                   {inactive.map(s => (
@@ -111,7 +111,7 @@ export default function ScheduleCard({ schedules, loading }: ScheduleCardProps) 
                           {s.todaySlots[0].start_time} – {s.todaySlots[0].end_time}
                         </span>
                       ) : (
-                        <span className="text-xs text-muted-foreground">No slot today</span>
+                        <span className="text-xs text-muted-foreground">Sin horario para hoy</span>
                       )}
                     </li>
                   ))}
@@ -129,7 +129,7 @@ export default function ScheduleCard({ schedules, loading }: ScheduleCardProps) 
           className="ml-auto gap-1 text-xs"
           onClick={() => navigate('/menu/schedules')}
         >
-          Edit schedules <ArrowRight className="h-3 w-3" />
+          Editar horarios <ArrowRight className="h-3 w-3" />
         </Button>
       </CardFooter>
     </Card>

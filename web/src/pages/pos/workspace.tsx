@@ -159,7 +159,10 @@ interface WorkspaceTicket {
 
 interface KitchenOrderSnapshot {
   order_id: string;
-  station_tickets?: Array<{ status?: string }>;
+  station_tickets?: Array<{
+    status?: string;
+    items?: Array<{ order_item_id?: string }>;
+  }>;
 }
 
 interface WalkInTileData {
@@ -184,6 +187,16 @@ function kitchenStatusFromSnapshot(snapshot: KitchenOrderSnapshot): string {
   if (stationTickets.every((ticket) => ticket.status === 'ready' || ticket.status === 'bumped')) return 'ready';
   if (stationTickets.some((ticket) => ticket.status === 'in_progress')) return 'in_progress';
   return 'fired';
+}
+
+function kitchenItemStatusesFromSnapshot(snapshot: KitchenOrderSnapshot): Map<string, string> {
+  const statuses = new Map<string, string>();
+  for (const ticket of snapshot.station_tickets || []) {
+    for (const item of ticket.items || []) {
+      if (item.order_item_id) statuses.set(item.order_item_id, ticket.status || 'fired');
+    }
+  }
+  return statuses;
 }
 
 /**
@@ -501,8 +514,8 @@ export default function PosWorkspacePage() {
             setRegisterSession(null);
             toast({
               variant: 'destructive',
-              title: 'No cash drawer configured',
-              description: 'Ask an admin to add one in Settings → Location.',
+              title: 'No hay una caja configurada',
+              description: 'Pedile a un administrador que la agregue en Configuración → Local.',
             });
           }
           return;
@@ -697,10 +710,8 @@ export default function PosWorkspacePage() {
       try {
         const { data, error } = await api.request<KitchenOrderSnapshot[]>('GET', '/kds/expo');
         if (cancelled || error || !Array.isArray(data)) return;
-        const statusByOrder = new Map(
-          data.map((snapshot) => [snapshot.order_id, kitchenStatusFromSnapshot(snapshot)]),
-        );
-        if (statusByOrder.size === 0) return;
+        const snapshotByOrder = new Map(data.map((snapshot) => [snapshot.order_id, snapshot]));
+        if (snapshotByOrder.size === 0) return;
 
         setTickets((previous) => {
           let changed = false;
@@ -708,14 +719,22 @@ export default function PosWorkspacePage() {
           for (const [ticketId, ticket] of Object.entries(previous)) {
             let ticketChanged = false;
             const sentOrders = ticket.sentOrders.map((order) => {
-              const kitchenStatus = statusByOrder.get(order.id);
-              if (!kitchenStatus || order.kitchen_status === kitchenStatus) return order;
+              const snapshot = snapshotByOrder.get(order.id);
+              if (!snapshot) return order;
+              const kitchenStatus = kitchenStatusFromSnapshot(snapshot);
+              const itemStatuses = kitchenItemStatusesFromSnapshot(snapshot);
+              const items = order.items.map((item) => {
+                const itemStatus = itemStatuses.get(item.order_item_id) || kitchenStatus;
+                return item.item_status === itemStatus ? item : { ...item, item_status: itemStatus };
+              });
+              const itemChanged = items.some((item, index) => item !== order.items[index]);
+              if (order.kitchen_status === kitchenStatus && !itemChanged) return order;
               changed = true;
               ticketChanged = true;
               return {
                 ...order,
                 kitchen_status: kitchenStatus,
-                items: order.items.map((item) => ({ ...item, item_status: kitchenStatus })),
+                items,
               };
             });
             next[ticketId] = ticketChanged ? { ...ticket, sentOrders } : ticket;
@@ -866,7 +885,7 @@ export default function PosWorkspacePage() {
 
   const handleAddItem = useCallback(async (item: MenuItem) => {
     if (!activeTicket) {
-      toast({ title: 'Pick a table or start a walk-in first' });
+      toast({ title: 'Elegí una mesa o iniciá un pedido de mostrador primero' });
       return;
     }
     if (isStaffSession && !registerSession) {
@@ -952,8 +971,8 @@ export default function PosWorkspacePage() {
         }),
       });
       // Build a "sent order" record from the cart we just sent.
-      const sentItems = activeTicket.newItems.map((ni) => ({
-        order_item_id: `cli-${ni.id}`,
+      const sentItems = activeTicket.newItems.map((ni, index) => ({
+        order_item_id: result.items?.[index]?.id || `cli-${ni.id}`,
         item_name: ni.name,
         quantity: ni.qty,
         unit_price: ni.price,

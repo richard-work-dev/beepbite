@@ -253,6 +253,11 @@ export interface CreatedOrder {
   tax_inclusive: boolean;
   tax_label: string;
   kds_ticket_ids: string[];
+  items: Array<{
+    id: string;
+    item_id: string;
+    item_name?: string;
+  }>;
   status: string;
   payment_method: string;
 }

@@ -255,20 +255,23 @@ func (a *application) createPOSOrder(ctx context.Context, orgID, body string) ev
 	if err != nil {
 		return dataAccessError(err)
 	}
+	createdItems := make([]map[string]any, 0, len(prepared))
 	for _, line := range prepared {
 		line["order_id"] = created["id"]
-		if _, err = a.createStoredRow(ctx, orgID, "order_items", line); err != nil {
-			return dataAccessError(err)
+		createdItem, createErr := a.createStoredRow(ctx, orgID, "order_items", line)
+		if createErr != nil {
+			return dataAccessError(createErr)
 		}
+		createdItems = append(createdItems, createdItem)
 	}
 	tickets, err := a.fanoutKDSRows(ctx, orgID, created)
 	if err != nil {
 		return dataAccessError(err)
 	}
-	return mustJSONResponse(201, posOrderResponse(created, tickets))
+	return mustJSONResponse(201, posOrderResponse(created, tickets, createdItems))
 }
 
-func posOrderResponse(order map[string]any, ticketIDs []string) map[string]any {
+func posOrderResponse(order map[string]any, ticketIDs []string, orderItems []map[string]any) map[string]any {
 	subtotal, _ := integerValue(order["subtotal_cents"])
 	tax, _ := integerValue(order["tax_cents"])
 	gratuity, _ := integerValue(order["gratuity_cents"])
@@ -279,7 +282,7 @@ func posOrderResponse(order map[string]any, ticketIDs []string) map[string]any {
 		"subtotal": float64(subtotal) / 100, "tax": float64(tax) / 100, "gratuity": float64(gratuity) / 100, "total": float64(total) / 100,
 		"currency_code": order["currency_code"], "currency_decimals": valueOr(order, "currency_decimals", 2),
 		"tax_rate": valueOr(order, "tax_rate", 0), "tax_inclusive": valueOr(order, "tax_inclusive", false), "tax_label": valueOr(order, "tax_label", "Tax"),
-		"kds_ticket_ids": ticketIDs, "status": order["status"], "payment_method": valueOr(order, "payment_method", ""),
+		"kds_ticket_ids": ticketIDs, "items": orderItems, "status": order["status"], "payment_method": valueOr(order, "payment_method", ""),
 	}
 }
 

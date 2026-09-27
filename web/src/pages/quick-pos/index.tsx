@@ -10,8 +10,10 @@ import { useParams } from 'react-router-dom';
 import { Loader2, AlertCircle } from 'lucide-react';
 
 import { getStore, type StoreDetail } from '@/services/marketplace';
-import { submitPosOrder } from '@/services/pos';
+import { submitPosOrder, type CreatedOrder } from '@/services/pos';
+import { chargeOrder } from '@/services/payment';
 import { supabase } from '@/services/supabase-client';
+import { useAuth } from '@/context/auth-context';
 
 import KioskMenuGrid from './components/kiosk-menu-grid';
 import KioskCartStrip from './components/kiosk-cart-strip';
@@ -103,6 +105,7 @@ function computeModifierPrice(basePrice: number, modifiers: KioskModifier[]) {
 
 const QuickPOS = () => {
   const { slug } = useParams<{ slug: string }>();
+  const { activeLocation } = useAuth();
 
   // Store / location resolution
   const [store, setStore] = useState<StoreDetail | null>(null);
@@ -126,6 +129,7 @@ const QuickPOS = () => {
   const [tenderLoading, setTenderLoading] = useState(false);
   const [tenderError, setTenderError] = useState('');
   const [lastOrderNumber, setLastOrderNumber] = useState<string | null>(null);
+  const [pendingPaymentOrder, setPendingPaymentOrder] = useState<CreatedOrder | null>(null);
 
   // Receipt modal — shown after a successful tender
   const [receiptOrderId, setReceiptOrderId] = useState<string | null>(null);
@@ -133,7 +137,35 @@ const QuickPOS = () => {
 
   // ---- Resolve store by slug -------------------------------------------
   useEffect(() => {
-    if (!slug) return;
+    if (!slug) {
+      if (!activeLocation?.id) {
+        setStoreError('No hay un local activo.');
+        setStoreLoading(false);
+        return;
+      }
+      // /work embeds this screen without a :slug. Use the authenticated
+      // location instead of leaving the view on an endless loading spinner.
+      setStore({
+        id: activeLocation.id,
+        name: activeLocation.name || 'Local',
+        slug: activeLocation.slug || null,
+        city: null,
+        country: null,
+        address: null,
+        description: null,
+        offers_delivery: true,
+        offers_collection: true,
+        estimated_prep_time_minutes: 0,
+        currency_code: typeof activeLocation.currency_code === 'string' ? activeLocation.currency_code : 'ARS',
+        avg_rating: null,
+        review_count: 0,
+        categories: [],
+        online_payment_available: false,
+      });
+      setStoreError(null);
+      setStoreLoading(false);
+      return;
+    }
     let cancelled = false;
     setStoreLoading(true);
     setStoreError(null);
@@ -141,20 +173,20 @@ const QuickPOS = () => {
     getStore(slug).then(({ data, error }) => {
       if (cancelled) return;
       if (error || !data) {
-        setStoreError(error?.message || 'Store not found');
+        setStoreError(error?.message || 'No se encontró el local');
       } else {
         setStore(data);
       }
       setStoreLoading(false);
     }).catch(err => {
       if (!cancelled) {
-        setStoreError(err instanceof Error ? err.message : 'Failed to load store');
+        setStoreError(err instanceof Error ? err.message : 'No se pudo cargar el local');
         setStoreLoading(false);
       }
     });
 
     return () => { cancelled = true; };
-  }, [slug]);
+  }, [slug, activeLocation]);
 
   // ---- Load menu once store is resolved --------------------------------
   // `location_id` never exists on the real StoreDetail DTO (see
@@ -321,49 +353,65 @@ const QuickPOS = () => {
     setTenderOpen(true);
   }, [cart.length]);
 
-  const handleTenderConfirm = useCallback(async ({ method }: { method: 'cash' | 'card' }) => {
+  const handleTenderConfirm = useCallback(async ({ method, cashTendered }: { method: 'cash' | 'card'; cashTendered: number | null }) => {
     setTenderLoading(true);
     setTenderError('');
     try {
-      const result = await submitPosOrder({
-        locationId: locationId as string,
-        orderType: 'counter',
-        items: cart.map(ci => {
-          const lineItem: { item_id: string; quantity: number; modifiers?: { modifier_id: string }[] } = {
-            item_id: ci.id,
-            quantity: Math.max(1, Math.ceil(parseFloat(String(ci.quantity)) || 1)),
-          };
-          if (ci.selectedModifierIds && ci.selectedModifierIds.length > 0) {
-            lineItem.modifiers = ci.selectedModifierIds.map(id => ({ modifier_id: id }));
-          }
-          return lineItem;
-        }),
+      const result = pendingPaymentOrder || await submitPosOrder({
+          locationId: locationId as string,
+          orderType: 'pickup',
+          items: cart.map(ci => {
+            const lineItem: { item_id: string; quantity: number; modifiers?: { modifier_id: string }[] } = {
+              item_id: ci.id,
+              quantity: Math.max(1, Math.ceil(parseFloat(String(ci.quantity)) || 1)),
+            };
+            if (ci.selectedModifierIds && ci.selectedModifierIds.length > 0) {
+              lineItem.modifiers = ci.selectedModifierIds.map(id => ({ modifier_id: id }));
+            }
+            return lineItem;
+          }),
+        });
+      setPendingPaymentOrder(result);
+
+      const totalCents = result.total_minor ?? Math.round(cartTotal * 100);
+      const tenderedCents = method === 'cash' && cashTendered != null ? cashTendered : totalCents;
+      await chargeOrder({
+        orderId: result.order_id,
+        paymentMethodCode: method === 'cash' ? 'cash' : 'card_in_person',
+        amountPaidCents: tenderedCents,
+        changeGivenCents: method === 'cash' ? Math.max(0, tenderedCents - totalCents) : 0,
       });
+
       const orderNum = result?.order_number || '?';
       setLastOrderNumber(orderNum);
+      setPendingPaymentOrder(null);
       clearCart();
 
       // Open receipt modal. CreatedOrder (mirrors backend/internal/handlers/
-      // pos/store.go) has no `id` field — only `order_id`/`order_number` — so
-      // this uses order_number, same as the order-number line above.
-      const orderId = result?.order_number || null;
+      // Use the immutable order ID. The human-readable order number is not a
+      // valid key for GET /orders/{id}/receipt.
+      const orderId = result?.order_id || null;
       if (orderId) {
         setReceiptOrderId(String(orderId));
         setTenderOpen(false);
         setReceiptOpen(true);
       }
     } catch (err) {
-      setTenderError(err instanceof Error ? err.message : 'Failed to place order. Please try again.');
+      setTenderError(err instanceof Error ? err.message : 'No se pudo registrar el pedido. Intentá nuevamente.');
     } finally {
       setTenderLoading(false);
     }
-  }, [locationId, cart, clearCart]);
+  }, [locationId, cart, cartTotal, clearCart, pendingPaymentOrder]);
 
   const handleTenderClose = useCallback(() => {
+    if (pendingPaymentOrder) {
+      setTenderError('El pedido ya fue enviado a cocina. Reintentá registrar el pago para evitar duplicarlo.');
+      return;
+    }
     setTenderOpen(false);
     setLastOrderNumber(null);
     setTenderError('');
-  }, []);
+  }, [pendingPaymentOrder]);
 
   // Receipt modal handlers
   const handleReceiptClose = useCallback(() => {
@@ -384,11 +432,11 @@ const QuickPOS = () => {
   if (storeLoading) {
     return (
       <div className="fixed inset-0 bg-primary/5 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4 text-primary" role="status" aria-label="Loading menu">
+        <div className="flex flex-col items-center gap-4 text-primary" role="status" aria-label="Cargando menú">
           <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
             <Loader2 className="w-10 h-10 animate-spin text-primary" />
           </div>
-          <p className="text-lg font-semibold text-muted-foreground">Loading menu…</p>
+          <p className="text-lg font-semibold text-muted-foreground">Cargando menú…</p>
         </div>
       </div>
     );
@@ -401,8 +449,8 @@ const QuickPOS = () => {
           <div className="w-20 h-20 rounded-full bg-destructive/10 flex items-center justify-center">
             <AlertCircle className="w-10 h-10 text-destructive" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Store not found</h1>
-          <p className="text-muted-foreground text-sm">{storeError || `No store found at "${slug}"`}</p>
+          <h1 className="text-2xl font-bold text-foreground">No se encontró el local</h1>
+          <p className="text-muted-foreground text-sm">{storeError || `No existe un local en “${slug}”`}</p>
         </div>
       </div>
     );

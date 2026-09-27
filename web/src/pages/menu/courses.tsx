@@ -190,25 +190,25 @@ function CourseFormDialog({ open, onClose, onSubmit, initial, submitting }: Cour
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEdit ? 'Edit course' : 'New course'}</DialogTitle>
+          <DialogTitle>{isEdit ? 'Editar tiempo' : 'Nuevo tiempo'}</DialogTitle>
           <DialogDescription>
-            Courses let you group and fire kitchen tickets in stages (Starter → Main → Dessert).
+            Los tiempos agrupan y envían las comandas a cocina por etapas (entrada → principal → postre).
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">Name</label>
+            <label className="text-sm font-medium text-foreground">Nombre</label>
             <Input
               value={form.name}
               onChange={(e) => set('name', e.target.value)}
-              placeholder="e.g. Starter, Main, Dessert"
+              placeholder="Ej.: Entrada, Principal, Postre"
               required
               autoFocus
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">Sort order</label>
+            <label className="text-sm font-medium text-foreground">Orden</label>
             <Input
               type="number"
               value={form.sort_order}
@@ -217,15 +217,15 @@ function CourseFormDialog({ open, onClose, onSubmit, initial, submitting }: Cour
               className="w-24"
             />
             <p className="text-xs text-muted-foreground">
-              Lower numbers fire first. Starter = 1, Main = 2, Dessert = 3.
+              Los números menores salen primero. Entrada = 1, Principal = 2, Postre = 3.
             </p>
           </div>
 
           <div className="flex items-center justify-between rounded-lg border border-border p-3">
             <div>
-              <p className="text-sm font-medium text-foreground">Auto-fire when previous course is bumped</p>
+              <p className="text-sm font-medium text-foreground">Enviar cuando termine el tiempo anterior</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                When the preceding course is marked done on the KDS, this course fires automatically.
+                Cuando cocina entrega el tiempo anterior, este se envía automáticamente.
               </p>
             </div>
             <Switch
@@ -236,8 +236,8 @@ function CourseFormDialog({ open, onClose, onSubmit, initial, submitting }: Cour
 
           <div className="flex items-center justify-between rounded-lg border border-border p-3">
             <div>
-              <p className="text-sm font-medium text-foreground">Active</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Inactive courses are hidden in the POS.</p>
+              <p className="text-sm font-medium text-foreground">Activo</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Los tiempos inactivos no aparecen en el punto de venta.</p>
             </div>
             <Switch
               checked={Boolean(form.is_active)}
@@ -247,16 +247,16 @@ function CourseFormDialog({ open, onClose, onSubmit, initial, submitting }: Cour
 
           <DialogFooter className="pt-2">
             <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
-              Cancel
+              Cancelar
             </Button>
             <Button
               type="submit"
               disabled={submitting || !form.name.trim()}
             >
               {submitting ? (
-                <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Saving…</>
+                <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Guardando…</>
               ) : (
-                isEdit ? 'Save changes' : 'Create course'
+                isEdit ? 'Guardar cambios' : 'Crear tiempo'
               )}
             </Button>
           </DialogFooter>
@@ -291,15 +291,15 @@ export default function CoursesPage() {
     try {
       if (editTarget) {
         await update(editTarget.id, values);
-        toast({ title: 'Course updated' });
+        toast({ title: 'Tiempo actualizado' });
       } else {
         await create({ ...values, location_id: locationId });
-        toast({ title: 'Course created' });
+        toast({ title: 'Tiempo creado' });
       }
       setFormOpen(false);
       setEditTarget(null);
     } catch (e) {
-      toast({ variant: 'destructive', title: 'Save failed', description: e instanceof Error ? e.message : String(e) });
+      toast({ variant: 'destructive', title: 'No se pudo guardar', description: e instanceof Error ? e.message : String(e) });
     } finally {
       setSubmitting(false);
     }
@@ -309,9 +309,9 @@ export default function CoursesPage() {
     if (!deleteTarget) return;
     try {
       await remove(deleteTarget.id);
-      toast({ title: `"${deleteTarget.name}" deleted` });
+      toast({ title: `Se eliminó “${deleteTarget.name}”` });
     } catch (e) {
-      toast({ variant: 'destructive', title: 'Delete failed', description: e instanceof Error ? e.message : String(e) });
+      toast({ variant: 'destructive', title: 'No se pudo eliminar', description: e instanceof Error ? e.message : String(e) });
     } finally {
       setDeleteTarget(null);
     }
@@ -321,7 +321,7 @@ export default function CoursesPage() {
     try {
       await update(c.id, { is_active: !c.is_active });
     } catch (e) {
-      toast({ variant: 'destructive', title: 'Update failed', description: e instanceof Error ? e.message : String(e) });
+      toast({ variant: 'destructive', title: 'No se pudo actualizar', description: e instanceof Error ? e.message : String(e) });
     }
   };
 
@@ -329,12 +329,12 @@ export default function CoursesPage() {
     <PageContainer className="max-w-3xl mx-auto">
       <PageHeader
         icon={ChefHat}
-        title="Courses"
-        description={`Manage kitchen fire courses for ${activeLocation?.name || 'this location'}.`}
+        title="Tiempos de cocina"
+        description={`Gestioná la salida por etapas para ${activeLocation?.name || 'este local'}.`}
         actions={
           <Button onClick={openCreate} disabled={!locationId}>
             <Plus className="w-4 h-4 mr-1.5" />
-            Add course
+            Agregar tiempo
           </Button>
         }
       />
@@ -349,7 +349,7 @@ export default function CoursesPage() {
 
       {!locationId && (
         <div className="rounded-lg border border-warning/20 bg-warning/10 px-4 py-3 text-sm text-warning">
-          Select a location first.
+          Seleccioná un local primero.
         </div>
       )}
 
@@ -357,15 +357,15 @@ export default function CoursesPage() {
       {loading ? (
         <div className="flex items-center justify-center py-12 text-muted-foreground">
           <Loader2 className="w-6 h-6 animate-spin mr-2" />
-          Loading courses…
+          Cargando tiempos…
         </div>
       ) : courses.length === 0 && locationId ? (
         <div className="text-center py-16 text-muted-foreground">
           <ChefHat className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p className="text-sm font-medium">No courses yet</p>
-          <p className="text-xs mt-1">Add Starter, Main and Dessert to enable staged kitchen firing.</p>
+          <p className="text-sm font-medium">Todavía no hay tiempos</p>
+          <p className="text-xs mt-1">Agregá Entrada, Principal y Postre para organizar la salida por etapas.</p>
           <Button onClick={openCreate} variant="outline" className="mt-4 border-primary/25 text-primary">
-            <Plus className="w-4 h-4 mr-1.5" /> Add first course
+            <Plus className="w-4 h-4 mr-1.5" /> Agregar primer tiempo
           </Button>
         </div>
       ) : courses.length > 0 ? (
@@ -374,9 +374,9 @@ export default function CoursesPage() {
             <TableHeader className="bg-muted">
               <TableRow>
                 <TableHead className="w-10 text-center">#</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead className="text-center">Auto-fire</TableHead>
-                <TableHead className="text-center">Status</TableHead>
+                <TableHead>Nombre</TableHead>
+                <TableHead className="text-center">Salida automática</TableHead>
+                <TableHead className="text-center">Estado</TableHead>
                 <TableHead className="w-24" />
               </TableRow>
             </TableHeader>
@@ -392,7 +392,7 @@ export default function CoursesPage() {
                   <TableCell className="text-center">
                     {c.fire_on_previous_course_bumped ? (
                       <span className="inline-flex items-center gap-1 text-xs font-medium text-success">
-                        <ToggleRight className="w-3.5 h-3.5" /> Yes
+                        <ToggleRight className="w-3.5 h-3.5" /> Sí
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
@@ -405,15 +405,15 @@ export default function CoursesPage() {
                       type="button"
                       onClick={() => handleToggleActive(c)}
                       className="focus:outline-none"
-                      title={c.is_active ? 'Click to deactivate' : 'Click to activate'}
+                      title={c.is_active ? 'Desactivar' : 'Activar'}
                     >
                       {c.is_active ? (
                         <Badge variant="outline" className="bg-success/10 text-success border-success/25 cursor-pointer hover:bg-success/20">
-                          Active
+                          Activo
                         </Badge>
                       ) : (
                         <Badge variant="secondary" className="cursor-pointer hover:bg-muted">
-                          Inactive
+                          Inactivo
                         </Badge>
                       )}
                     </button>
@@ -425,7 +425,8 @@ export default function CoursesPage() {
                         variant="ghost"
                         onClick={() => openEdit(c)}
                         className="h-7 w-7 p-0 text-muted-foreground hover:text-primary"
-                        title="Edit"
+                        title="Editar"
+                        aria-label={`Editar ${c.name}`}
                       >
                         <Pencil className="w-3.5 h-3.5" />
                       </Button>
@@ -434,7 +435,8 @@ export default function CoursesPage() {
                         variant="ghost"
                         onClick={() => setDeleteTarget(c)}
                         className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                        title="Delete"
+                        title="Eliminar"
+                        aria-label={`Eliminar ${c.name}`}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </Button>
@@ -460,19 +462,18 @@ export default function CoursesPage() {
       <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete &quot;{deleteTarget?.name}&quot;?</AlertDialogTitle>
+            <AlertDialogTitle>¿Eliminar &quot;{deleteTarget?.name}&quot;?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently remove the course. Order items already assigned to it will retain
-              their <code className="text-xs bg-muted px-1 rounded">course_number</code> for back-compat.
+              Esta acción elimina el tiempo. Los productos de pedidos anteriores conservarán su referencia histórica.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               variant="destructive"
             >
-              Delete course
+              Eliminar tiempo
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

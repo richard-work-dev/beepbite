@@ -238,10 +238,10 @@ export default function ModifierPicker({ open, onOpenChange, item, onConfirm }: 
       <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col overflow-hidden p-0">
         <DialogHeader className="px-5 pt-5 pb-3 border-b border-orange-100 shrink-0">
           <DialogTitle className="text-base font-bold text-gray-900">
-            Customise — {item?.name}
+            Personalizar — {item?.name}
           </DialogTitle>
           <DialogDescription className="flex items-center gap-2 text-sm">
-            <span>Base: <span className="font-semibold tabular-nums text-gray-900">{format(basePriceCents)}</span></span>
+            <span>Precio base: <span className="font-semibold tabular-nums text-gray-900">{format(basePriceCents)}</span></span>
             {extraCents !== 0 && (
               <>
                 <span className="text-gray-400">+</span>
@@ -261,7 +261,7 @@ export default function ModifierPicker({ open, onOpenChange, item, onConfirm }: 
               <Loader2 className="w-6 h-6 animate-spin text-orange-500" />
             </div>
           ) : groups.length === 0 ? (
-            <p className="text-center text-gray-400 py-8 text-sm">No customisation options for this item.</p>
+            <p className="text-center text-gray-400 py-8 text-sm">Este producto no tiene opciones para personalizar.</p>
           ) : (
             groups.map((g) => {
               const sel = selections[g.id] || new Set();
@@ -273,19 +273,19 @@ export default function ModifierPicker({ open, onOpenChange, item, onConfirm }: 
                     <span className="text-sm font-semibold text-gray-800">{g.name}</span>
                     {g.is_required && (
                       <Badge className="text-[10px] h-4 px-1.5 bg-red-100 text-red-700 border-red-200">
-                        required
+                        obligatorio
                       </Badge>
                     )}
                     <span className="text-[11px] text-gray-400 ml-auto">
                       {g.min_select === g.max_select
-                        ? `Choose ${g.min_select}`
+                        ? `Elegí ${g.min_select}`
                         : g.max_select === 1
-                          ? 'Choose 1'
-                          : `Choose ${g.min_select}–${g.max_select}`}
+                          ? 'Elegí 1'
+                          : `Elegí entre ${g.min_select} y ${g.max_select}`}
                     </span>
                     {v && !v.ok && (
                       <span className="text-[11px] text-red-500 font-medium">
-                        Pick {v.missing} more
+                        Elegí {v.missing} más
                       </span>
                     )}
                   </div>

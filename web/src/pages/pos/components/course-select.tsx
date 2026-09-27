@@ -35,7 +35,7 @@ export default function CourseSelect({ courseId, courses = [], onChange, classNa
     <select
       value={courseId || ''}
       onChange={(e) => onChange(e.target.value || null)}
-      aria-label="Assign course"
+      aria-label="Asignar tiempo del menú"
       className={cn(
         'text-[10px] font-semibold rounded-full border px-2 py-0.5 bg-card',
         'border-primary/25 text-primary focus:outline-none focus:border-primary/60',
@@ -44,7 +44,7 @@ export default function CourseSelect({ courseId, courses = [], onChange, classNa
       )}
       onClick={(e) => e.stopPropagation()}
     >
-      <option value="">No course</option>
+      <option value="">Sin tiempo</option>
       {[...courses]
         .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
         .map((c) => (

@@ -55,6 +55,50 @@ func TestPOSOrderResponseUsesMinorUnits(t *testing.T) {
 	}
 }
 
+func TestOrderStatusAfterPaymentWaitsForKitchenHandoff(t *testing.T) {
+	tests := []struct {
+		name     string
+		current  string
+		statuses []string
+		want     string
+	}{
+		{name: "no kitchen tickets", current: "confirmed", want: "completed"},
+		{name: "new ticket", current: "confirmed", statuses: []string{"fired"}, want: "confirmed"},
+		{name: "ready ticket", current: "ready", statuses: []string{"ready"}, want: "ready"},
+		{name: "all handed off", current: "ready", statuses: []string{"bumped", "cancelled"}, want: "completed"},
+		{name: "one station remains", current: "preparing", statuses: []string{"bumped", "in_progress"}, want: "preparing"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := orderStatusAfterPayment(test.current, test.statuses); got != test.want {
+				t.Fatalf("orderStatusAfterPayment(%q, %#v) = %q, want %q", test.current, test.statuses, got, test.want)
+			}
+		})
+	}
+}
+
+func TestShouldListKDSExpoOrderUsesKitchenLifecycle(t *testing.T) {
+	tests := []struct {
+		name    string
+		status  string
+		tickets []string
+		want    bool
+	}{
+		{name: "orphan open order remains recoverable", status: "confirmed", want: true},
+		{name: "closed order with active kitchen work remains visible", status: "completed", tickets: []string{"in_progress"}, want: true},
+		{name: "ready ticket remains visible", status: "ready", tickets: []string{"ready"}, want: true},
+		{name: "handed off ticket leaves board", status: "ready", tickets: []string{"bumped"}, want: false},
+		{name: "closed order without tickets stays hidden", status: "completed", want: false},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := shouldListKDSExpoOrder(test.status, test.tickets); got != test.want {
+				t.Fatalf("shouldListKDSExpoOrder(%q, %#v) = %v, want %v", test.status, test.tickets, got, test.want)
+			}
+		})
+	}
+}
+
 func TestNullableString(t *testing.T) {
 	if nullableString(nil) != nil || nullableString("") != nil {
 		t.Fatal("empty values must map to nil")

@@ -48,17 +48,17 @@ function relativeTime(dateStr: string) {
   if (Number.isNaN(diffMs)) return '';
 
   const s = Math.floor(diffMs / 1000);
-  if (s < 60) return 'just now';
+  if (s < 60) return 'recién';
   const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
+  if (m < 60) return `hace ${m} min`;
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
+  if (h < 24) return `hace ${h} h`;
   const d = Math.floor(h / 24);
-  if (d === 1) return '1 day ago';
-  if (d < 30) return `${d} days ago`;
+  if (d === 1) return 'hace 1 día';
+  if (d < 30) return `hace ${d} días`;
   const mo = Math.floor(d / 30);
-  if (mo === 1) return '1 month ago';
-  return `${mo} months ago`;
+  if (mo === 1) return 'hace 1 mes';
+  return `hace ${mo} meses`;
 }
 
 /**
@@ -67,14 +67,14 @@ function relativeTime(dateStr: string) {
  * Truncates to the first 3 items and appends "+N more" when needed.
  */
 function summariseItems(items: RecentOrder['items']) {
-  if (!items || items.length === 0) return 'No items';
+  if (!items || items.length === 0) return 'Sin productos';
   const MAX_SHOWN = 3;
   const shown = items.slice(0, MAX_SHOWN);
   const parts = shown.map((it) =>
     it.quantity > 1 ? `${it.item_name} ×${it.quantity}` : it.item_name,
   );
   const rest = items.length - shown.length;
-  if (rest > 0) parts.push(`+${rest} more`);
+  if (rest > 0) parts.push(`+${rest} más`);
   return parts.join(', ');
 }
 
@@ -141,7 +141,7 @@ function ReorderCard({ order, onSelect }: ReorderCardProps) {
           variant="outline"
           className="shrink-0 gap-1.5 text-xs"
           tabIndex={-1} // card itself is focusable; avoid double tab stop
-          aria-label={`Re-order ${summary}`}
+          aria-label={`Repetir pedido: ${summary}`}
           onClick={(e) => {
             // Prevent the card's onClick from firing twice.
             e.stopPropagation();
@@ -149,7 +149,7 @@ function ReorderCard({ order, onSelect }: ReorderCardProps) {
           }}
         >
           <RotateCcw className="h-3.5 w-3.5" />
-          Re-order
+          Repetir
         </Button>
       </CardContent>
     </Card>
@@ -230,7 +230,7 @@ export default function QuickReorder({
       {/* Header */}
       <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
         <ShoppingCart className="h-4 w-4 text-primary" />
-        <span>The usual?</span>
+        <span>¿Lo de siempre?</span>
       </div>
 
       {loading && <LoadingSkeleton />}
@@ -243,7 +243,7 @@ export default function QuickReorder({
 
       {!loading && !error && orders.length === 0 && (
         <p className="rounded-lg bg-muted px-4 py-3 text-xs text-muted-foreground">
-          No previous orders found for this customer.
+          Este cliente todavía no tiene pedidos anteriores.
         </p>
       )}
 

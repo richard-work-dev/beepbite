@@ -132,17 +132,17 @@ const KioskTenderModal = ({ total, currency, onClose, onConfirm, loading, error,
           role="dialog"
           aria-modal="true"
           aria-live="polite"
-          aria-label={`Order placed, number ${lastOrderNumber}`}
+          aria-label={`Pedido registrado, número ${lastOrderNumber}`}
           className="bg-card border-2 border-border rounded-2xl shadow-2xl p-10 flex flex-col items-center gap-4 max-w-sm w-full animate-in zoom-in-95 duration-200"
         >
           <CheckCircle2 className="w-20 h-20 text-success" aria-hidden="true" />
-          <h2 className="text-3xl font-bold text-foreground">Order Placed!</h2>
+          <h2 className="text-3xl font-bold text-foreground">¡Pedido registrado!</h2>
           <p className="text-xl text-muted-foreground font-medium">#{lastOrderNumber}</p>
           <button
             onClick={onClose}
             className="mt-2 w-full h-14 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground text-xl font-bold shadow-md transition-colors"
           >
-            New Order
+            Pedido nuevo
           </button>
         </div>
       </div>
@@ -155,15 +155,15 @@ const KioskTenderModal = ({ total, currency, onClose, onConfirm, loading, error,
         ref={modalRef}
         role="dialog"
         aria-modal="true"
-        aria-label="Tender"
+        aria-label="Cobro"
         className="bg-card rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md flex flex-col max-h-[95vh] overflow-hidden animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <h2 className="text-2xl font-bold text-foreground">Tender</h2>
+          <h2 className="text-2xl font-bold text-foreground">Cobrar</h2>
           <button
             onClick={onClose}
-            aria-label="Close"
+            aria-label="Cerrar"
             className="w-10 h-10 rounded-full bg-muted flex items-center justify-center hover:bg-muted/70 transition-colors"
           >
             <X className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
@@ -173,7 +173,7 @@ const KioskTenderModal = ({ total, currency, onClose, onConfirm, loading, error,
         {/* Total */}
         <div className="px-6 py-4 bg-primary/5 border-b border-border">
           <div className="flex justify-between items-baseline">
-            <span className="text-muted-foreground text-lg">Total due</span>
+            <span className="text-muted-foreground text-lg">Total a cobrar</span>
             <span className="text-4xl font-extrabold text-primary tabular-nums">
               {formatPrice(totalCents, currency)}
             </span>
@@ -182,11 +182,11 @@ const KioskTenderModal = ({ total, currency, onClose, onConfirm, loading, error,
 
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
           {/* Method selector */}
-          <div className="grid grid-cols-2 gap-3" role="group" aria-label="Select payment method">
+          <div className="grid grid-cols-2 gap-3" role="group" aria-label="Seleccionar método de pago">
             <button
               onClick={() => setMethod('cash')}
               aria-pressed={method === 'cash'}
-              aria-label="Pay with cash"
+              aria-label="Pagar en efectivo"
               className={cn(
                 'h-16 rounded-2xl border-2 flex flex-col items-center justify-center gap-1 font-semibold text-base transition-all',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
@@ -196,12 +196,12 @@ const KioskTenderModal = ({ total, currency, onClose, onConfirm, loading, error,
               )}
             >
               <Banknote className="w-6 h-6" aria-hidden="true" />
-              Cash
+              Efectivo
             </button>
             <button
               onClick={() => { setMethod('card'); setCashEntry(''); }}
               aria-pressed={method === 'card'}
-              aria-label="Pay with card"
+              aria-label="Pagar con tarjeta"
               className={cn(
                 'h-16 rounded-2xl border-2 flex flex-col items-center justify-center gap-1 font-semibold text-base transition-all',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
@@ -211,7 +211,7 @@ const KioskTenderModal = ({ total, currency, onClose, onConfirm, loading, error,
               )}
             >
               <CreditCard className="w-6 h-6" aria-hidden="true" />
-              Card
+              Tarjeta
             </button>
           </div>
 
@@ -238,13 +238,13 @@ const KioskTenderModal = ({ total, currency, onClose, onConfirm, loading, error,
 
               {/* Cash entry display */}
               <div className="flex items-center justify-between bg-muted rounded-xl px-4 py-3 border-2 border-border">
-                <span className="text-muted-foreground text-lg">Tendered</span>
+                <span className="text-muted-foreground text-lg">Recibido</span>
                 <div className="flex items-center gap-2">
                   <span className="text-3xl font-bold tabular-nums text-foreground">
                     {cashEntry ? formatPrice(Math.round(parseFloat(cashEntry || '0') * 100), currency) : '—'}
                   </span>
                   {cashEntry && (
-                    <button onClick={handleBackspace} className="p-1 text-muted-foreground hover:text-muted-foreground">
+                    <button onClick={handleBackspace} aria-label="Borrar último dígito" className="p-1 text-muted-foreground hover:text-muted-foreground">
                       <Delete className="w-5 h-5" />
                     </button>
                   )}
@@ -258,6 +258,7 @@ const KioskTenderModal = ({ total, currency, onClose, onConfirm, loading, error,
                     <button
                       key={i}
                       onClick={handleBackspace}
+                      aria-label="Borrar último dígito"
                       className="h-14 rounded-xl bg-muted flex items-center justify-center hover:bg-muted/70 active:bg-muted transition-colors"
                     >
                       <Delete className="w-5 h-5 text-muted-foreground" />
@@ -284,7 +285,7 @@ const KioskTenderModal = ({ total, currency, onClose, onConfirm, loading, error,
               {/* Change due */}
               {canConfirmCash && changeCents > 0 && (
                 <div className="flex justify-between items-baseline bg-success/10 rounded-xl px-4 py-3 border border-success/30">
-                  <span className="text-success font-medium">Change due</span>
+                  <span className="text-success font-medium">Cambio</span>
                   <span className="text-2xl font-bold text-success tabular-nums">
                     {formatPrice(changeCents, currency)}
                   </span>
@@ -297,7 +298,7 @@ const KioskTenderModal = ({ total, currency, onClose, onConfirm, loading, error,
             <div className="flex flex-col items-center gap-3 py-4">
               <CreditCard className="w-16 h-16 text-primary/40" />
               <p className="text-muted-foreground text-lg text-center">
-                Present card to reader, then tap Confirm.
+                Pasá la tarjeta por la terminal y luego confirmá.
               </p>
             </div>
           )}
@@ -319,7 +320,7 @@ const KioskTenderModal = ({ total, currency, onClose, onConfirm, loading, error,
           <button
             onClick={handleConfirm}
             disabled={loading || (!canConfirmCash && !canConfirmCard)}
-            aria-label={loading ? 'Placing order' : 'Confirm and send to kitchen'}
+            aria-label={loading ? 'Registrando pedido' : 'Confirmar y enviar a cocina'}
             aria-busy={loading}
             className={cn(
               'w-full h-16 rounded-2xl text-xl font-bold shadow-md transition-all flex items-center justify-center gap-2',
@@ -332,10 +333,10 @@ const KioskTenderModal = ({ total, currency, onClose, onConfirm, loading, error,
             {loading ? (
               <span className="flex items-center gap-2">
                 <Loader2 className="w-6 h-6 animate-spin" aria-hidden="true" />
-                Placing order…
+                Registrando pedido…
               </span>
             ) : (
-              'Confirm & Send to Kitchen'
+              'Confirmar y enviar a cocina'
             )}
           </button>
         </div>

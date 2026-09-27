@@ -9,7 +9,7 @@ func TestDataTableCapability(t *testing.T) {
 	}{
 		{"items", "POST", "can_manage_menu", true},
 		{"items", "GET", "", false},
-		{"inventory_items", "GET", "manager", true},
+		{"inventory_items", "GET", "can_manage_menu", true},
 		{"orders", "POST", "", false},
 	}
 	for _, tc := range cases {

@@ -23,6 +23,7 @@ const getLoadingMessage = (pathname: string) => {
   if (pathname.includes('/reports')) return 'Cargando reportes...';
   if (pathname.includes('/reviews')) return 'Cargando reseñas...';
   if (pathname.includes('/menu')) return 'Cargando menú...';
+  if (pathname.includes('/inventory')) return 'Cargando inventario...';
   if (pathname.includes('/categories')) return 'Cargando categorías...';
   if (pathname.includes('/settings')) return 'Cargando configuración...';
   if (pathname.includes('/account')) return 'Cargando cuenta...';
@@ -108,6 +109,8 @@ const MenuCourses = lazyImport(() => import('./pages/menu/courses'));
 const GiftCards = lazyImport(() => import('./pages/gift-cards'));
 const HouseAccounts = lazyImport(() => import('./pages/house-accounts'));
 const HouseAccountDetail = lazyImport(() => import('./pages/house-accounts/detail'));
+const InventoryDailyCounts = lazyImport(() => import('./pages/inventory/daily-counts'));
+const InventoryItems = lazyImport(() => import('./pages/inventory/items'));
 const InventorySuppliers = lazyImport(() => import('./pages/inventory/suppliers'));
 const InventoryPOs = lazyImport(() => import('./pages/inventory/purchase-orders'));
 const InventoryAutoPO = lazyImport(() => import('./pages/inventory/auto-suggestions'));
@@ -322,6 +325,8 @@ const AppRoutes = () => {
           <Route path="/house-accounts/:id" element={<Protected><HouseAccountDetail /></Protected>} />
 
           {/* Inventory + procurement */}
+          <Route path="/inventory/daily-counts" element={<Protected capabilities={['can_manage_menu']}><InventoryDailyCounts /></Protected>} />
+          <Route path="/inventory/items" element={<Protected capabilities={['can_manage_menu']}><InventoryItems /></Protected>} />
           <Route path="/inventory/suppliers" element={<Protected capabilities={['can_manage_menu']}><InventorySuppliers /></Protected>} />
           <Route path="/inventory/purchase-orders" element={<Protected capabilities={['can_manage_menu']}><InventoryPOs /></Protected>} />
           <Route path="/inventory/purchase-orders/auto-suggestions" element={<Protected capabilities={['can_manage_menu']}><InventoryAutoPO /></Protected>} />

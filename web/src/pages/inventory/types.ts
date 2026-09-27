@@ -147,3 +147,46 @@ export interface InventoryItemBrief {
   name: string;
   unit: string;
 }
+
+export interface DailyInventoryItem {
+  id: string;
+  name: string;
+  unit: string;
+  current_stock: number;
+  minimum_stock?: number;
+}
+
+export interface DailyInventoryCountLine {
+  id: string;
+  session_id: string;
+  inventory_item_id: string;
+  item_name: string;
+  unit: string;
+  system_opening_quantity: number;
+  opening_quantity: number;
+  opening_variance: number;
+  expected_closing_quantity?: number | null;
+  closing_quantity?: number | null;
+  closing_variance?: number | null;
+}
+
+export interface DailyInventorySession {
+  id: string;
+  location_id: string;
+  business_date: string;
+  status: 'open' | 'closed';
+  opened_by: string;
+  opened_at: string;
+  closed_by?: string | null;
+  closed_at?: string | null;
+  opening_notes?: string | null;
+  closing_notes?: string | null;
+  opening_variance_count: number;
+  closing_variance_count: number;
+  lines: DailyInventoryCountLine[];
+}
+
+export interface DailyInventoryResponse {
+  inventory_items: DailyInventoryItem[];
+  sessions: DailyInventorySession[];
+}

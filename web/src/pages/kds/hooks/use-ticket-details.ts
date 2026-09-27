@@ -66,7 +66,7 @@ export function useTicketDetails(ticketIds: string[]) {
       if (error) {
         setErrors((prev) => {
           const next = new Map(prev);
-          next.set(ticketId, error.message || 'failed to load recipe');
+          next.set(ticketId, error.message || 'No se pudo cargar la receta');
           return next;
         });
         return null;

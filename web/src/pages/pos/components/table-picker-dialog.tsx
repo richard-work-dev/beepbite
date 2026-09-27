@@ -21,7 +21,7 @@ const STATUS: Record<RestaurantTable['status'], { outline: string; bg: string; t
   out_of_service: { outline: "border-gray-200",   bg: "bg-gray-100",   text: "text-gray-400",   dot: "bg-gray-300"   },
 }
 
-const STATUS_FILTERS = ["All", "Available only", "Including reserved"] as const
+const STATUS_FILTERS = ["Todas", "Solo disponibles", "Incluir reservadas"] as const
 type StatusFilter = (typeof STATUS_FILTERS)[number];
 
 interface SectionLike {
@@ -50,7 +50,7 @@ function TableTile({ table, onSelect, onOpenChange, statusFilter }: TableTilePro
 
   const disabled =
     isOccupied ||
-    (isReserved && statusFilter !== "Including reserved")
+    (isReserved && statusFilter !== "Incluir reservadas")
 
   function handleClick() {
     if (disabled) return
@@ -62,7 +62,7 @@ function TableTile({ table, onSelect, onOpenChange, statusFilter }: TableTilePro
     <button
       disabled={disabled}
       onClick={handleClick}
-      title={isOccupied ? "Already has an open tab" : undefined}
+      title={isOccupied ? "Ya tiene una cuenta abierta" : undefined}
       className={cn(
         "group relative rounded-xl border-2 p-3 flex flex-col gap-1.5",
         "transition-all duration-150 select-none text-left",
@@ -134,14 +134,14 @@ export function TablePickerDialog({
 }: TablePickerDialogProps) {
   const [query, setQuery] = useState("")
   const [sectionFilter, setSectionFilter] = useState("all")
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("Available only")
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("Solo disponibles")
 
   // Reset filters when dialog opens
   useEffect(() => {
     if (open) {
       setQuery("")
       setSectionFilter("all")
-      setStatusFilter("Available only")
+      setStatusFilter("Solo disponibles")
     }
   }, [open])
 
@@ -152,8 +152,8 @@ export function TablePickerDialog({
       if (t.status === "out_of_service") return false
 
       // Status filter
-      if (statusFilter === "Available only" && t.status !== "available") return false
-      if (statusFilter === "Including reserved" && t.status === "occupied") return false
+      if (statusFilter === "Solo disponibles" && t.status !== "available") return false
+      if (statusFilter === "Incluir reservadas" && t.status === "occupied") return false
 
       // Section filter
       if (sectionFilter !== "all" && t.section_id !== sectionFilter) return false
@@ -184,16 +184,16 @@ export function TablePickerDialog({
   function resetFilters() {
     setQuery("")
     setSectionFilter("all")
-    setStatusFilter("Available only")
+    setStatusFilter("Solo disponibles")
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col gap-0 p-0 overflow-hidden">
         <DialogHeader className="px-5 pt-5 pb-3 shrink-0">
-          <DialogTitle className="text-lg font-semibold">Assign to a Table</DialogTitle>
+          <DialogTitle className="text-lg font-semibold">Asignar una mesa</DialogTitle>
           <DialogDescription className="text-sm text-gray-500">
-            Pick an available table for this ticket.
+            Elegí una mesa disponible para este pedido.
           </DialogDescription>
         </DialogHeader>
 
@@ -202,7 +202,7 @@ export function TablePickerDialog({
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
             <Input
-              placeholder="Search by table or section…"
+              placeholder="Buscar por mesa o sector…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="pl-9"
@@ -213,7 +213,7 @@ export function TablePickerDialog({
         {/* Section chips */}
         {derivedSections.length > 0 && (
           <div className="px-5 pb-2 flex items-center gap-1.5 flex-wrap shrink-0">
-            {[{ id: "all", name: "All sections" }, ...derivedSections].map((sec) => (
+            {[{ id: "all", name: "Todos los sectores" }, ...derivedSections].map((sec) => (
               <button
                 key={sec.id}
                 onClick={() => setSectionFilter(sec.id)}
@@ -262,9 +262,9 @@ export function TablePickerDialog({
           ) : visibleTables.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 py-12 text-gray-400">
               <Search className="w-8 h-8 opacity-40" />
-              <p className="text-sm font-medium">No tables match</p>
+              <p className="text-sm font-medium">No hay mesas que coincidan</p>
               <Button variant="outline" size="sm" onClick={resetFilters}>
-                Reset filters
+                Restablecer filtros
               </Button>
             </div>
           ) : (

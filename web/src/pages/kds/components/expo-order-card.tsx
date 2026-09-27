@@ -54,26 +54,26 @@ const URGENCY: Record<string, { card: string; header: string; headerText: string
 // ---- Station status ---------------------------------------------------------
 const STATION_STATUS: Record<string, { label: string; cls: string }> = {
   fired: {
-    label: 'Fired',
+    label: 'Nueva',
     cls:   'bg-orange-900/60 text-orange-300 border border-orange-700/50',
   },
   // Neutral on purpose. Colour on this screen means "act on me": amber is
   // fired and waiting, green is ready to leave. Something merely cooking is
   // the normal state and should not compete for a cook's eye across the pass.
   in_progress: {
-    label: 'Cooking',
+    label: 'En preparación',
     cls:   'bg-slate-800 text-slate-300 border border-slate-600/50',
   },
   ready: {
-    label: 'Ready',
+    label: 'Lista',
     cls:   'bg-emerald-900/60 text-emerald-300 border border-emerald-700/50',
   },
   bumped: {
-    label: 'Bumped',
+    label: 'Entregada',
     cls:   'bg-gray-800 text-gray-400 border border-gray-700',
   },
   cancelled: {
-    label: 'Cancelled',
+    label: 'Cancelada',
     cls:   'bg-red-950/60 text-red-400 border border-red-800/50',
   },
 };
@@ -94,9 +94,19 @@ const ITEM_STATUS_DOT: Record<string, string> = {
 // text; giving the whole axis back to status is what makes an actually late
 // ticket jump out. This also retires the last purple and blue on this screen.
 const ORDER_TYPE_BADGE: Record<string, { label: string; cls: string }> = {
-  dine_in:    { label: 'Dine-In',    cls: 'bg-slate-800 text-slate-300 border border-slate-600/50' },
-  collection: { label: 'Collection', cls: 'bg-slate-800 text-slate-300 border border-slate-600/50' },
-  delivery:   { label: 'Delivery',   cls: 'bg-slate-800 text-slate-300 border border-slate-600/50' },
+  dine_in:    { label: 'En salón',      cls: 'bg-slate-800 text-slate-300 border border-slate-600/50' },
+  pickup:     { label: 'Para retirar',  cls: 'bg-slate-800 text-slate-300 border border-slate-600/50' },
+  takeaway:   { label: 'Para retirar',  cls: 'bg-slate-800 text-slate-300 border border-slate-600/50' },
+  collection: { label: 'Para retirar',  cls: 'bg-slate-800 text-slate-300 border border-slate-600/50' },
+  delivery:   { label: 'A domicilio',   cls: 'bg-slate-800 text-slate-300 border border-slate-600/50' },
+};
+
+const ITEM_STATUS_LABEL: Record<string, string> = {
+  fired: 'Nueva',
+  in_progress: 'En preparación',
+  ready: 'Lista',
+  bumped: 'Entregada',
+  cancelled: 'Cancelada',
 };
 
 // ---- Helpers ----------------------------------------------------------------
@@ -285,7 +295,7 @@ export function ExpoOrderCard({ order, now, onSendToKitchen, sendingToKitchen = 
                                 {it.name || it.item_name || 'Producto'}
                               </span>
                               <span className="shrink-0 text-xs font-medium capitalize text-gray-400">
-                                {it.item_status?.replace('_', ' ') || ''}
+                                {(it.item_status && ITEM_STATUS_LABEL[it.item_status]) || ''}
                               </span>
                             </div>
                             {it.notes && (

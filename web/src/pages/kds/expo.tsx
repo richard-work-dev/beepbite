@@ -87,7 +87,7 @@ export default function ExpoPage() {
       if (!mountedRef.current) return;
       setOrders(results);
     } catch (e) {
-      if (mountedRef.current) setError(e instanceof Error ? e.message : 'failed to load expo data');
+      if (mountedRef.current) setError(e instanceof Error ? e.message : 'No se pudo cargar la pantalla de despacho');
     } finally {
       if (mountedRef.current) {
         setLoading(false);
@@ -155,11 +155,11 @@ export default function ExpoPage() {
 
           {/* Title + subtitle */}
           <div>
-            <h1 className="text-xl font-extrabold leading-tight text-white">Expo</h1>
+            <h1 className="text-xl font-extrabold leading-tight text-white">Despacho</h1>
             <p className="text-xs text-gray-400">
               {loading
-                ? 'Loading…'
-                : `${orders.length} open order${orders.length === 1 ? '' : 's'}`}
+                ? 'Cargando…'
+                : `${orders.length} ${orders.length === 1 ? 'pedido abierto' : 'pedidos abiertos'}`}
             </p>
           </div>
 
@@ -168,12 +168,12 @@ export default function ExpoPage() {
             <div className="flex items-center gap-2">
               {readyCount > 0 && (
                 <span className="rounded-full bg-emerald-700 px-3 py-0.5 text-xs font-bold text-emerald-100">
-                  {readyCount} ready
+                  {readyCount} {readyCount === 1 ? 'listo' : 'listos'}
                 </span>
               )}
               {blockedCount > 0 && (
                 <span className="rounded-full bg-amber-600 px-3 py-0.5 text-xs font-bold text-amber-50">
-                  {blockedCount} waiting
+                  {blockedCount} en espera
                 </span>
               )}
             </div>
@@ -185,7 +185,7 @@ export default function ExpoPage() {
           {refreshing && (
             <span className="flex items-center gap-1.5 text-xs text-gray-400">
               <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-              Refreshing…
+              Actualizando…
             </span>
           )}
           <Button
@@ -196,7 +196,7 @@ export default function ExpoPage() {
             className="gap-1.5 border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white"
           >
             <RefreshCw className={refreshing ? 'size-4 animate-spin' : 'size-4'} aria-hidden="true" />
-            Refresh
+            Actualizar
           </Button>
         </div>
       </header>

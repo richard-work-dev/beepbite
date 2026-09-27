@@ -42,12 +42,16 @@ func TestPOSOrderResponseUsesMinorUnits(t *testing.T) {
 	response := posOrderResponse(map[string]any{
 		"id": "order-1", "order_number": "POS-1", "subtotal_cents": int64(1000), "tax_cents": int64(150),
 		"gratuity_cents": int64(0), "total_cents": int64(1150), "currency_code": "USD", "status": "confirmed",
-	}, []string{"ticket-1"})
+	}, []string{"ticket-1"}, []map[string]any{{"id": "item-1", "item_id": "menu-1"}})
 	if response["total_minor"] != int64(1150) || response["total"] != 11.5 {
 		t.Fatalf("unexpected amount projection: %#v", response)
 	}
 	if tickets, ok := response["kds_ticket_ids"].([]string); !ok || len(tickets) != 1 {
 		t.Fatalf("unexpected tickets: %#v", response["kds_ticket_ids"])
+	}
+	items, ok := response["items"].([]map[string]any)
+	if !ok || len(items) != 1 || items[0]["id"] != "item-1" {
+		t.Fatalf("unexpected order items: %#v", response["items"])
 	}
 }
 

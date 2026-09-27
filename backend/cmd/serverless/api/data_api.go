@@ -106,7 +106,7 @@ func dataTableCapability(table, method string) (string, bool) {
 		return "can_manage_menu", true
 	}
 	if stockTables[table] {
-		return "manager", true
+		return "can_manage_menu", true
 	}
 	if table == "staff" || table == "organization_invites" || table == "locations" || table == "tax_rates" {
 		return "manager", true

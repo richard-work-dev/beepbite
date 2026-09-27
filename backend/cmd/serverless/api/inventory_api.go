@@ -24,6 +24,12 @@ func matchInventoryRoute(method, path string) (inventoryRoute, bool) {
 	switch {
 	case method == "GET" && len(segments) == 2 && segments[0] == "inventory" && segments[1] == "auto-po-suggestions":
 		return inventoryRoute{name: "auto_po"}, true
+	case method == "GET" && len(segments) == 2 && segments[0] == "inventory" && segments[1] == "daily-counts":
+		return inventoryRoute{name: "daily_counts_list"}, true
+	case method == "POST" && len(segments) == 3 && segments[0] == "inventory" && segments[1] == "daily-counts" && segments[2] == "open":
+		return inventoryRoute{name: "daily_counts_open"}, true
+	case method == "POST" && len(segments) == 4 && segments[0] == "inventory" && segments[1] == "daily-counts" && segments[3] == "close":
+		return inventoryRoute{name: "daily_counts_close", param: segments[2]}, true
 	case method == "POST" && len(segments) == 2 && segments[0] == "inventory" && segments[1] == "purchase-orders":
 		return inventoryRoute{name: "po_create"}, true
 	case method == "POST" && len(segments) == 4 && segments[0] == "inventory" && segments[1] == "purchase-orders" && segments[3] == "submit":
@@ -66,6 +72,12 @@ func (a *application) handleInventoryAPI(ctx context.Context, request events.API
 	switch route.name {
 	case "auto_po":
 		response = a.autoPOSuggestions(ctx, orgID, request.RawQueryString)
+	case "daily_counts_list":
+		response = a.listDailyInventoryCounts(ctx, orgID, request.RawQueryString)
+	case "daily_counts_open":
+		response = a.openDailyInventoryCount(ctx, orgID, claims.UserID, request.Body)
+	case "daily_counts_close":
+		response = a.closeDailyInventoryCount(ctx, orgID, claims.UserID, route.param, request.Body)
 	case "po_create":
 		response = a.createPurchaseOrder(ctx, orgID, request.Body)
 	case "po_submit":

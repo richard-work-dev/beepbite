@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"math"
 	"testing"
 )
@@ -10,6 +11,9 @@ func TestMatchInventoryRoute(t *testing.T) {
 		method, path, name, param string
 	}{
 		{"GET", "/inventory/auto-po-suggestions", "auto_po", ""},
+		{"GET", "/inventory/daily-counts", "daily_counts_list", ""},
+		{"POST", "/inventory/daily-counts/open", "daily_counts_open", ""},
+		{"POST", "/inventory/daily-counts/count-1/close", "daily_counts_close", "count-1"},
 		{"POST", "/inventory/purchase-orders", "po_create", ""},
 		{"POST", "/inventory/purchase-orders/po-1/submit", "po_submit", "po-1"},
 		{"GET", "/inventory/goods-receipts", "grn_list", ""},
@@ -25,6 +29,40 @@ func TestMatchInventoryRoute(t *testing.T) {
 	}
 	if _, ok := matchInventoryRoute("DELETE", "/inventory/purchase-orders/po-1"); ok {
 		t.Fatal("unexpected route match")
+	}
+}
+
+func TestValidBusinessDate(t *testing.T) {
+	for _, value := range []string{"2026-09-27", "2024-02-29"} {
+		if !validBusinessDate(value) {
+			t.Fatalf("expected %s to be valid", value)
+		}
+	}
+	for _, value := range []string{"", "27-09-2026", "2026-02-30", "2026-9-7"} {
+		if validBusinessDate(value) {
+			t.Fatalf("expected %s to be invalid", value)
+		}
+	}
+}
+
+func TestParseInventoryCountLines(t *testing.T) {
+	lines, err := parseInventoryCountLines([]any{
+		map[string]any{"inventory_item_id": "pollo", "counted_quantity": json.Number("12.5")},
+		map[string]any{"inventory_item_id": "papas", "counted_quantity": float64(0)},
+	})
+	if err != nil || lines["pollo"] != 12.5 || lines["papas"] != 0 {
+		t.Fatalf("unexpected parsed counts: %#v, %v", lines, err)
+	}
+	if _, err := parseInventoryCountLines([]any{
+		map[string]any{"inventory_item_id": "pollo", "counted_quantity": 2},
+		map[string]any{"inventory_item_id": "pollo", "counted_quantity": 3},
+	}); err == nil {
+		t.Fatal("expected duplicate item to fail")
+	}
+	if _, err := parseInventoryCountLines([]any{
+		map[string]any{"inventory_item_id": "pollo", "counted_quantity": -1},
+	}); err == nil {
+		t.Fatal("expected negative quantity to fail")
 	}
 }
 

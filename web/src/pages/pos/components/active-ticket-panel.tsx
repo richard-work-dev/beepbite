@@ -83,6 +83,7 @@ export interface SentOrder {
   created_at?: string;
   fired_at?: string;
   payment_status?: string;
+  paid_cents?: number;
   kitchen_status?: string;
   total_cents?: number;
 }
@@ -251,6 +252,7 @@ interface SentOrderGroupProps {
 }
 
 function SentOrderGroup({ order, locationId, onAdjustSuccess }: SentOrderGroupProps) {
+  const { format } = useMoney();
   const items = Array.isArray(order.items) ? order.items : [];
   if (items.length === 0) return null;
 
@@ -287,6 +289,20 @@ function SentOrderGroup({ order, locationId, onAdjustSuccess }: SentOrderGroupPr
             <span className="truncate text-foreground">Pedido {shortOrderNum(order)}</span>
             <span className={cn('shrink-0 rounded-full border px-2 py-0.5', statusMeta.className)}>
               {statusMeta.label}
+            </span>
+            <span className={cn(
+              'shrink-0 rounded-full border px-2 py-0.5',
+              order.payment_status === 'paid'
+                ? 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
+                : order.payment_status === 'partial'
+                  ? 'border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300'
+                  : 'border-gray-300 bg-gray-50 text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300',
+            )}>
+              {order.payment_status === 'paid'
+                ? 'Pagado'
+                : order.payment_status === 'partial'
+                  ? `Pago parcial ${format(order.paid_cents || 0)}`
+                  : 'Por cobrar'}
             </span>
           </div>
           {firedDisplay && (

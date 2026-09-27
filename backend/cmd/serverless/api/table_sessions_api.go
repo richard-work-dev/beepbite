@@ -165,14 +165,52 @@ func (a *application) getTableSessionDetail(ctx context.Context, orgID, sessionI
 	if err != nil {
 		return dataAccessError(err)
 	}
+	orderItems, err := a.queryDataRows(ctx, orgID, "order_items")
+	if err != nil {
+		return dataAccessError(err)
+	}
+	payments, err := a.queryDataRows(ctx, orgID, "order_payments")
+	if err != nil {
+		return dataAccessError(err)
+	}
+	kdsTickets, err := a.queryDataRows(ctx, orgID, "kds_tickets")
+	if err != nil {
+		return dataAccessError(err)
+	}
 	linkedOrders := make([]map[string]any, 0)
 	for _, order := range orders {
 		if fmt.Sprint(order["table_session_id"]) != sessionID {
 			continue
 		}
+		orderID := displayString(order["id"])
+		items := make([]map[string]any, 0)
+		for _, item := range orderItems {
+			if displayString(item["order_id"]) != orderID {
+				continue
+			}
+			unitCents, _ := integerValue(item["unit_price_cents"])
+			lineCents, _ := integerValue(item["line_total_cents"])
+			items = append(items, map[string]any{
+				"id": item["id"], "item_id": item["item_id"], "item_name": valueOr(item, "item_name", "Producto"),
+				"quantity": valueOr(item, "quantity", 1), "unit_price_cents": unitCents, "unit_price": float64(unitCents) / 100,
+				"total_cents": lineCents, "notes": valueOr(item, "special_instructions", nil),
+			})
+		}
+		paidCents := completedPaymentCents(payments, orderID)
+		totalCents, _ := integerValue(order["total_cents"])
+		paymentStatus := displayString(order["payment_status"])
+		if paidCents >= totalCents && totalCents > 0 {
+			paymentStatus = "paid"
+		} else if paidCents > 0 {
+			paymentStatus = "partial"
+		} else if paymentStatus == "" {
+			paymentStatus = "pending"
+		}
 		linkedOrders = append(linkedOrders, map[string]any{
-			"id": order["id"], "order_type": valueOr(order, "order_type", "dine_in"), "status": valueOr(order, "status", ""),
-			"course_number": valueOr(order, "course_number", nil), "created_at": order["created_at"],
+			"id": order["id"], "order_number": order["order_number"], "order_type": valueOr(order, "order_type", "dine_in"),
+			"status": valueOr(order, "status", ""), "payment_status": paymentStatus,
+			"paid_cents": paidCents, "total_cents": totalCents, "kitchen_status": aggregateKDSStatus(kdsStatusesForOrder(kdsTickets, orderID)),
+			"course_number": valueOr(order, "course_number", nil), "created_at": order["created_at"], "items": items,
 		})
 	}
 	sort.Slice(linkedOrders, func(i, j int) bool {
@@ -264,6 +302,24 @@ func (a *application) transferTableSession(ctx context.Context, orgID, sessionID
 	source["status"], source["transferred_to_session_id"], source["updated_at"] = "transferred", newSession["id"], now
 	if err := a.putDataRow(ctx, orgID, "table_sessions", source, false); err != nil {
 		return dataAccessError(err)
+	}
+	// Keep the live check attached to the new session. Without moving these
+	// rows, a browser refresh showed an empty destination table and payment
+	// later attempted to close the already-transferred source session.
+	for _, tableName := range []string{"orders", "seats", "check_splits"} {
+		rows, queryErr := a.queryDataRows(ctx, orgID, tableName)
+		if queryErr != nil {
+			return dataAccessError(queryErr)
+		}
+		for _, row := range rows {
+			if displayString(row["table_session_id"]) != sessionID {
+				continue
+			}
+			row["table_session_id"], row["updated_at"] = newSession["id"], now
+			if putErr := a.putDataRow(ctx, orgID, tableName, row, false); putErr != nil {
+				return dataAccessError(putErr)
+			}
+		}
 	}
 	if oldTable, getErr := a.dataRowByID(ctx, orgID, "tables", fmt.Sprint(source["table_id"])); getErr == nil {
 		oldTable["status"], oldTable["updated_at"] = "available", now

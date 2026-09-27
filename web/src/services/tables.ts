@@ -129,17 +129,30 @@ export async function listOpenSessions(locationId: string): Promise<TableSession
   return Array.isArray(data) ? data : [];
 }
 
-// Mirrors backend/internal/handlers/tables/types.go Order — the LIGHTWEIGHT
-// view returned as SessionDetail.orders (see store.go's GetSessionDetail,
-// which SELECTs only these 5 columns). It does NOT carry order_number,
-// payment_status, total_amount_cents/total, or items — callers hydrating a
-// ticket from this must not assume those fields exist (see workspace.tsx).
-export interface SessionOrderLite {
+// Complete serverless snapshot used to rebuild an open table after reload.
+export interface SessionOrderItem {
   id: string;
+  item_id: string;
+  item_name: string;
+  quantity: number;
+  unit_price_cents: number;
+  unit_price: number;
+  total_cents: number;
+  notes?: string | null;
+}
+
+export interface SessionOrder {
+  id: string;
+  order_number?: string;
   order_type: string;
   status: string;
+  payment_status: string;
+  kitchen_status?: string;
+  paid_cents: number;
+  total_cents: number;
   course_number: number | null;
   created_at: string;
+  items: SessionOrderItem[];
 }
 
 // Mirrors backend/internal/handlers/tables/types.go SessionDetail, which Go
@@ -147,7 +160,7 @@ export interface SessionOrderLite {
 // alongside `seats`/`orders`, not nested under a `session` key.
 export interface SessionDetail extends TableSession {
   seats: Seat[];
-  orders: SessionOrderLite[];
+  orders: SessionOrder[];
 }
 
 /**

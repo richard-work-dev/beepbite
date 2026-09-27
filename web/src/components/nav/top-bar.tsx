@@ -106,7 +106,7 @@ const TopBar = () => {
 
   const canAccess = (capability?: string) => {
     if (!capability) return true;
-    return hasAnyAccess(activeMembership, [capability], actor?.capabilities);
+    return hasAnyAccess(activeMembership, [capability], actor?.capabilities, actor?.role);
   };
 
   const closeSideNav = () => {

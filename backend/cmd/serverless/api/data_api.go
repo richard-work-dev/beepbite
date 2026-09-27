@@ -124,7 +124,7 @@ func (a *application) authorizeDataCapability(ctx context.Context, request event
 		return dataAccessError(err), false
 	}
 	role := displayString(membership["role"])
-	if role == "owner" || role == "manager" || (required != "manager" && valueOr(membership, "capabilities", map[string]any{}) != nil && memberCapability(membership, required)) {
+	if managerRole(role) || (required != "manager" && valueOr(membership, "capabilities", map[string]any{}) != nil && memberCapability(membership, required)) {
 		return events.APIGatewayV2HTTPResponse{}, true
 	}
 	return errorResponse(403, "requires appropriate role"), false

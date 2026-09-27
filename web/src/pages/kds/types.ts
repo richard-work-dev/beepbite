@@ -138,6 +138,8 @@ export interface ExpoStationTicket {
   items?: ExpoStationItem[];
 }
 
+export type KdsTicketAction = 'start' | 'ready' | 'bump' | 'recall';
+
 // Client-side merge of an `orders` row (backend/migrations/001_baseline.sql)
 // with backend/internal/handlers/kds/store.go ExpoRow (GET
 // /kds/orders/{order_id}/expo) — built in expo.tsx's load(). ExpoRow itself

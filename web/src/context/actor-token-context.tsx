@@ -170,6 +170,7 @@ export function ActorTokenProvider({ children }: { children: ReactNode }) {
 
   const hasCapability = useCallback((name: string) => {
     if (!actor || isExpired) return false;
+    if (['owner', 'manager', 'admin'].includes(String(actor.role || '').toLowerCase())) return true;
     return actor.capabilities.includes(name);
   }, [actor, isExpired]);
 

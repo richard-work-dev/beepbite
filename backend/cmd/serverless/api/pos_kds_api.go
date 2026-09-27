@@ -183,6 +183,19 @@ func (a *application) createPOSOrder(ctx context.Context, orgID, body string) ev
 	if _, err := a.dataRowByID(ctx, orgID, "locations", locationID); err != nil {
 		return errorResponse(404, "location not found")
 	}
+	tableSessionID := strings.TrimSpace(displayString(input["table_session_id"]))
+	if tableSessionID != "" {
+		session, sessionErr := a.dataRowByID(ctx, orgID, "table_sessions", tableSessionID)
+		if sessionErr != nil || displayString(session["location_id"]) != locationID {
+			return errorResponse(400, "invalid table_session_id")
+		}
+		if displayString(session["status"]) != "open" {
+			return errorResponse(409, "table session is not open")
+		}
+		if orderType != "dine_in" {
+			return errorResponse(400, "table_session_id requires dine_in order_type")
+		}
+	}
 	lines, ok := input["items"].([]any)
 	if !ok || len(lines) == 0 {
 		return errorResponse(400, "items must not be empty")
@@ -247,7 +260,7 @@ func (a *application) createPOSOrder(ctx context.Context, orgID, body string) ev
 		"subtotal_cents": subtotal, "tax_cents": tax, "gratuity_cents": int64(0), "total_cents": total,
 		"currency_code": valueOr(location, "currency_code", "USD"), "currency_decimals": int64(2),
 		"tax_rate": taxRate, "tax_inclusive": taxInclusive, "tax_label": valueOr(location, "tax_label", "Tax"),
-		"table_number": valueOr(input, "table_number", nil), "table_session_id": valueOr(input, "table_session_id", nil),
+		"table_number": valueOr(input, "table_number", nil), "table_session_id": nullableString(tableSessionID),
 		"register_session_id": valueOr(input, "register_session_id", nil), "customer_id": valueOr(input, "customer_id", nil),
 		"notes": valueOr(input, "notes", nil), "party_size": valueOr(input, "party_size", 1), "held_at": nil,
 	}
@@ -375,7 +388,7 @@ func (a *application) chargePOSOrder(ctx context.Context, orgID, orderID, body s
 	if err != nil {
 		return errorResponse(404, "order not found")
 	}
-	if fmt.Sprint(order["payment_status"]) == "paid" || fmt.Sprint(order["status"]) == "completed" {
+	if fmt.Sprint(order["payment_status"]) == "paid" {
 		return errorResponse(409, "order already paid")
 	}
 	if fmt.Sprint(order["status"]) == "cancelled" {
@@ -404,13 +417,50 @@ func (a *application) chargePOSOrder(ctx context.Context, orgID, orderID, body s
 		return dataAccessError(err)
 	}
 	statuses := kdsStatusesForOrder(tickets, orderID)
+	payments, err := a.queryDataRows(ctx, orgID, "order_payments")
+	if err != nil {
+		return dataAccessError(err)
+	}
+	totalCents, totalOK := integerValue(order["total_cents"])
+	if !totalOK || totalCents < 1 {
+		return errorResponse(409, "order has no payable balance")
+	}
+	paidBefore := completedPaymentCents(payments, orderID)
+	if paidBefore >= totalCents {
+		return errorResponse(409, "order already paid")
+	}
+	normalizedLegs := make([]map[string]any, 0, len(legs))
+	newPaidCents := int64(0)
+	for _, leg := range legs {
+		method := strings.TrimSpace(fmt.Sprint(leg["payment_method_code"]))
+		amount, amountOK := integerValue(leg["amount_paid_cents"])
+		change := int64(0)
+		if rawChange, exists := leg["change_given_cents"]; exists {
+			var changeOK bool
+			change, changeOK = integerValue(rawChange)
+			if !changeOK {
+				return errorResponse(400, "change_given_cents must be an integer")
+			}
+		}
+		if method == "" || !amountOK || amount < 1 || change < 0 || change >= amount {
+			return errorResponse(400, "each payment requires a positive amount and valid change")
+		}
+		if method != "cash" && change > 0 {
+			return errorResponse(400, "change is only valid for cash payments")
+		}
+		leg["payment_method_code"], leg["amount_paid_cents"], leg["change_given_cents"] = method, amount, change
+		normalizedLegs = append(normalizedLegs, leg)
+		newPaidCents += amount - change
+	}
+	remainingBefore := totalCents - paidBefore
+	if newPaidCents > remainingBefore {
+		return errorResponse(400, "payment exceeds remaining balance")
+	}
+	legs = normalizedLegs
 	paymentIDs := make([]string, 0, len(legs))
 	for _, leg := range legs {
 		method := strings.TrimSpace(fmt.Sprint(leg["payment_method_code"]))
-		amount, ok := integerValue(leg["amount_paid_cents"])
-		if method == "" || !ok || amount < 0 {
-			return errorResponse(400, "each payment requires payment_method_code and amount_paid_cents >= 0")
-		}
+		amount, _ := integerValue(leg["amount_paid_cents"])
 		payment, createErr := a.createStoredRow(ctx, orgID, "order_payments", map[string]any{
 			"order_id": orderID, "payment_method_code": method, "amount_paid_cents": amount,
 			"tip_amount_cents": valueOr(leg, "tip_amount_cents", 0), "change_given_cents": valueOr(leg, "change_given_cents", 0),
@@ -431,8 +481,13 @@ func (a *application) chargePOSOrder(ctx context.Context, orgID, orderID, body s
 	// pay before preparation finishes; marking the order completed here used
 	// to make it disappear from Expo even though its KDS ticket was active.
 	// Complete it now only when every kitchen ticket is already terminal.
-	order["status"] = orderStatusAfterPayment(fmt.Sprint(order["status"]), statuses)
-	order["payment_status"], order["updated_at"] = "paid", time.Now().UTC().Format(time.RFC3339Nano)
+	paidCents := paidBefore + newPaidCents
+	paymentStatus := "partial"
+	if paidCents == totalCents {
+		paymentStatus = "paid"
+		order["status"] = orderStatusAfterPayment(fmt.Sprint(order["status"]), statuses)
+	}
+	order["payment_status"], order["updated_at"] = paymentStatus, time.Now().UTC().Format(time.RFC3339Nano)
 	if len(legs) == 1 {
 		order["payment_method"] = legs[0]["payment_method_code"]
 	} else {
@@ -441,11 +496,66 @@ func (a *application) chargePOSOrder(ctx context.Context, orgID, orderID, body s
 	if err := a.putDataRow(ctx, orgID, "orders", order, false); err != nil {
 		return dataAccessError(err)
 	}
+	sessionClosed := false
+	sessionCloseError := false
+	if paymentStatus == "paid" {
+		var closeErr error
+		sessionClosed, closeErr = a.closeTableSessionWhenPaid(ctx, orgID, displayString(order["table_session_id"]))
+		if closeErr != nil {
+			// The payment has already been persisted, so returning an error here
+			// would encourage the POS to retry the charge. Report the table-close
+			// failure separately and let the client refresh the floor safely.
+			sessionCloseError = true
+		}
+	}
 	firstID := ""
 	if len(paymentIDs) > 0 {
 		firstID = paymentIDs[0]
 	}
-	return mustJSONResponse(200, map[string]any{"order_id": orderID, "payment_id": firstID, "payment_ids": paymentIDs, "payment_status": "paid", "session_closed": false})
+	return mustJSONResponse(200, map[string]any{
+		"order_id": orderID, "payment_id": firstID, "payment_ids": paymentIDs, "payment_status": paymentStatus,
+		"paid_cents": paidCents, "remaining_cents": totalCents - paidCents, "session_closed": sessionClosed,
+		"session_close_error": sessionCloseError,
+	})
+}
+
+func (a *application) closeTableSessionWhenPaid(ctx context.Context, orgID, sessionID string) (bool, error) {
+	if sessionID == "" {
+		return false, nil
+	}
+	session, err := a.dataRowByID(ctx, orgID, "table_sessions", sessionID)
+	if err != nil || displayString(session["status"]) != "open" {
+		return false, err
+	}
+	orders, err := a.queryDataRows(ctx, orgID, "orders")
+	if err != nil {
+		return false, err
+	}
+	linkedOrders := 0
+	for _, order := range orders {
+		if displayString(order["table_session_id"]) != sessionID || displayString(order["status"]) == "cancelled" {
+			continue
+		}
+		linkedOrders++
+		if displayString(order["payment_status"]) != "paid" {
+			return false, nil
+		}
+	}
+	if linkedOrders == 0 {
+		return false, nil
+	}
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	session["status"], session["closed_at"], session["updated_at"] = "closed", now, now
+	if err := a.putDataRow(ctx, orgID, "table_sessions", session, false); err != nil {
+		return false, err
+	}
+	if table, tableErr := a.dataRowByID(ctx, orgID, "tables", displayString(session["table_id"])); tableErr == nil {
+		table["status"], table["updated_at"] = "available", now
+		if err := a.putDataRow(ctx, orgID, "tables", table, false); err != nil {
+			return false, err
+		}
+	}
+	return true, nil
 }
 
 func (a *application) holdPOSOrder(ctx context.Context, orgID, orderID string, hold bool) events.APIGatewayV2HTTPResponse {
@@ -862,6 +972,43 @@ func kdsStatusesForOrder(tickets []map[string]any, orderID string) []string {
 		}
 	}
 	return statuses
+}
+
+func completedPaymentCents(payments []map[string]any, orderID string) int64 {
+	total := int64(0)
+	for _, payment := range payments {
+		if displayString(payment["order_id"]) != orderID || displayString(payment["payment_status"]) != "completed" {
+			continue
+		}
+		amount, amountOK := integerValue(payment["amount_paid_cents"])
+		change, changeOK := integerValue(payment["change_given_cents"])
+		if !changeOK {
+			change = 0
+		}
+		if amountOK && amount > change {
+			total += amount - change
+		}
+	}
+	return total
+}
+
+func aggregateKDSStatus(statuses []string) string {
+	if len(statuses) == 0 {
+		return "pending"
+	}
+	_, allReady, allFinished := summarizeKDSStatuses(statuses)
+	if allFinished {
+		return "bumped"
+	}
+	if allReady {
+		return "ready"
+	}
+	for _, status := range statuses {
+		if status == "in_progress" {
+			return "in_progress"
+		}
+	}
+	return "fired"
 }
 
 // summarizeKDSStatuses reports whether an order is still active, ready as a

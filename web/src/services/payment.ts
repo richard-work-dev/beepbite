@@ -61,6 +61,17 @@ interface FetchError extends Error {
   status?: number;
 }
 
+export interface ChargeOrderResult {
+  order_id: string;
+  payment_id: string;
+  payment_ids: string[];
+  payment_status: 'partial' | 'paid';
+  paid_cents: number;
+  remaining_cents: number;
+  session_closed: boolean;
+  session_close_error?: boolean;
+}
+
 export async function chargeOrder({
   orderId,
   paymentMethodCode,
@@ -101,7 +112,7 @@ export async function chargeOrder({
     if (processedByStaffId)       body.processed_by_staff_id = processedByStaffId;
   }
 
-  const { data, error } = await api.request(
+  const { data, error } = await api.request<ChargeOrderResult>(
     'POST',
     `/pos/orders/${encodeURIComponent(orderId)}/charge`,
     { body },
@@ -111,12 +122,13 @@ export async function chargeOrder({
     e.status = error.status;
     throw e;
   }
-  return data;
+  return data!;
 }
 
 export interface UnpaidOrder {
   id: string;
   total_cents: number;
+  paid_cents?: number;
   [key: string]: unknown;
 }
 
@@ -125,6 +137,53 @@ export interface TenderLeg {
   amountCents: number;
   reference?: string;
   changeCents?: number;
+}
+
+export interface AllocatedOrderPayments {
+  order: UnpaidOrder;
+  remaining: number;
+  payments: PaymentLeg[];
+}
+
+export function allocateTenderLegs(orders: UnpaidOrder[], legs: TenderLeg[]): AllocatedOrderPayments[] {
+  const remainingByOrder = orders.map((order) => ({
+    order,
+    remaining: Math.max(0, (order.total_cents || 0) - (order.paid_cents || 0)),
+    payments: [] as PaymentLeg[],
+  }));
+  let orderIndex = 0;
+
+  // Fill outstanding orders in sequence. This preserves every cent and avoids
+  // proportional rounding marking one order overpaid while another remains due.
+  for (const leg of legs) {
+    const change = Math.max(0, Math.round(leg.changeCents || 0));
+    let net = Math.round(leg.amountCents) - change;
+    if (net <= 0) throw new Error('El importe del pago debe ser mayor que cero');
+    if (change > 0 && leg.method !== 'cash') throw new Error('Solo el efectivo puede registrar cambio');
+    let lastPayment: PaymentLeg | null = null;
+
+    while (net > 0) {
+      while (orderIndex < remainingByOrder.length && remainingByOrder[orderIndex].remaining === 0) orderIndex += 1;
+      if (orderIndex >= remainingByOrder.length) throw new Error('El pago supera el saldo pendiente');
+      const target = remainingByOrder[orderIndex];
+      const allocated = Math.min(net, target.remaining);
+      lastPayment = {
+        payment_method_code: leg.method,
+        amount_paid_cents: allocated,
+        change_given_cents: 0,
+        payment_reference: leg.reference || '',
+      };
+      target.payments.push(lastPayment);
+      target.remaining -= allocated;
+      net -= allocated;
+    }
+
+    if (change > 0 && lastPayment) {
+      lastPayment.amount_paid_cents += change;
+      lastPayment.change_given_cents = change;
+    }
+  }
+  return remainingByOrder;
 }
 
 /**
@@ -142,42 +201,17 @@ export async function chargeOrdersWithLegs({ orders, legs, processedByStaffId }:
   if (!orders || orders.length === 0) throw new Error('No hay pedidos pendientes de cobro');
   if (!legs || legs.length === 0) throw new Error('Agregá al menos un método de pago');
 
-  const results: unknown[] = [];
+  const remainingByOrder = allocateTenderLegs(orders, legs);
 
-  if (orders.length === 1) {
-    // Simple case: one order, pass all legs directly
-    const r = await chargeOrder({
-      orderId: orders[0].id,
+  const results: ChargeOrderResult[] = [];
+  for (const target of remainingByOrder) {
+    if (target.payments.length === 0) continue;
+    results.push(await chargeOrder({
+      orderId: target.order.id,
       processedByStaffId,
-      payments: legs.map((leg) => ({
-        payment_method_code: leg.method,
-        amount_paid_cents: leg.amountCents,
-        change_given_cents: leg.changeCents || 0,
-        payment_reference: leg.reference || '',
-      })),
-    });
-    results.push(r);
-    return results;
-  }
-
-  // Multiple orders: distribute legs proportionally by order total.
-  const totalOrderCents = orders.reduce((s, o) => s + (o.total_cents || 0), 0);
-  for (const order of orders) {
-    const ratio = totalOrderCents > 0 ? (order.total_cents || 0) / totalOrderCents : 1 / orders.length;
-    const orderPayments = legs.map((leg) => ({
-      payment_method_code: leg.method,
-      amount_paid_cents: Math.round(leg.amountCents * ratio),
-      change_given_cents: leg.changeCents ? Math.round(leg.changeCents * ratio) : 0,
-      payment_reference: leg.reference || '',
+      payments: target.payments,
     }));
-    const r = await chargeOrder({
-      orderId: order.id,
-      processedByStaffId,
-      payments: orderPayments,
-    });
-    results.push(r);
   }
-
   return results;
 }
 

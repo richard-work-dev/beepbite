@@ -51,7 +51,7 @@ const ProtectedRoute = ({
     return loadingComponent;
   }
 
-  const allowed = !capabilities?.length || hasAnyAccess(activeMembership, capabilities, actor?.capabilities);
+  const allowed = !capabilities?.length || hasAnyAccess(activeMembership, capabilities, actor?.capabilities, actor?.role);
   if (!allowed) {
     return (
       <main className="flex min-h-screen items-center justify-center p-6" aria-labelledby="access-denied-title">

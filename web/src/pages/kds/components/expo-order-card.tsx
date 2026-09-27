@@ -9,10 +9,10 @@
 // one is still firing — the expo needs to chase the slow station.
 // Color-coded urgency header: green < 5 min, amber 5-15 min, red > 15 min.
 
-import { Bell, Clock, Send } from 'lucide-react';
+import { Bell, Check, ChefHat, Clock, Loader2, PackageCheck, RotateCcw, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { ExpoOrder } from '../types';
+import type { ExpoOrder, ExpoStationTicket, KdsTicketAction } from '../types';
 
 // ---- Urgency thresholds (minutes) ------------------------------------------
 const AMBER_MIN = 5;
@@ -125,9 +125,33 @@ interface ExpoOrderCardProps {
   now: number;
   onSendToKitchen?: (order: ExpoOrder) => void;
   sendingToKitchen?: boolean;
+  onTransition?: (ticketIDs: string[], action: KdsTicketAction) => void;
+  actingTicketIDs?: Set<string>;
 }
 
-export function ExpoOrderCard({ order, now, onSendToKitchen, sendingToKitchen = false }: ExpoOrderCardProps) {
+const NEXT_ACTION: Record<string, { action: KdsTicketAction; label: string; icon: typeof ChefHat }> = {
+  fired: { action: 'start', label: 'Comenzar', icon: ChefHat },
+  in_progress: { action: 'ready', label: 'Marcar lista', icon: Check },
+  ready: { action: 'bump', label: 'Entregar', icon: PackageCheck },
+  bumped: { action: 'recall', label: 'Reabrir', icon: RotateCcw },
+};
+
+function bulkAction(stations: ExpoStationTicket[]) {
+  for (const status of ['fired', 'in_progress', 'ready'] as const) {
+    const tickets = stations.filter((station) => station.status === status);
+    if (tickets.length > 0) return { ...NEXT_ACTION[status], tickets };
+  }
+  return null;
+}
+
+export function ExpoOrderCard({
+  order,
+  now,
+  onSendToKitchen,
+  sendingToKitchen = false,
+  onTransition,
+  actingTicketIDs = new Set<string>(),
+}: ExpoOrderCardProps) {
   const stations = Array.isArray(order.station_tickets) ? order.station_tickets : [];
 
   // Urgency from earliest_fired_at (already a JS timestamp or ISO string).
@@ -143,6 +167,8 @@ export function ExpoOrderCard({ order, now, onSendToKitchen, sendingToKitchen = 
   const anyOpen  = stations.some((s) => s.status === 'fired'  || s.status === 'in_progress');
   const blocked  = anyDone && anyOpen;
   const allReady = stations.length > 0 && stations.every((s) => s.status === 'ready' || s.status === 'bumped');
+  const orderAction = bulkAction(stations);
+  const OrderActionIcon = orderAction?.icon;
 
   // Order number: prefer human-readable, fall back to short UUID prefix.
   const displayId = order.order_number || order.order_id?.slice(0, 8) || '—';
@@ -257,7 +283,7 @@ export function ExpoOrderCard({ order, now, onSendToKitchen, sendingToKitchen = 
               >
                 {/* Station name + status */}
                 <div className={cn(
-                  'flex items-center justify-between gap-2 px-3 py-2.5',
+                  'flex flex-wrap items-center justify-between gap-2 px-3 py-2.5',
                   isSlowStation ? 'bg-amber-900/40' : 'bg-gray-800',
                 )}>
                   <span className={cn(
@@ -266,12 +292,34 @@ export function ExpoOrderCard({ order, now, onSendToKitchen, sendingToKitchen = 
                   )}>
                     {st.station_name || 'Estación'}
                   </span>
-                  <span className={cn(
-                    'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold shrink-0',
-                    statusMeta.cls,
-                  )}>
-                    {statusMeta.label}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={cn(
+                      'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold shrink-0',
+                      statusMeta.cls,
+                    )}>
+                      {statusMeta.label}
+                    </span>
+                    {onTransition && stations.length > 1 && st.status && NEXT_ACTION[st.status] && (() => {
+                      const transition = NEXT_ACTION[st.status];
+                      const Icon = transition.icon;
+                      const busy = actingTicketIDs.has(st.ticket_id);
+                      return (
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={busy}
+                          onClick={() => onTransition([st.ticket_id], transition.action)}
+                          aria-label={`${transition.label}: ${st.station_name || 'estación'}`}
+                          className="h-8 gap-1.5 bg-orange-500 px-2.5 text-xs font-bold text-white hover:bg-orange-400"
+                        >
+                          {busy
+                            ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                            : <Icon className="size-3.5" aria-hidden="true" />}
+                          {transition.label}
+                        </Button>
+                      );
+                    })()}
+                  </div>
                 </div>
 
                 {/* Items */}
@@ -314,6 +362,25 @@ export function ExpoOrderCard({ order, now, onSendToKitchen, sendingToKitchen = 
           })
         )}
       </div>
+      {orderAction && OrderActionIcon && onTransition && (
+        <div className="border-t border-gray-700 bg-gray-900 p-3">
+          <Button
+            type="button"
+            onClick={() => onTransition(orderAction.tickets.map((ticket) => ticket.ticket_id), orderAction.action)}
+            disabled={orderAction.tickets.some((ticket) => actingTicketIDs.has(ticket.ticket_id))}
+            className="h-12 w-full gap-2 bg-orange-500 text-base font-black text-white hover:bg-orange-400"
+          >
+            {orderAction.tickets.some((ticket) => actingTicketIDs.has(ticket.ticket_id))
+              ? <Loader2 className="size-5 animate-spin" aria-hidden="true" />
+              : <OrderActionIcon className="size-5" aria-hidden="true" />}
+            {orderAction.label === 'Comenzar'
+              ? 'Comenzar pedido'
+              : orderAction.label === 'Marcar lista'
+                ? 'Marcar pedido listo'
+                : 'Entregar pedido'}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

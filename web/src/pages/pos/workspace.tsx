@@ -136,6 +136,7 @@ interface WorkspaceSentOrder {
   order_number?: string;
   created_at?: string;
   payment_status: string;
+  paid_cents: number;
   kitchen_status?: string;
   total_cents: number;
   items: WorkspaceSentOrderItem[];
@@ -611,26 +612,17 @@ export default function PosWorkspacePage() {
         const next: Record<string, WorkspaceTicket> = {};
         detailFetches.forEach((detail) => {
           if (!detail) return;
-          // NOTE (found by this TS conversion, not fixed — out of scope):
-          // `detail.session` is checked defensively but SessionDetail
-          // (backend/internal/handlers/tables/types.go) struct-embeds
-          // TableSession, so its fields are FLAT — there is no nested
-          // `.session`. That branch is always undefined and the `|| detail`
-          // fallback always fires (harmless — just dead code). More
-          // seriously, `detail.orders` is the LIGHTWEIGHT view store.go's
-          // GetSessionDetail actually SELECTs: only
-          // { id, order_type, status, course_number, created_at }. It never
-          // has order_number, payment_status, total_amount_cents/total, or
-          // items — so reopening a table with previously-sent orders
-          // hydrates them with a blank order number, "pending" status
-          // regardless of the real one, a $0 total, and NO line items. The
-          // cast below preserves those exact (already-broken) reads.
+          // Session detail carries the complete order snapshot required to
+          // restore totals, payment state and line items after a reload.
           const raw = detail as unknown as {
             orders?: Array<{
               id: string;
               order_number?: string;
               created_at?: string;
               payment_status?: string;
+              paid_cents?: number;
+              kitchen_status?: string;
+              total_cents?: number;
               total_amount_cents?: number;
               total?: number;
               items?: Array<{
@@ -654,8 +646,12 @@ export default function PosWorkspacePage() {
             order_number: o.order_number,
             created_at: o.created_at,
             payment_status: o.payment_status || 'pending',
-            total_cents: typeof o.total_amount_cents === 'number'
-              ? o.total_amount_cents
+            paid_cents: typeof o.paid_cents === 'number' ? o.paid_cents : 0,
+            kitchen_status: o.kitchen_status,
+            total_cents: typeof o.total_cents === 'number'
+              ? o.total_cents
+              : typeof o.total_amount_cents === 'number'
+                ? o.total_amount_cents
               : (typeof o.total === 'number' ? Math.round(o.total * scale) : 0),
             items: (o.items || []).map((it) => ({
               order_item_id: it.id,
@@ -804,13 +800,13 @@ export default function PosWorkspacePage() {
 
   // ===== handlers ========================================================
 
-  const updateTicket = (ticketId: string, patch: Partial<WorkspaceTicket> | ((t: WorkspaceTicket) => WorkspaceTicket)) => {
+  const updateTicket = useCallback((ticketId: string, patch: Partial<WorkspaceTicket> | ((t: WorkspaceTicket) => WorkspaceTicket)) => {
     setTickets((prev) => {
       const t = prev[ticketId];
       if (!t) return prev;
       return { ...prev, [ticketId]: typeof patch === 'function' ? patch(t) : { ...t, ...patch } };
     });
-  };
+  }, []);
 
   const handleSelectTile = useCallback(async (ticketId: string, kind: 'table' | 'walkin') => {
     if (kind === 'walkin') {
@@ -968,6 +964,7 @@ export default function PosWorkspacePage() {
         locationId: activeLocation!.id,
         orderType: activeTicket.kind === 'table' ? 'dine_in' : 'takeaway',
         tableNumber: activeTicket.kind === 'table' ? String(activeTicket.table_number || activeTicket.label || '') : undefined,
+        tableSessionId: activeTicket.kind === 'table' ? activeTicket.sessionId : undefined,
         registerSessionId: registerSession?.id,
         items: activeTicket.newItems.map((ni) => {
           const lineItem: {
@@ -1002,6 +999,7 @@ export default function PosWorkspacePage() {
         order_number: result.order_number,
         created_at: new Date().toISOString(),
         payment_status: 'pending',
+        paid_cents: 0,
         kitchen_status: result.kds_ticket_ids.length > 0 ? 'fired' : 'pending',
         total_cents: typeof result.total === 'number'
           ? Math.round(result.total * scale)
@@ -1049,20 +1047,29 @@ export default function PosWorkspacePage() {
       const results = await chargeOrdersWithLegs({
         orders: unpaid,
         legs,
-        processedByStaffId: staff?.id || undefined,
+        processedByStaffId: staff?.id || actor?.staff_id || undefined,
       });
-      // Mark all as paid locally
+      const resultByOrder = new Map(results.map((result) => [result.order_id, result]));
       updateTicket(activeTicket.id, (t) => ({
         ...t,
-        sentOrders: t.sentOrders.map((o) => ({ ...o, payment_status: 'paid' })),
+        sentOrders: t.sentOrders.map((o) => {
+          const result = resultByOrder.get(o.id);
+          return result ? { ...o, payment_status: result.payment_status, paid_cents: result.paid_cents } : o;
+        }),
       }));
-      // chargeOrdersWithLegs() returns unknown[] (each element is whatever
-      // POST /pos/orders/{id}/charge responds with — see services/payment.ts);
-      // session_closed is documented in that route's response shape.
-      const sessionClosed = (results as Array<{ session_closed?: boolean }>).some((r) => r.session_closed);
+      const sessionClosed = results.some((result) => result.session_closed);
+      const sessionCloseFailed = results.some((result) => result.session_close_error);
+      const allPaid = unpaid.every((order) => resultByOrder.get(order.id)?.payment_status === 'paid');
       toast({
-        title: 'Pago recibido ✓',
-        description: sessionClosed ? 'Mesa cerrada.' : 'Pedido marcado como pagado.',
+        title: allPaid ? 'Pago recibido ✓' : 'Pago parcial registrado',
+        description: sessionCloseFailed
+          ? 'El pago se registró, pero no se pudo liberar la mesa. Actualizá el plano para reintentar.'
+          : sessionClosed
+            ? 'Mesa cerrada.'
+            : allPaid
+              ? 'Pedido marcado como pagado.'
+              : 'Todavía queda saldo pendiente.',
+        variant: sessionCloseFailed ? 'destructive' : 'default',
       });
       // Close tender modal first, then open receipt after a brief delay so the
       // two dialogs don't stack on top of each other.
@@ -1082,7 +1089,7 @@ export default function PosWorkspacePage() {
         });
         setActiveTicketId(null);
         void refreshTables();
-      } else if (activeTicket.kind === 'walkin') {
+      } else if (activeTicket.kind === 'walkin' && allPaid) {
         // walk-in is done — drop it
         setTickets((prev) => {
           const next = { ...prev };
@@ -1100,19 +1107,34 @@ export default function PosWorkspacePage() {
     }
   };
 
-  // Charge a single seat split: find the orders that contain its items and
-  // record payment legs for that split's amount.
+  // Charge one seat without marking the complete check as paid.
   const handleChargeSplit = useCallback(async (_splitId: string, legs: TenderLeg[]) => {
     if (!activeTicket) return;
-    // For a seat split we charge the full-ticket orders proportionally —
-    // the split just determines the tender amount already baked into legs.
     const unpaid = activeTicket.sentOrders.filter((o) => o.payment_status !== 'paid');
-    await chargeOrdersWithLegs({
+    const results = await chargeOrdersWithLegs({
       orders: unpaid,
       legs,
-      processedByStaffId: staff?.id || undefined,
+      processedByStaffId: staff?.id || actor?.staff_id || undefined,
     });
-  }, [activeTicket, staff?.id]);
+    const resultByOrder = new Map(results.map((result) => [result.order_id, result]));
+    updateTicket(activeTicket.id, (ticket) => ({
+      ...ticket,
+      sentOrders: ticket.sentOrders.map((order) => {
+        const result = resultByOrder.get(order.id);
+        return result ? { ...order, payment_status: result.payment_status, paid_cents: result.paid_cents } : order;
+      }),
+    }));
+    if (results.some((result) => result.session_closed)) {
+      setShowSplitBySeat(false);
+      setTickets((previous) => {
+        const next = { ...previous };
+        delete next[activeTicket.id];
+        return next;
+      });
+      setActiveTicketId(null);
+      void refreshTables();
+    }
+  }, [activeTicket, actor?.staff_id, refreshTables, staff?.id, updateTicket]);
 
   // ----- assign / change table for the active ticket ---------------------
   // Walk-in → table: open a new table_session, move items into a new ticket
@@ -1233,7 +1255,7 @@ export default function PosWorkspacePage() {
   const activeUnpaidCents = activeTicket
     ? activeTicket.sentOrders
         .filter((o) => o.payment_status !== 'paid')
-        .reduce((s, o) => s + (o.total_cents || 0), 0)
+        .reduce((s, o) => s + Math.max(0, (o.total_cents || 0) - (o.paid_cents || 0)), 0)
     : 0;
 
   return (

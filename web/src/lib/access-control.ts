@@ -8,6 +8,10 @@ const aliases: Record<string, string[]> = {
   can_kitchen: ['can_kds'],
 };
 
+function isElevatedRole(role?: string | null): boolean {
+  return ['owner', 'manager', 'admin'].includes(String(role || '').trim().toLowerCase());
+}
+
 export function capabilityEnabled(capabilities: CapabilitySet, capability: string): boolean {
   const accepted = [capability, ...(aliases[capability] ?? [])];
   if (Array.isArray(capabilities)) return accepted.some((name) => capabilities.includes(name));
@@ -19,11 +23,17 @@ export function capabilityEnabled(capabilities: CapabilitySet, capability: strin
 
 export function membershipHasAccess(membership: OrganizationMembership | null, capability?: string): boolean {
   if (!membership) return false;
-  if (membership.role === 'owner' || membership.role === 'manager' || membership.role === 'admin') return true;
+  if (isElevatedRole(membership.role)) return true;
   return !capability || capabilityEnabled(membership.capabilities, capability);
 }
 
-export function hasAnyAccess(membership: OrganizationMembership | null, capabilities: string[], actorCapabilities?: string[] | null): boolean {
+export function hasAnyAccess(
+  membership: OrganizationMembership | null,
+  capabilities: string[],
+  actorCapabilities?: string[] | null,
+  actorRole?: string | null,
+): boolean {
+  if (isElevatedRole(actorRole)) return true;
   if (actorCapabilities) return capabilities.some((capability) => capabilityEnabled(actorCapabilities, capability));
   return capabilities.some((capability) => membershipHasAccess(membership, capability));
 }

@@ -99,6 +99,35 @@ func TestShouldListKDSExpoOrderUsesKitchenLifecycle(t *testing.T) {
 	}
 }
 
+func TestCompletedPaymentCentsUsesNetSettledAmount(t *testing.T) {
+	payments := []map[string]any{
+		{"order_id": "order-1", "payment_status": "completed", "amount_paid_cents": int64(2000), "change_given_cents": int64(500)},
+		{"order_id": "order-1", "payment_status": "pending", "amount_paid_cents": int64(900)},
+		{"order_id": "order-2", "payment_status": "completed", "amount_paid_cents": int64(700)},
+	}
+	if got := completedPaymentCents(payments, "order-1"); got != 1500 {
+		t.Fatalf("completedPaymentCents() = %d, want 1500", got)
+	}
+}
+
+func TestAggregateKDSStatus(t *testing.T) {
+	tests := []struct {
+		statuses []string
+		want     string
+	}{
+		{nil, "pending"},
+		{[]string{"fired", "bumped"}, "fired"},
+		{[]string{"fired", "in_progress"}, "in_progress"},
+		{[]string{"ready", "bumped"}, "ready"},
+		{[]string{"bumped", "cancelled"}, "bumped"},
+	}
+	for _, test := range tests {
+		if got := aggregateKDSStatus(test.statuses); got != test.want {
+			t.Fatalf("aggregateKDSStatus(%#v) = %q, want %q", test.statuses, got, test.want)
+		}
+	}
+}
+
 func TestNullableString(t *testing.T) {
 	if nullableString(nil) != nil || nullableString("") != nil {
 		t.Fatal("empty values must map to nil")

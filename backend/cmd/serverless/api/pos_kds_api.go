@@ -21,6 +21,12 @@ type commerceRoute struct {
 	params []string
 }
 
+type orderModifierCatalog struct {
+	modifiersByID map[string]map[string]any
+	groupsByID    map[string]map[string]any
+	groupsByItem  map[string][]map[string]any
+}
+
 func matchCommerceRoute(method, path string) (commerceRoute, bool) {
 	segments := strings.Split(strings.Trim(path, "/"), "/")
 	switch {
@@ -162,6 +168,128 @@ func (a *application) createStoredRow(ctx context.Context, orgID, table string, 
 	return row, nil
 }
 
+func (a *application) loadOrderModifierCatalog(ctx context.Context, orgID string) (orderModifierCatalog, error) {
+	modifiers, err := a.queryDataRows(ctx, orgID, "modifiers")
+	if err != nil {
+		return orderModifierCatalog{}, err
+	}
+	groups, err := a.queryDataRows(ctx, orgID, "modifier_groups")
+	if err != nil {
+		return orderModifierCatalog{}, err
+	}
+	catalog := orderModifierCatalog{
+		modifiersByID: make(map[string]map[string]any, len(modifiers)),
+		groupsByID:    make(map[string]map[string]any, len(groups)),
+		groupsByItem:  make(map[string][]map[string]any),
+	}
+	for _, modifier := range modifiers {
+		catalog.modifiersByID[displayString(modifier["id"])] = modifier
+	}
+	for _, group := range groups {
+		groupID := displayString(group["id"])
+		itemID := displayString(group["item_id"])
+		catalog.groupsByID[groupID] = group
+		catalog.groupsByItem[itemID] = append(catalog.groupsByItem[itemID], group)
+	}
+	return catalog, nil
+}
+
+func normalizeOrderModifiers(raw any, itemID string, catalog orderModifierCatalog) ([]any, int64, error) {
+	selected, ok := raw.([]any)
+	if raw == nil {
+		selected, ok = []any{}, true
+	}
+	if !ok {
+		return nil, 0, fmt.Errorf("los modificadores deben enviarse como una lista")
+	}
+	snapshots := make([]any, 0, len(selected))
+	countsByGroup := make(map[string]int)
+	seen := make(map[string]bool)
+	priceDelta := int64(0)
+	for _, value := range selected {
+		selection, valid := value.(map[string]any)
+		if !valid {
+			return nil, 0, fmt.Errorf("cada modificador debe tener un identificador válido")
+		}
+		modifierID := strings.TrimSpace(displayString(selection["modifier_id"]))
+		modifier := catalog.modifiersByID[modifierID]
+		if modifierID == "" || modifier == nil || modifier["is_active"] == false || seen[modifierID] {
+			return nil, 0, fmt.Errorf("uno o más modificadores son inválidos, están inactivos o repetidos")
+		}
+		groupID := displayString(modifier["modifier_group_id"])
+		group := catalog.groupsByID[groupID]
+		if group == nil || displayString(group["item_id"]) != itemID {
+			return nil, 0, fmt.Errorf("el modificador no pertenece al producto seleccionado")
+		}
+		delta, valid := integerValue(modifier["price_delta_cents"])
+		if !valid {
+			return nil, 0, fmt.Errorf("el modificador tiene un precio inválido")
+		}
+		seen[modifierID] = true
+		countsByGroup[groupID]++
+		priceDelta += delta
+		snapshots = append(snapshots, map[string]any{
+			"modifier_id": modifierID, "name": valueOr(modifier, "name", "Modificador"),
+			"name_snapshot": valueOr(modifier, "name", "Modificador"),
+			"price_cents":   delta, "price_cents_snapshot": delta,
+		})
+	}
+	for _, group := range catalog.groupsByItem[itemID] {
+		groupID := displayString(group["id"])
+		minimum, _ := integerValue(group["min_select"])
+		maximum, maxOK := integerValue(group["max_select"])
+		if group["is_required"] == true && minimum < 1 {
+			minimum = 1
+		}
+		count := int64(countsByGroup[groupID])
+		if count < minimum || (maxOK && maximum > 0 && count > maximum) {
+			return nil, 0, fmt.Errorf("la selección no cumple la cantidad requerida de modificadores")
+		}
+	}
+	return snapshots, priceDelta, nil
+}
+
+func orderModifierNames(raw any) []string {
+	values, ok := raw.([]any)
+	if !ok {
+		return []string{}
+	}
+	names := make([]string, 0, len(values))
+	for _, value := range values {
+		modifier, valid := value.(map[string]any)
+		if !valid {
+			continue
+		}
+		name := strings.TrimSpace(displayString(valueOr(modifier, "name_snapshot", modifier["name"])))
+		if name != "" {
+			names = append(names, name)
+		}
+	}
+	return names
+}
+
+func (a *application) createPOSOrderItem(ctx context.Context, orgID string, row map[string]any) (map[string]any, error) {
+	created, err := a.createStoredRow(ctx, orgID, "order_items", row)
+	if err != nil {
+		return nil, err
+	}
+	modifiers, _ := row["modifiers"].([]any)
+	for _, value := range modifiers {
+		modifier, ok := value.(map[string]any)
+		if !ok {
+			continue
+		}
+		_, err = a.createStoredRow(ctx, orgID, "order_item_modifiers", map[string]any{
+			"order_item_id": created["id"], "modifier_id": modifier["modifier_id"],
+			"name_snapshot": modifier["name_snapshot"], "price_cents_snapshot": modifier["price_cents_snapshot"],
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	return created, nil
+}
+
 func (a *application) deleteStoredRow(ctx context.Context, orgID, table, id string) error {
 	_, err := a.dynamo.DeleteItem(ctx, &dynamodb.DeleteItemInput{TableName: aws.String(a.table), Key: dataRowKey(orgID, table, id)})
 	return err
@@ -200,6 +328,10 @@ func (a *application) createPOSOrder(ctx context.Context, orgID, body string) ev
 	if !ok || len(lines) == 0 {
 		return errorResponse(400, "items must not be empty")
 	}
+	modifierCatalog, err := a.loadOrderModifierCatalog(ctx, orgID)
+	if err != nil {
+		return dataAccessError(err)
+	}
 
 	subtotal := int64(0)
 	prepared := make([]map[string]any, 0, len(lines))
@@ -220,21 +352,29 @@ func (a *application) createPOSOrder(ctx context.Context, orgID, body string) ev
 		if item["is_86ed"] == true || item["is_active"] == false {
 			return errorResponse(409, "item is unavailable")
 		}
-		unit, ok := integerValue(item["price_cents"])
+		baseUnit, ok := integerValue(item["price_cents"])
 		if !ok {
 			if price, numberOK := numericValue(item["price"]); numberOK {
-				unit = int64(math.Round(price * 100))
+				baseUnit = int64(math.Round(price * 100))
 			} else {
 				return errorResponse(400, "item has no price")
 			}
+		}
+		modifiers, modifierDelta, modifierErr := normalizeOrderModifiers(valueOr(line, "modifiers", []any{}), itemID, modifierCatalog)
+		if modifierErr != nil {
+			return errorResponse(400, modifierErr.Error())
+		}
+		unit := baseUnit + modifierDelta
+		if unit < 0 {
+			return errorResponse(400, "los modificadores no pueden dejar un precio negativo")
 		}
 		lineTotal := unit * qty
 		subtotal += lineTotal
 		prepared = append(prepared, map[string]any{
 			"item_id": itemID, "item_name": item["name"], "category_id": item["category_id"],
-			"quantity": qty, "unit_price_cents": unit, "line_total_cents": lineTotal,
+			"quantity": qty, "base_price_cents": baseUnit, "unit_price_cents": unit, "line_total_cents": lineTotal,
 			"special_instructions": valueOr(line, "notes", nil), "course_id": valueOr(line, "course_id", nil),
-			"variation_option_ids": valueOr(line, "variation_option_ids", []string{}), "modifiers": valueOr(line, "modifiers", []any{}),
+			"variation_option_ids": valueOr(line, "variation_option_ids", []string{}), "modifiers": modifiers,
 		})
 	}
 
@@ -271,7 +411,7 @@ func (a *application) createPOSOrder(ctx context.Context, orgID, body string) ev
 	createdItems := make([]map[string]any, 0, len(prepared))
 	for _, line := range prepared {
 		line["order_id"] = created["id"]
-		createdItem, createErr := a.createStoredRow(ctx, orgID, "order_items", line)
+		createdItem, createErr := a.createPOSOrderItem(ctx, orgID, line)
 		if createErr != nil {
 			return dataAccessError(createErr)
 		}
@@ -324,6 +464,10 @@ func (a *application) modifyPOSOrder(ctx context.Context, orgID, orderID, body s
 	if !ok || len(lines) == 0 {
 		return errorResponse(400, "items must be a non-empty array")
 	}
+	modifierCatalog, err := a.loadOrderModifierCatalog(ctx, orgID)
+	if err != nil {
+		return dataAccessError(err)
+	}
 	locationID := fmt.Sprint(order["location_id"])
 	subtotal := int64(0)
 	prepared := make([]map[string]any, 0, len(lines))
@@ -338,17 +482,39 @@ func (a *application) modifyPOSOrder(ctx context.Context, orgID, orderID, body s
 		if !valid || qty < 1 || getErr != nil || fmt.Sprint(item["location_id"]) != locationID {
 			return errorResponse(400, "one or more item_ids are invalid")
 		}
-		unit, priceOK := integerValue(item["price_cents"])
+		if item["is_86ed"] == true || item["is_active"] == false {
+			return errorResponse(409, "item is unavailable")
+		}
+		baseUnit, priceOK := integerValue(item["price_cents"])
 		if !priceOK {
 			price, numericOK := numericValue(item["price"])
 			if !numericOK {
 				return errorResponse(400, "item has no price")
 			}
-			unit = int64(math.Round(price * 100))
+			baseUnit = int64(math.Round(price * 100))
+		}
+		modifiers, modifierDelta, modifierErr := normalizeOrderModifiers(valueOr(line, "modifiers", []any{}), itemID, modifierCatalog)
+		if modifierErr != nil {
+			return errorResponse(400, modifierErr.Error())
+		}
+		unit := baseUnit + modifierDelta
+		if unit < 0 {
+			return errorResponse(400, "los modificadores no pueden dejar un precio negativo")
 		}
 		lineTotal := unit * qty
 		subtotal += lineTotal
-		prepared = append(prepared, map[string]any{"order_id": orderID, "item_id": itemID, "item_name": item["name"], "category_id": item["category_id"], "quantity": qty, "unit_price_cents": unit, "line_total_cents": lineTotal, "special_instructions": valueOr(line, "notes", nil), "course_id": valueOr(line, "course_id", nil), "modifiers": valueOr(line, "modifiers", []any{})})
+		prepared = append(prepared, map[string]any{"order_id": orderID, "item_id": itemID, "item_name": item["name"], "category_id": item["category_id"], "quantity": qty, "base_price_cents": baseUnit, "unit_price_cents": unit, "line_total_cents": lineTotal, "special_instructions": valueOr(line, "notes", nil), "course_id": valueOr(line, "course_id", nil), "modifiers": modifiers})
+	}
+	existingItems, err := a.queryDataRows(ctx, orgID, "order_items")
+	if err != nil {
+		return dataAccessError(err)
+	}
+	for _, item := range existingItems {
+		if displayString(item["order_id"]) == orderID {
+			if err := a.deleteRowsMatching(ctx, orgID, "order_item_modifiers", "order_item_id", displayString(item["id"])); err != nil {
+				return dataAccessError(err)
+			}
+		}
 	}
 	if err := a.deleteRowsMatching(ctx, orgID, "order_items", "order_id", orderID); err != nil {
 		return dataAccessError(err)
@@ -357,7 +523,7 @@ func (a *application) modifyPOSOrder(ctx context.Context, orgID, orderID, body s
 		return dataAccessError(err)
 	}
 	for _, line := range prepared {
-		if _, err := a.createStoredRow(ctx, orgID, "order_items", line); err != nil {
+		if _, err := a.createPOSOrderItem(ctx, orgID, line); err != nil {
 			return dataAccessError(err)
 		}
 	}
@@ -735,6 +901,7 @@ func (a *application) fanoutKDSRows(ctx context.Context, orgID string, order map
 			if _, createErr = a.createStoredRow(ctx, orgID, "kds_ticket_items", map[string]any{
 				"ticket_id": ticketID, "order_item_id": line["id"], "item_id": line["item_id"], "item_name": line["item_name"],
 				"quantity": line["quantity"], "item_status": "fired", "notes": line["special_instructions"],
+				"variations": orderModifierNames(line["modifiers"]), "modifiers": valueOr(line, "modifiers", []any{}),
 			}); createErr != nil {
 				return nil, createErr
 			}
@@ -876,7 +1043,7 @@ func (a *application) getKDSTicketDetails(ctx context.Context, orgID, ticketID s
 		resultItems = append(resultItems, map[string]any{
 			"ticket_item_id": item["id"], "order_item_id": item["order_item_id"], "quantity": item["quantity"],
 			"item_status": item["item_status"], "notes": item["notes"], "item_name": item["item_name"],
-			"variations": []string{}, "ingredients": ingredients, "prep_steps": prepSteps, "allergens": []string{},
+			"variations": valueOr(item, "variations", []string{}), "ingredients": ingredients, "prep_steps": prepSteps, "allergens": []string{},
 		})
 	}
 	return mustJSONResponse(200, map[string]any{

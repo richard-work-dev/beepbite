@@ -1,4 +1,4 @@
-// expo-order-card.jsx — read-only card for the expediter (expo) view.
+// expo-order-card.jsx — actionable card for the expediter (expo) view.
 //
 // Each card represents one in-flight order. station_tickets is an array
 // decoded from the kds_expo_view jsonb_agg. Each station object has:
@@ -13,6 +13,7 @@ import { Bell, Check, ChefHat, Clock, Loader2, PackageCheck, RotateCcw, Send } f
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { ExpoOrder, ExpoStationTicket, KdsTicketAction } from '../types';
+import { formatKitchenOrderNumber } from '../order-number';
 
 // ---- Urgency thresholds (minutes) ------------------------------------------
 const AMBER_MIN = 5;
@@ -171,7 +172,8 @@ export function ExpoOrderCard({
   const OrderActionIcon = orderAction?.icon;
 
   // Order number: prefer human-readable, fall back to short UUID prefix.
-  const displayId = order.order_number || order.order_id?.slice(0, 8) || '—';
+  const fullOrderNumber = order.order_number || order.order_id;
+  const displayId = formatKitchenOrderNumber(fullOrderNumber);
   const typeMeta = order.order_type ? ORDER_TYPE_BADGE[order.order_type] || null : null;
 
   return (
@@ -195,7 +197,7 @@ export function ExpoOrderCard({
       <div className={cn('flex items-start justify-between gap-3 px-4 py-3', theme.header)}>
         {/* Left: order number + badges */}
         <div className="flex min-w-0 flex-col gap-1.5">
-          <span className={cn('font-mono text-4xl font-black leading-none tabular-nums', theme.headerText)}>
+          <span title={fullOrderNumber} className={cn('font-mono text-4xl font-black leading-none tabular-nums', theme.headerText)}>
             {displayId}
           </span>
           <div className="flex flex-wrap items-center gap-1.5">
@@ -350,6 +352,18 @@ export function ExpoOrderCard({
                               <p className="mt-0.5 text-xs italic leading-snug text-amber-400">
                                 {it.notes}
                               </p>
+                            )}
+                            {Array.isArray(it.variations) && it.variations.length > 0 && (
+                              <div className="mt-1 flex flex-wrap gap-1">
+                                {it.variations.map((variation, variationIndex) => (
+                                  <span
+                                    key={`${variation}-${variationIndex}`}
+                                    className="rounded-full border border-orange-700/50 bg-orange-950/40 px-2 py-0.5 text-[11px] font-semibold text-orange-200"
+                                  >
+                                    {variation}
+                                  </span>
+                                ))}
+                              </div>
                             )}
                           </div>
                         </li>

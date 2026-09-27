@@ -128,6 +128,43 @@ func TestAggregateKDSStatus(t *testing.T) {
 	}
 }
 
+func TestNormalizeOrderModifiersValidatesAndSnapshotsSelection(t *testing.T) {
+	catalog := orderModifierCatalog{
+		modifiersByID: map[string]map[string]any{
+			"extra": {"id": "extra", "modifier_group_id": "group-1", "name": "Extra queso", "price_delta_cents": int64(250), "is_active": true},
+		},
+		groupsByID: map[string]map[string]any{
+			"group-1": {"id": "group-1", "item_id": "item-1", "min_select": int64(1), "max_select": int64(2), "is_required": true},
+		},
+		groupsByItem: map[string][]map[string]any{
+			"item-1": {{"id": "group-1", "item_id": "item-1", "min_select": int64(1), "max_select": int64(2), "is_required": true}},
+		},
+	}
+	snapshots, delta, err := normalizeOrderModifiers([]any{map[string]any{"modifier_id": "extra"}}, "item-1", catalog)
+	if err != nil || delta != 250 || len(snapshots) != 1 {
+		t.Fatalf("normalizeOrderModifiers() = %#v, %d, %v", snapshots, delta, err)
+	}
+	modifier := snapshots[0].(map[string]any)
+	if modifier["name_snapshot"] != "Extra queso" || modifier["price_cents_snapshot"] != int64(250) {
+		t.Fatalf("unexpected modifier snapshot: %#v", modifier)
+	}
+	if names := orderModifierNames(snapshots); len(names) != 1 || names[0] != "Extra queso" {
+		t.Fatalf("unexpected modifier names: %#v", names)
+	}
+}
+
+func TestNormalizeOrderModifiersRejectsMissingRequiredGroup(t *testing.T) {
+	group := map[string]any{"id": "group-1", "item_id": "item-1", "min_select": int64(1), "max_select": int64(1), "is_required": true}
+	catalog := orderModifierCatalog{
+		modifiersByID: map[string]map[string]any{},
+		groupsByID:    map[string]map[string]any{"group-1": group},
+		groupsByItem:  map[string][]map[string]any{"item-1": {group}},
+	}
+	if _, _, err := normalizeOrderModifiers([]any{}, "item-1", catalog); err == nil {
+		t.Fatal("required modifier group was accepted without a selection")
+	}
+}
+
 func TestNullableString(t *testing.T) {
 	if nullableString(nil) != nil || nullableString("") != nil {
 		t.Fatal("empty values must map to nil")

@@ -90,11 +90,7 @@ export interface KdsTicket {
   created_at: string;
   updated_at: string;
   items?: KdsTicketItem[];
-  // NOTE: order_type, table_number, and order_number are read defensively by
-  // ticket-card.jsx but do NOT exist on the real Ticket/TicketWithItems DTO
-  // — only TicketDetail carries table_number, and ticket_number /
-  // details.order_number are the real sources for the order number.
-  // Pre-existing dead defensive reads, flagged not fixed.
+	// The serverless station endpoint enriches ticket rows with order context.
 	order_type?: string;
 	table_number?: string;
 	order_number?: string;
@@ -125,6 +121,7 @@ export interface ExpoStationItem {
   notes?: string | null;
   name?: string;
   item_name?: string;
+  variations?: string[];
 }
 
 export interface ExpoStationTicket {
@@ -144,8 +141,7 @@ export type KdsTicketAction = 'start' | 'ready' | 'bump' | 'recall';
 // with backend/internal/handlers/kds/store.go ExpoRow (GET
 // /kds/orders/{order_id}/expo) — built in expo.tsx's load(). ExpoRow itself
 // has no order_number/order_type/table_number; those come from the `orders`
-// row instead (table_number is a dead read there too — orders has no such
-// column, dine-in seating lives on table_session_id — flagged not fixed).
+// row instead.
 export interface ExpoOrder {
   order_id: string;
   order_number?: string;

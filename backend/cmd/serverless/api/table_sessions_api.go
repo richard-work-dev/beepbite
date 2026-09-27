@@ -194,6 +194,7 @@ func (a *application) getTableSessionDetail(ctx context.Context, orgID, sessionI
 				"id": item["id"], "item_id": item["item_id"], "item_name": valueOr(item, "item_name", "Producto"),
 				"quantity": valueOr(item, "quantity", 1), "unit_price_cents": unitCents, "unit_price": float64(unitCents) / 100,
 				"total_cents": lineCents, "notes": valueOr(item, "special_instructions", nil),
+				"modifier_names": orderModifierNames(item["modifiers"]), "modifiers": valueOr(item, "modifiers", []any{}),
 			})
 		}
 		paidCents := completedPaymentCents(payments, orderID)

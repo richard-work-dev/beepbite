@@ -40,7 +40,7 @@ import { useDateTime, useMoney } from '@/context/locale-context';
 import { supabase } from '@/services/supabase-client';
 import { useToast } from '@/hooks/use-toast';
 import { usePinModal } from '@/hooks/use-pin-modal';
-import { registerManagerOverrideHandler } from '@/lib/api-client';
+import { api, registerManagerOverrideHandler } from '@/lib/api-client';
 import {
   clearStoredRegister,
   getOpenSession,
@@ -136,6 +136,7 @@ interface WorkspaceSentOrder {
   order_number?: string;
   created_at?: string;
   payment_status: string;
+  kitchen_status?: string;
   total_cents: number;
   items: WorkspaceSentOrderItem[];
   // Index signature so this satisfies UnpaidOrder (services/payment.ts),
@@ -156,6 +157,11 @@ interface WorkspaceTicket {
   sentOrders: WorkspaceSentOrder[];
 }
 
+interface KitchenOrderSnapshot {
+  order_id: string;
+  station_tickets?: Array<{ status?: string }>;
+}
+
 interface WalkInTileData {
   id: string;
   label: string;
@@ -170,6 +176,15 @@ interface WalkInTileData {
 const uuid = () =>
   (crypto?.randomUUID?.() ||
     `cli-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`);
+
+function kitchenStatusFromSnapshot(snapshot: KitchenOrderSnapshot): string {
+  const stationTickets = Array.isArray(snapshot.station_tickets) ? snapshot.station_tickets : [];
+  if (stationTickets.length === 0) return 'pending';
+  if (stationTickets.every((ticket) => ticket.status === 'bumped')) return 'bumped';
+  if (stationTickets.every((ticket) => ticket.status === 'ready' || ticket.status === 'bumped')) return 'ready';
+  if (stationTickets.some((ticket) => ticket.status === 'in_progress')) return 'in_progress';
+  return 'fired';
+}
 
 /**
  * Compute remaining_today from the raw daily countdown columns.
@@ -440,10 +455,10 @@ export default function PosWorkspacePage() {
   const handleStartEatIn = useCallback(() => {
     if (!hasFloorPlan) {
       toast({
-        title: 'No tables set up yet',
+        title: 'Todavía no hay mesas configuradas',
         description: isOwnerManager
           ? 'Configurá el plano de mesas para atender en el local. Los pedidos para llevar funcionan sin plano.'
-          : 'Ask your manager to set up the floor plan when you need dine-in seating. You can still take takeaway orders.',
+          : 'Pedile a un gerente que configure el plano de mesas. Mientras tanto, podés seguir tomando pedidos para llevar.',
       });
       return;
     }
@@ -666,6 +681,59 @@ export default function PosWorkspacePage() {
   }, [items, categoryId, search]);
 
   const activeTicket = activeTicketId ? tickets[activeTicketId] : null;
+
+  // Keep the kitchen state visible beside the order. The sent section used
+  // to be a one-time client snapshot, so it stayed on "Enviado" even after
+  // cooks started or completed the comanda.
+  const sentOrderKey = useMemo(() => Array.from(new Set(
+    Object.values(tickets).flatMap((ticket) => ticket.sentOrders.map((order) => order.id)),
+  )).sort().join(','), [tickets]);
+
+  useEffect(() => {
+    if (!sentOrderKey) return;
+    let cancelled = false;
+
+    const syncKitchenStatuses = async () => {
+      try {
+        const { data, error } = await api.request<KitchenOrderSnapshot[]>('GET', '/kds/expo');
+        if (cancelled || error || !Array.isArray(data)) return;
+        const statusByOrder = new Map(
+          data.map((snapshot) => [snapshot.order_id, kitchenStatusFromSnapshot(snapshot)]),
+        );
+        if (statusByOrder.size === 0) return;
+
+        setTickets((previous) => {
+          let changed = false;
+          const next: Record<string, WorkspaceTicket> = {};
+          for (const [ticketId, ticket] of Object.entries(previous)) {
+            let ticketChanged = false;
+            const sentOrders = ticket.sentOrders.map((order) => {
+              const kitchenStatus = statusByOrder.get(order.id);
+              if (!kitchenStatus || order.kitchen_status === kitchenStatus) return order;
+              changed = true;
+              ticketChanged = true;
+              return {
+                ...order,
+                kitchen_status: kitchenStatus,
+                items: order.items.map((item) => ({ ...item, item_status: kitchenStatus })),
+              };
+            });
+            next[ticketId] = ticketChanged ? { ...ticket, sentOrders } : ticket;
+          }
+          return changed ? next : previous;
+        });
+      } catch (error) {
+        console.error('Kitchen status sync failed:', error);
+      }
+    };
+
+    void syncKitchenStatuses();
+    const interval = window.setInterval(() => { void syncKitchenStatuses(); }, 5_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [sentOrderKey]);
 
   // Decorate table tiles with the active ticket subtotal
   const tableTiles: TableTileData[] = useMemo(() => {
@@ -897,6 +965,7 @@ export default function PosWorkspacePage() {
         order_number: result.order_number,
         created_at: new Date().toISOString(),
         payment_status: 'pending',
+        kitchen_status: result.kds_ticket_ids.length > 0 ? 'fired' : 'pending',
         total_cents: typeof result.total === 'number'
           ? Math.round(result.total * scale)
           : sentItems.reduce((s, it) => s + it.total_cents, 0),
@@ -1156,7 +1225,7 @@ export default function PosWorkspacePage() {
                 )}
                 {!actor && !staff && (
                   <span className="ml-0.5 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[9px] font-semibold uppercase tracking-wide">
-                    Owner
+                    Propietario
                   </span>
                 )}
                 {activeLocation?.name && (
@@ -1181,17 +1250,17 @@ export default function PosWorkspacePage() {
             <div className="hidden sm:flex items-center gap-2">
               {registerLoading ? (
                 <span className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Loader2 className="w-3 h-3 animate-spin" /> Checking register…
+                  <Loader2 className="w-3 h-3 animate-spin" /> Verificando caja…
                 </span>
               ) : registerSession ? (
                 <button type="button" onClick={() => setIsOpenRegisterOpen(true)}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-success/10 border border-success/30 text-success hover:bg-success/15 text-xs font-semibold transition">
-                  <Unlock className="w-3 h-3" /> Register Open
+                  <Unlock className="w-3 h-3" /> Caja abierta
                 </button>
               ) : (
                 <button type="button" onClick={() => setIsOpenRegisterOpen(true)}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-warning/10 border border-warning/30 text-warning hover:bg-warning/15 text-xs font-semibold transition animate-pulse">
-                  <Lock className="w-3 h-3" /> Open Register
+                  <Lock className="w-3 h-3" /> Abrir caja
                 </button>
               )}
             </div>

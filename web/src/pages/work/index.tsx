@@ -44,7 +44,7 @@ import { Button } from '@/components/ui/button';
 import { SyncStatusBadge } from '@/components/ui/sync-status';
 
 type PosViewId = 'full' | 'quick' | 'floor';
-type KdsViewId = 'station' | 'expo' | 'bumpbar';
+type KdsViewId = 'station' | 'expo';
 
 interface KdsStation {
   id: string;
@@ -77,15 +77,14 @@ const ExpoPage = lazy(() => import('@/pages/kds/expo'));
 // ---------------------------------------------------------------------------
 
 const POS_VIEWS: { id: PosViewId; label: string }[] = [
-  { id: 'full', label: 'Full POS' },
-  { id: 'quick', label: 'Quick' },
-  { id: 'floor', label: 'Floor' },
+  { id: 'full', label: 'Pedido y comanda' },
+  { id: 'quick', label: 'Venta rápida' },
+  { id: 'floor', label: 'Mesas' },
 ];
 
 const KDS_VIEWS: { id: KdsViewId; label: string }[] = [
-  { id: 'station', label: 'Station' },
-  { id: 'expo', label: 'Expo' },
-  { id: 'bumpbar', label: 'Bump-bar' },
+  { id: 'station', label: 'Comandas' },
+  { id: 'expo', label: 'Despacho' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -327,24 +326,11 @@ function StationView({ stationId }: { stationId: string | null }) {
 }
 
 // ---------------------------------------------------------------------------
-// Bump-bar view — link to /kds/:stationId for bump-bar usage
-// BumpPage doesn't exist as a separate component; we re-use StationPage
-// (same data, same hotkeys — the "bump-bar" label is a UX concept,
-//  not a different backend view).
-// ---------------------------------------------------------------------------
-
-function BumpBarView({ stationId }: { stationId: string | null }) {
-  if (!stationId) return null;
-  return <StationView stationId={stationId} />;
-}
-
-// ---------------------------------------------------------------------------
 // KDS Panel — station picker + view
 // ---------------------------------------------------------------------------
 
 interface KitchenPanelProps {
   kdsView: KdsViewId;
-  onKdsView: (view: KdsViewId) => void;
 }
 
 function KitchenPanel({ kdsView }: KitchenPanelProps) {
@@ -358,7 +344,7 @@ function KitchenPanel({ kdsView }: KitchenPanelProps) {
     }
   }, [stations, selectedStation]);
 
-  const needsStation = kdsView === 'station' || kdsView === 'bumpbar';
+  const needsStation = kdsView === 'station';
 
   // The whole Kitchen tab is scoped `dark` — station.jsx/expo.jsx (owned
   // elsewhere) render their own permanently-charcoal chrome (bg-gray-950/900,
@@ -408,9 +394,6 @@ function KitchenPanel({ kdsView }: KitchenPanelProps) {
               <Suspense fallback={<ViewLoader />}>
                 <ExpoPage />
               </Suspense>
-            )}
-            {kdsView === 'bumpbar' && selectedStation && (
-              <BumpBarView stationId={selectedStation} />
             )}
           </div>
         </>
@@ -476,7 +459,8 @@ export default function WorkspacePage() {
       // previously-persisted preference back to a view that still exists.
       const posView = (POS_VIEWS.some((v) => v.id === lastViewPOS) ? lastViewPOS : 'full') as PosViewId;
       setPosView(posView);
-      setKdsView((lastViewKDS || 'station') as KdsViewId);
+      const kdsView = (KDS_VIEWS.some((v) => v.id === lastViewKDS) ? lastViewKDS : 'station') as KdsViewId;
+      setKdsView(kdsView);
       setPrefsLoaded(true);
     });
   }, []);
@@ -548,7 +532,7 @@ export default function WorkspacePage() {
               active={activeTab === 'pos'}
               onClick={() => handleTab('pos')}
             >
-              POS
+              Pedidos y caja
             </TabButton>
           )}
           {showKitchen && (
@@ -556,7 +540,7 @@ export default function WorkspacePage() {
               active={activeTab === 'kitchen'}
               onClick={() => handleTab('kitchen')}
             >
-              Kitchen
+              Cocina
             </TabButton>
           )}
         </div>
@@ -600,7 +584,7 @@ export default function WorkspacePage() {
       <div className="flex-1 overflow-hidden">
         {activeTab === 'pos' && <POSPanel posView={posView} />}
         {activeTab === 'kitchen' && (
-          <KitchenPanel kdsView={kdsView} onKdsView={handleKdsView} />
+          <KitchenPanel kdsView={kdsView} />
         )}
       </div>
     </div>

@@ -83,6 +83,7 @@ export interface SentOrder {
   created_at?: string;
   fired_at?: string;
   payment_status?: string;
+  kitchen_status?: string;
   total_cents?: number;
 }
 
@@ -103,6 +104,15 @@ export interface NewTicketItem {
 function shortOrderNum(order?: { order_number?: string; id?: string } | null) {
   return order?.order_number ?? (order?.id ? `#${String(order.id).slice(0, 6)}` : '?');
 }
+
+const KITCHEN_STATUS: Record<string, { label: string; className: string }> = {
+  pending: { label: 'Pendiente de cocina', className: 'text-orange-700 dark:text-orange-300 bg-orange-50 dark:bg-orange-950/40 border-orange-200 dark:border-orange-800' },
+  fired: { label: 'Nueva en cocina', className: 'text-orange-700 dark:text-orange-300 bg-orange-50 dark:bg-orange-950/40 border-orange-200 dark:border-orange-800' },
+  in_progress: { label: 'En preparación', className: 'text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/40 border-sky-200 dark:border-sky-800' },
+  ready: { label: 'Lista para entregar', className: 'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800' },
+  bumped: { label: 'Entregada por cocina', className: 'text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-700' },
+  cancelled: { label: 'Cancelada', className: 'text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800' },
+};
 
 // ---------------------------------------------------------------------------
 // Header — the "who/where" line for the active ticket
@@ -178,10 +188,7 @@ interface SentItemRowProps {
 function SentItemRow({ item, orderId, locationId, onAdjustSuccess }: SentItemRowProps) {
   const { format, scale } = useMoney();
   const status = item.item_status || 'fired';
-  const statusColor =
-    status === 'ready' ? 'text-success bg-success/10 border-success/30'
-    : status === 'in_progress' ? 'text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800'
-    : 'text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700';
+  const statusMeta = KITCHEN_STATUS[status] || KITCHEN_STATUS.fired;
 
   const itemId     = item.order_item_id || item.id || null;
   // `unit_price` arrives as a major-unit decimal string; the multiplier that
@@ -223,9 +230,9 @@ function SentItemRow({ item, orderId, locationId, onAdjustSuccess }: SentItemRow
         </div>
         <span className={cn(
           'text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border',
-          statusColor,
+          statusMeta.className,
         )}>
-          {status === 'fired' ? 'Enviado' : status === 'in_progress' ? 'En preparación' : status === 'ready' ? 'Listo' : status}
+          {statusMeta.label}
         </span>
         <span className="text-sm font-medium text-gray-700 dark:text-gray-300 tabular-nums shrink-0">
           {format(priceCents)}
@@ -253,6 +260,8 @@ function SentOrderGroup({ order, locationId, onAdjustSuccess }: SentOrderGroupPr
     : '';
 
   const canVoid = hasCapability('can_void');
+  const kitchenStatus = order.kitchen_status || items[0]?.item_status || 'fired';
+  const statusMeta = KITCHEN_STATUS[kitchenStatus] || KITCHEN_STATUS.fired;
 
   return (
     <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-card overflow-hidden shadow-sm">
@@ -273,9 +282,12 @@ function SentOrderGroup({ order, locationId, onAdjustSuccess }: SentOrderGroupPr
             canVoid && 'hover:bg-muted/60 transition-colors',
           )}
         >
-          <div className="flex items-center gap-1.5 text-[11px] font-bold text-green-700 dark:text-green-400">
-            <CheckCircle2 className="w-3.5 h-3.5 text-green-600 dark:text-green-500" />
-            Enviado · {shortOrderNum(order)}
+          <div className="flex min-w-0 items-center gap-2 text-[11px] font-bold">
+            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary" />
+            <span className="truncate text-foreground">Pedido {shortOrderNum(order)}</span>
+            <span className={cn('shrink-0 rounded-full border px-2 py-0.5', statusMeta.className)}>
+              {statusMeta.label}
+            </span>
           </div>
           {firedDisplay && (
             <span className="text-[10px] text-gray-400 dark:text-gray-500 inline-flex items-center gap-0.5">

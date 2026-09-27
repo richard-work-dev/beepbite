@@ -89,7 +89,7 @@ const ITEM_STATUS_STYLES: Record<string, { dot: string; pill: string; label: str
   in_progress: {
     dot:   'bg-amber-400',
     pill:  'bg-amber-900/60 text-amber-300',
-    label: 'En preparaciÃ³n',
+    label: 'En preparación',
   },
   ready: {
     dot:   'bg-emerald-400',
@@ -165,9 +165,9 @@ export function TicketCard({
   const orderNumber = details?.order_number
     ?? ticket.order_number
     ?? ticket.ticket_number
-    ?? 'â€”';
+    ?? '—';
   const tableNumber = ticket.table_number || details?.table_number || null;
-  const serviceLabel = ({ dine_in: 'En salÃ³n', pickup: 'Para retirar', takeaway: 'Para retirar', delivery: 'EnvÃ­o a domicilio' } as Record<string, string>)[details?.order_type || ticket.order_type || ''] || label;
+  const serviceLabel = ({ dine_in: 'En salón', pickup: 'Para retirar', takeaway: 'Para retirar', delivery: 'Envío a domicilio' } as Record<string, string>)[details?.order_type || ticket.order_type || ''] || label;
   const customerContext = [details?.customer_name ?? ticket.customer_name, details?.customer_phone ?? ticket.customer_phone].filter(Boolean).join(' · ');
   const deliveryAddress = details?.delivery_address ?? ticket.delivery_address;
 
@@ -240,7 +240,7 @@ export function TicketCard({
         </div>
         {/* Item list */}
         {items.length === 0 ? (
-          <p className="italic text-gray-500">(no items)</p>
+          <p className="italic text-gray-500">(sin productos)</p>
         ) : (
           <ul className="flex-1 space-y-2.5">
             {items.map((it, idx) => (
@@ -277,10 +277,10 @@ export function TicketCard({
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900',
                   'disabled:opacity-50 disabled:cursor-not-allowed',
                 )}
-                aria-label={`Iniciar la preparaciÃ³n de la comanda ${orderNumber}`}
+                aria-label={`Iniciar la preparación de la comanda ${orderNumber}`}
               >
                 <Play className="size-6 shrink-0" aria-hidden="true" />
-                Iniciar preparaciÃ³n
+                Iniciar preparación
               </button>
 
               {/* Rush button â€” secondary, narrower */}
@@ -372,7 +372,7 @@ export function TicketCard({
               type="button"
               disabled={busy}
               onClick={() => onRecall?.(ticket)}
-              title="Recall last bump"
+              title="Recuperar la última comanda entregada"
               className={cn(
                 'flex h-10 items-center gap-1.5 rounded-lg px-3',
                 'border border-gray-600 bg-gray-800 text-gray-300 text-sm font-semibold',
@@ -381,7 +381,7 @@ export function TicketCard({
                 'disabled:opacity-50',
               )}
             >
-              <RotateCcw className="size-4" aria-hidden="true" /> Recall
+              <RotateCcw className="size-4" aria-hidden="true" /> Recuperar
             </button>
           )}
         </div>
@@ -433,7 +433,7 @@ function TicketItem({ item, recipeDefaultOpen, storageKey }: TicketItemProps) {
           )}
           {/* Quantity badge â€” bold orange so it pops */}
           <span className="rounded-lg bg-orange-500/20 px-3 py-1 font-mono text-lg font-black tabular-nums text-orange-400">
-            Ã—{qty}
+            ×{qty}
           </span>
         </div>
       </div>
@@ -442,7 +442,7 @@ function TicketItem({ item, recipeDefaultOpen, storageKey }: TicketItemProps) {
       {allergens.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-red-500/50 bg-red-950/40 px-2 py-1.5">
           <AlertTriangle className="size-4 shrink-0 text-red-400" aria-hidden="true" />
-          <span className="text-[11px] font-bold uppercase tracking-wider text-red-400">AlÃ©rgenos</span>
+          <span className="text-[11px] font-bold uppercase tracking-wider text-red-400">Alérgenos</span>
           {allergens.map((a, i) => (
             <span
               key={`${a}-${i}`}

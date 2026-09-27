@@ -72,22 +72,18 @@ type AdjustmentType = 'void' | 'comp' | 'price_override';
 const ORDER_TYPES: AdjustmentType[] = ['void'];
 const ITEM_TYPES: AdjustmentType[]  = ['comp', 'price_override'];
 
-// GET /staff?role=manager,owner&location_id=... has NO backing route in the
-// Go backend (backend/internal/staffauth/handlers.go only mounts
-// /auth/staff/* and /staff/{id}/set-pin|manager-set-password — there is no
-// GET /staff list endpoint anywhere in the server). fetchManagers() below
-// therefore always gets a 404 and `managers` stays permanently empty, so
-// the manager-approval step (Step 2) can never be completed — there is no
-// manager to select and the "Authorise" button never becomes enabled for
-// any reason with requires_manager_approval=true. Documented pre-existing
-// defect, not fixed here. This shape is a best-guess placeholder for the
-// never-populated response, not a verified backend DTO.
+// Manager records come from the scoped data API. Only active staff with a
+// manager-capable role are offered as approvers.
 interface ManagerOption {
   id: string;
   name?: string;
+  first_name?: string;
+  last_name?: string;
   full_name?: string;
   display_name?: string;
   email?: string;
+  role?: string;
+  is_active?: boolean;
 }
 
 const TYPE_META: Record<AdjustmentType, {
@@ -98,15 +94,15 @@ const TYPE_META: Record<AdjustmentType, {
   capability: string;
 }> = {
   void: {
-    label: 'Void Order',
-    short: 'Void',
+    label: 'Anular pedido',
+    short: 'Anular',
     icon: Ban,
     colorClass: 'text-red-700 bg-red-50 hover:bg-red-100 border-red-200',
     capability: 'can_void',
   },
   comp: {
-    label: 'Comp Item',
-    short: 'Comp',
+    label: 'Bonificar producto',
+    short: 'Bonificar',
     icon: Gift,
     // These three are one axis — how much money leaves the till — so they run
     // as a severity ramp rather than three unrelated hues: red voids the whole
@@ -116,8 +112,8 @@ const TYPE_META: Record<AdjustmentType, {
     capability: 'can_comp',
   },
   price_override: {
-    label: 'Discount',
-    short: 'Discount',
+    label: 'Aplicar descuento',
+    short: 'Descuento',
     icon: Tag,
     colorClass: 'text-amber-700 bg-amber-50 hover:bg-amber-100 border-amber-200',
     capability: 'can_comp',
@@ -212,11 +208,15 @@ function AdjustmentFlow({
     // manager-approval step stuck loading forever with the rejection
     // silently swallowed.
     try {
-      const { data, error } = await api.request<ManagerOption[]>(
-        'GET',
-        `/staff?role=manager,owner&location_id=${encodeURIComponent(locationId)}`,
-      );
-      if (!error && Array.isArray(data)) setManagers(data);
+      const { data, error } = await api
+        .from('staff')
+        .select('id,first_name,last_name,display_name,email,role,is_active')
+        .eq('location_id', locationId);
+      if (!error && Array.isArray(data)) {
+        setManagers((data as ManagerOption[]).filter((member) =>
+          member.is_active !== false && ['owner', 'manager', 'admin'].includes(member.role || ''),
+        ));
+      }
     } catch (err) {
       console.error('Error fetching managers:', err);
     } finally {
@@ -302,34 +302,34 @@ function AdjustmentFlow({
       if (error) {
         if (error.status === 401 && managerOverride) {
           setApproverPin('');
-          setPinError(error.message || 'Incorrect PIN. Try again.');
+          setPinError(error.message || 'PIN incorrecto. Intentá nuevamente.');
           return;
         }
         if (error.status === 409) {
           toast({
             variant: 'destructive',
-            title: 'Cannot adjust',
-            description: error.message || 'This order has already been adjusted.',
+            title: 'No se puede realizar el ajuste',
+            description: error.message || 'Este pedido ya fue ajustado.',
           });
           onClose();
           return;
         }
         toast({
           variant: 'destructive',
-          title: 'Adjustment failed',
-          description: error.message || 'Unexpected error.',
+          title: 'No se pudo realizar el ajuste',
+          description: error.message || 'Ocurrió un error inesperado.',
         });
         return;
       }
 
-      toast({ title: `${(adjType ? TYPE_META[adjType]?.label : undefined) ?? 'Adjustment'} applied` });
+      toast({ title: `${(adjType ? TYPE_META[adjType]?.label : undefined) ?? 'Ajuste'} aplicado` });
       if (onSuccess) onSuccess(data);
       onClose();
     } catch (err) {
       console.error('Adjustment submit failed:', err);
       toast({
         variant: 'destructive',
-        title: 'Adjustment failed',
+        title: 'No se pudo realizar el ajuste',
         description: 'No se pudo conectar con el servidor. Intentá nuevamente.',
       });
     } finally {
@@ -352,7 +352,7 @@ function AdjustmentFlow({
 
   if (availableTypes.length === 0) {
     return (
-      <p className="text-xs text-gray-500 px-1">No adjustment permissions.</p>
+      <p className="text-xs text-gray-500 px-1">No tenés permisos para realizar ajustes.</p>
     );
   }
 
@@ -361,7 +361,7 @@ function AdjustmentFlow({
       {/* Header */}
       <div className="flex items-center justify-between">
         <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
-          {step === STEP_PICK ? 'Adjust line' : 'Manager approval'}
+          {step === STEP_PICK ? 'Ajustar pedido' : 'Autorización de gerente'}
         </p>
         <button
           type="button"
@@ -401,7 +401,7 @@ function AdjustmentFlow({
               {/* Reason picker */}
               <div className="space-y-1">
                 <Label className="text-[11px] font-semibold text-gray-600">
-                  Reason
+                  Motivo
                 </Label>
                 <Select
                   value={reasonCode}
@@ -410,7 +410,7 @@ function AdjustmentFlow({
                 >
                   <SelectTrigger className="h-8 text-xs">
                     <SelectValue
-                      placeholder={loadingReasons ? 'Loading…' : 'Select reason'}
+                      placeholder={loadingReasons ? 'Cargando…' : 'Seleccionar motivo'}
                     />
                   </SelectTrigger>
                   <SelectContent>
@@ -423,13 +423,13 @@ function AdjustmentFlow({
                         {r.label ?? (r as AdjustmentReason & { name?: string }).name ?? r.code ?? r.id}
                         {r.requires_manager_approval && (
                           <span className="ml-1 text-[10px] text-amber-600 font-medium">
-                            (mgr)
+                            (gerente)
                           </span>
                         )}
                       </SelectItem>
                     ))}
                     {!loadingReasons && reasons.length === 0 && (
-                      <SelectItem value="other">Other</SelectItem>
+                      <SelectItem value="other">Otro</SelectItem>
                     )}
                   </SelectContent>
                 </Select>
@@ -439,10 +439,10 @@ function AdjustmentFlow({
               {adjType === 'price_override' && (
                 <div className="space-y-1">
                   <Label className="text-[11px] font-semibold text-gray-600">
-                    New price ({symbol})
+                    Nuevo precio ({symbol})
                     {currentPriceCents != null && (
                       <span className="ml-1 font-normal text-gray-400">
-                        — current: {format(currentPriceCents)}
+                        — actual: {format(currentPriceCents)}
                       </span>
                     )}
                   </Label>
@@ -460,7 +460,7 @@ function AdjustmentFlow({
 
               {reasonObj?.requires_manager_approval && (
                 <p className="text-[10px] text-amber-600 font-medium">
-                  Manager approval required for this reason.
+                  Este motivo requiere la autorización de un gerente.
                 </p>
               )}
 
@@ -482,11 +482,11 @@ function AdjustmentFlow({
                 ) : (
                   <>
                     {reasonObj?.requires_manager_approval ? (
-                      <>Next <ChevronRight className="w-3 h-3 ml-0.5" /></>
+                      <>Continuar <ChevronRight className="w-3 h-3 ml-0.5" /></>
                     ) : adjType === 'void' ? (
-                      'Void order'
+                      'Anular pedido'
                     ) : (
-                      'Apply'
+                      'Aplicar'
                     )}
                   </>
                 )}
@@ -501,7 +501,7 @@ function AdjustmentFlow({
         <>
           <div className="space-y-1">
             <Label className="text-[11px] font-semibold text-gray-600">
-              Approving manager
+              Gerente que autoriza
             </Label>
             <Select
               value={approverStaffId}
@@ -510,13 +510,14 @@ function AdjustmentFlow({
             >
               <SelectTrigger className="h-8 text-xs">
                 <SelectValue
-                  placeholder={loadingManagers ? 'Loading…' : 'Select manager'}
+                  placeholder={loadingManagers ? 'Cargando…' : 'Seleccionar gerente'}
                 />
               </SelectTrigger>
               <SelectContent>
                 {managers.map((m) => (
                   <SelectItem key={m.id} value={m.id} className="text-xs">
-                    {m.name ?? m.full_name ?? m.display_name ?? m.email ?? m.id}
+                    {m.name ?? m.full_name ?? m.display_name
+                      ?? ([m.first_name, m.last_name].filter(Boolean).join(' ') || m.email || m.id)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -525,7 +526,7 @@ function AdjustmentFlow({
 
           <div className="space-y-1">
             <Label className="text-[11px] font-semibold text-gray-600">
-              Manager PIN
+              PIN del gerente
             </Label>
             <Input
               type="password"
@@ -537,7 +538,7 @@ function AdjustmentFlow({
                 setApproverPin(v);
                 if (pinError) setPinError('');
               }}
-              placeholder="4–6 digits"
+              placeholder="4 a 6 dígitos"
               autoComplete="off"
               className="h-8 text-xs"
             />
@@ -554,7 +555,7 @@ function AdjustmentFlow({
               disabled={submitting}
               className="flex-1 h-8 text-xs"
             >
-              Back
+              Volver
             </Button>
             <Button
               size="sm"
@@ -563,7 +564,7 @@ function AdjustmentFlow({
               disabled={!step2Valid || submitting}
               className="flex-1 h-8 text-xs"
             >
-              {submitting ? <Loader2 className="w-3 h-3 animate-spin" /> : adjType === 'void' ? 'Authorise void' : 'Authorise'}
+              {submitting ? <Loader2 className="w-3 h-3 animate-spin" /> : adjType === 'void' ? 'Autorizar anulación' : 'Autorizar'}
             </Button>
           </div>
         </>
@@ -661,8 +662,8 @@ export default function AdjustmentMenu({
 
   if (!hasAny || disabled) return <>{children}</>;
 
-  const actionWord = itemId ? 'Comp or discount' : 'Void';
-  const triggerLabel = label ? `${actionWord} ${label}` : `${actionWord} — more actions`;
+  const actionWord = itemId ? 'Bonificar o descontar' : 'Anular';
+  const triggerLabel = label ? `${actionWord} ${label}` : `${actionWord} — más acciones`;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

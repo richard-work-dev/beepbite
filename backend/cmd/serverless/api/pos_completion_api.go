@@ -104,8 +104,12 @@ func (a *application) getPOSReceipt(ctx context.Context, orgID, orderID string) 
 			continue
 		}
 		itemID := fmt.Sprint(item["id"])
-		modifiers := receiptModifiers(item["modifiers"])
-		modifiers = append(modifiers, modifiersByItemID[itemID]...)
+		modifiers := modifiersByItemID[itemID]
+		if len(modifiers) == 0 {
+			// Legacy serverless orders stored snapshots inline. Keep that fallback
+			// while preferring the normalized rows for new orders.
+			modifiers = receiptModifiers(item["modifiers"])
+		}
 		itemName := valueOr(item, "item_name", "")
 		if displayString(itemName) == "" {
 			itemName = valueOr(menuItemByID[fmt.Sprint(item["item_id"])], "name", "")

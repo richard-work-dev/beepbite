@@ -1,14 +1,13 @@
 // expo.jsx — expediter view, mounted at /kds/expo.
 //
-// Read-only summary across stations. Lists open orders; each card shows
-// per-station ticket status. Highlights orders blocked on one station while
-// the others are done.
+// Operational summary across stations. Lists open orders, shows each station
+// state, and lets dispatch advance or recover the kitchen workflow.
 //
 // Data source: GET /kds/expo returns all active orders with their station tickets.
 // The page refreshes every 10 seconds and on manual reload.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AlertCircle, ChefHat, Loader2, RefreshCw } from 'lucide-react';
+import { AlertCircle, CheckCircle2, ChefHat, Loader2, RefreshCw, RotateCcw } from 'lucide-react';
 
 import { api } from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
@@ -17,6 +16,7 @@ import { useTick } from './hooks/use-tick';
 import type { ExpoOrder, ExpoStationTicket, KdsTicketAction } from './types';
 
 const POLL_MS = 10_000;
+const RECALL_WINDOW_MS = 15_000;
 // Mirrors backend/internal/handlers/kds/store.go ExpoRow — the response of
 // GET /kds/orders/{order_id}/expo. `station_tickets` arrives as a
 // base64-encoded JSON string (Go []byte through json.Encoder); decoded by
@@ -62,6 +62,7 @@ export default function ExpoPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [sendingOrderID, setSendingOrderID] = useState<string | null>(null);
   const [actingTicketIDs, setActingTicketIDs] = useState<Set<string>>(() => new Set());
+  const [lastBump, setLastBump] = useState<{ ticketIDs: string[]; expiresAt: number } | null>(null);
   const now = useTick();
   const mountedRef = useRef(true);
 
@@ -129,7 +130,7 @@ export default function ExpoPage() {
 
   const transitionTickets = useCallback(async (ticketIDs: string[], action: KdsTicketAction) => {
     const uniqueIDs = Array.from(new Set(ticketIDs.filter(Boolean)));
-    if (uniqueIDs.length === 0) return;
+    if (uniqueIDs.length === 0) return false;
     setActionError(null);
     setActingTicketIDs((current) => new Set([...current, ...uniqueIDs]));
     try {
@@ -139,11 +140,16 @@ export default function ExpoPage() {
       const failed = results.find((result) => result.error);
       if (failed?.error) throw new Error(failed.error.message || 'No se pudo actualizar la comanda');
       await load({ background: true });
+      if (action === 'bump') {
+        setLastBump({ ticketIDs: uniqueIDs, expiresAt: Date.now() + RECALL_WINDOW_MS });
+      }
+      return true;
     } catch (e) {
       if (mountedRef.current) {
         setActionError(e instanceof Error ? e.message : 'No se pudo actualizar la comanda');
         await load({ background: true });
       }
+      return false;
     } finally {
       if (mountedRef.current) {
         setActingTicketIDs((current) => {
@@ -154,6 +160,12 @@ export default function ExpoPage() {
       }
     }
   }, [load]);
+
+  const recallLastBump = useCallback(async () => {
+    if (!lastBump) return;
+    const restored = await transitionTickets(lastBump.ticketIDs, 'recall');
+    if (restored && mountedRef.current) setLastBump(null);
+  }, [lastBump, transitionTickets]);
 
   // Derive counts for header summary
   const blockedCount = orders.filter((o) => {
@@ -235,6 +247,25 @@ export default function ExpoPage() {
       {/* Main content                                                        */}
       {/* ------------------------------------------------------------------ */}
       <main className="flex-1 overflow-auto p-5">
+        {lastBump && now < lastBump.expiresAt && (
+          <div role="status" aria-live="polite" className="mx-auto mb-4 flex max-w-3xl items-center justify-between gap-3 rounded-lg border border-emerald-700 bg-emerald-950/70 px-4 py-3 text-sm font-semibold text-emerald-100">
+            <span className="flex items-center gap-2">
+              <CheckCircle2 className="size-5 shrink-0 text-emerald-400" aria-hidden="true" />
+              Comanda entregada correctamente.
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => void recallLastBump()}
+              disabled={lastBump.ticketIDs.some((ticketID) => actingTicketIDs.has(ticketID))}
+              className="gap-1.5 border-emerald-600 text-emerald-100 hover:bg-emerald-900"
+            >
+              <RotateCcw className="size-4" aria-hidden="true" />
+              Deshacer ({Math.max(1, Math.ceil((lastBump.expiresAt - now) / 1000))} s)
+            </Button>
+          </div>
+        )}
         {actionError && (
           <div role="alert" className="mx-auto mb-4 flex max-w-3xl items-center justify-between gap-3 rounded-lg border border-red-700 bg-red-950/70 px-4 py-3 text-sm font-semibold text-red-200">
             <span>{actionError}</span>

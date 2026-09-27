@@ -19,6 +19,7 @@ import {
 import { cn } from '@/lib/utils';
 import { RecipeSection } from './recipe-section';
 import type { KdsTicket, KdsTicketDetail, KdsTicketItem } from '../types';
+import { formatKitchenOrderNumber } from '../order-number';
 
 // Color thresholds (minutes since fired).
 const AMBER_MIN = 5;
@@ -166,6 +167,7 @@ export function TicketCard({
     ?? ticket.order_number
     ?? ticket.ticket_number
     ?? '—';
+  const displayOrderNumber = formatKitchenOrderNumber(orderNumber);
   const tableNumber = ticket.table_number || details?.table_number || null;
   const serviceLabel = ({ dine_in: 'En salón', pickup: 'Para retirar', takeaway: 'Para retirar', delivery: 'Envío a domicilio' } as Record<string, string>)[details?.order_type || ticket.order_type || ''] || label;
   const customerContext = [details?.customer_name ?? ticket.customer_name, details?.customer_phone ?? ticket.customer_phone].filter(Boolean).join(' · ');
@@ -189,8 +191,8 @@ export function TicketCard({
         <div className="flex min-w-0 flex-col gap-0.5">
           <div className="flex items-center gap-2">
             <Flame className={cn('size-5 shrink-0', theme.headerText)} aria-hidden="true" />
-            <span className={cn('font-mono text-4xl font-black leading-none tabular-nums', theme.headerText)}>
-              #{orderNumber}
+            <span title={String(orderNumber)} className={cn('font-mono text-4xl font-black leading-none tabular-nums', theme.headerText)}>
+              #{displayOrderNumber}
             </span>
           </div>
           <span className={cn('ml-7 flex items-center gap-1 text-sm font-medium opacity-90', theme.headerText)}>

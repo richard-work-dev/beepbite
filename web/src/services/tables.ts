@@ -139,6 +139,14 @@ export interface SessionOrderItem {
   unit_price: number;
   total_cents: number;
   notes?: string | null;
+  modifier_names?: string[];
+  modifiers?: Array<{
+    modifier_id?: string;
+    name?: string;
+    name_snapshot?: string;
+    price_cents?: number;
+    price_cents_snapshot?: number;
+  }>;
 }
 
 export interface SessionOrder {

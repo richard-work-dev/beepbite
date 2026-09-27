@@ -634,6 +634,7 @@ export default function PosWorkspacePage() {
                 total_cents?: number;
                 item_status?: string;
                 notes?: string;
+                modifier_names?: string[];
               }>;
             }>;
           };
@@ -663,6 +664,7 @@ export default function PosWorkspacePage() {
                 : Math.round((parseFloat(String(it.unit_price || 0)) * (it.quantity || 0)) * scale),
               item_status: it.item_status || 'fired',
               notes: it.notes,
+              modifier_names: Array.isArray(it.modifier_names) ? it.modifier_names : [],
             })),
           }));
           next[session.id] = ticketFromSession({ session, table, section, orders: sentOrders });
@@ -993,6 +995,8 @@ export default function PosWorkspacePage() {
         unit_price: ni.price,
         total_cents: Math.round(ni.price * ni.qty * scale),
         item_status: 'fired',
+        notes: ni.notes,
+        modifier_names: ni.modifier_names,
       }));
       const sentOrder = {
         id: result.order_id,

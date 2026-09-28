@@ -1,5 +1,5 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,31 +8,38 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from '@/context/auth-context';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Mail, Lock, AlertCircle, Utensils, CheckCircle2 } from 'lucide-react';
+import { Mail, Lock, AlertCircle, Utensils, CheckCircle2, ShieldCheck } from 'lucide-react';
 import AuthLayout from './auth-layout';
 
 interface FormData {
   email: string;
   password: string;
+	confirmPassword: string;
   agreeToTerms: boolean;
 }
 
 interface FormErrors {
   email?: string;
   password?: string;
+	confirmPassword?: string;
   agreeToTerms?: string;
   submit?: string;
 }
 
 const SignUpPage = () => {
   const navigate = useNavigate();
+	const [searchParams] = useSearchParams();
   const { t } = useTranslation();
   const { signUp } = useAuth();
+	const invitedEmail = searchParams.get('email')?.trim().toLowerCase() || '';
+	const invitationToken = searchParams.get('invite')?.trim() || '';
+	const hasInvitation = Boolean(invitedEmail && invitationToken);
   const [errors, setErrors] = useState<FormErrors>({});
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<FormData>({
-    email: '',
+		email: invitedEmail,
     password: '',
+		confirmPassword: '',
     agreeToTerms: false,
   });
 
@@ -55,6 +62,9 @@ const SignUpPage = () => {
     if (!passwordRegex.test(formData.password)) {
       newErrors.password = 'La contraseña debe tener al menos 12 caracteres, mayúscula, minúscula y un número';
     }
+		if (formData.confirmPassword !== formData.password) {
+			newErrors.confirmPassword = 'Las contraseñas no coinciden';
+		}
     if (!formData.agreeToTerms) {
       newErrors.agreeToTerms = 'Debés aceptar los términos y condiciones';
     }
@@ -75,7 +85,7 @@ const SignUpPage = () => {
     if (validateForm()) {
       setIsLoading(true);
       try {
-        await signUp(formData.email, formData.password);
+				await signUp(formData.email, formData.password, invitationToken || undefined);
         // signUp() calls the Go backend which issues tokens immediately.
         // Navigation is handled by auth context after SIGNED_IN event.
       } catch (error) {
@@ -109,6 +119,16 @@ const SignUpPage = () => {
             )}
           </div>
 
+					{hasInvitation && (
+						<div className="flex items-start gap-2 rounded-xl border border-success/30 bg-success/10 px-3 py-2.5 text-sm text-success">
+							<ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+							<div>
+								<p className="font-semibold">Invitación verificada</p>
+								<p className="text-xs opacity-90">Creá tu contraseña para ingresar al equipo de RikoPollo.</p>
+							</div>
+						</div>
+					)}
+
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             {/* Email */}
@@ -126,13 +146,14 @@ const SignUpPage = () => {
                   placeholder="tu@correo.com"
                   value={formData.email}
                   onChange={handleInputChange}
-                  disabled={isLoading}
+					disabled={isLoading || hasInvitation}
                   required
                   aria-invalid={!!errors.email}
                   aria-describedby={errors.email ? 'signup-email-error' : undefined}
                   className={`pl-10 h-11 rounded-xl text-base transition-colors ${errors.email ? 'border-destructive bg-destructive/5' : ''}`}
                 />
               </div>
+						{hasInvitation && <p className="text-xs text-muted-foreground">El correo está vinculado al enlace de invitación.</p>}
               <div aria-live="polite" aria-atomic="true">
                 {errors.email && (
                   <p id="signup-email-error" className="text-xs text-destructive flex items-center gap-1">
@@ -167,7 +188,7 @@ const SignUpPage = () => {
               </div>
 
               {/* Live password strength checklist */}
-              <ul id="signup-password-reqs" className="space-y-0.5" aria-label="Password requirements">
+								<ul id="signup-password-reqs" className="space-y-0.5" aria-label="Requisitos de contraseña">
                 {[
                   { key: 'length', label: 'Al menos 12 caracteres', met: pwChecks.length },
                   { key: 'upper', label: 'Una letra mayúscula', met: pwChecks.upper },
@@ -191,6 +212,30 @@ const SignUpPage = () => {
               </div>
             </div>
 
+						<div className="space-y-1.5">
+							<Label htmlFor="signup-password-confirm" className="text-sm font-medium text-foreground">
+								Confirmar contraseña
+							</Label>
+							<div className="relative">
+								<Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" aria-hidden="true" />
+								<Input
+									id="signup-password-confirm"
+									name="confirmPassword"
+									type="password"
+									autoComplete="new-password"
+									placeholder="Repetí la contraseña"
+									value={formData.confirmPassword}
+									onChange={handleInputChange}
+									disabled={isLoading}
+									required
+									aria-invalid={!!errors.confirmPassword}
+									aria-describedby={errors.confirmPassword ? 'signup-password-confirm-error' : undefined}
+									className={`pl-10 h-11 rounded-xl text-base ${errors.confirmPassword ? 'border-destructive bg-destructive/5' : ''}`}
+								/>
+							</div>
+							{errors.confirmPassword && <p id="signup-password-confirm-error" className="text-xs text-destructive">{errors.confirmPassword}</p>}
+						</div>
+
             {/* Terms checkbox */}
             <div className="space-y-1">
               <div className="flex items-start gap-3">
@@ -211,7 +256,7 @@ const SignUpPage = () => {
                 <Label htmlFor="signup-terms" className="text-sm text-foreground leading-relaxed cursor-pointer font-normal">
                   Acepto los{' '}
                   <a href="/docs/terms" className="text-primary hover:text-primary/80 font-medium underline underline-offset-1">Términos</a>
-                  {' '}and{' '}
+					{' '}y la{' '}
                   <a href="/docs/privacy" className="text-primary hover:text-primary/80 font-medium underline underline-offset-1">Política de privacidad</a>
                 </Label>
               </div>
@@ -264,7 +309,7 @@ const SignUpPage = () => {
                 onClick={() => navigate('/forgot-password')}
                 disabled={isLoading}
               >
-                Forgot your password?
+						¿Olvidaste tu contraseña?
               </button>
             </p>
           </div>

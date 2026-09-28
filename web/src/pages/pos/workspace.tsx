@@ -78,6 +78,8 @@ import TenderModal from './components/tender-modal';
 import SplitBySeat from './components/split-by-seat';
 import ModifierPicker, { useItemHasModifiers, type Modifier } from './components/modifier-picker';
 import ReceiptModal from './components/receipt-modal';
+import OrderDetailsDialog, { type OrderDetails } from './components/order-details-dialog';
+import ItemNoteDialog from './components/item-note-dialog';
 
 // ---------------------------------------------------------------------------
 // Domain types — the POS workspace assembles its own client-side shapes from
@@ -154,6 +156,10 @@ interface WorkspaceTicket {
   table_number?: string;
   section_name?: string;
   party_size?: number;
+	customerId?: string;
+	customerName?: string;
+	customerPhone?: string;
+	notes?: string;
   newItems: CartLineItem[];
   sentOrders: WorkspaceSentOrder[];
 }
@@ -456,6 +462,8 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
   // ----- assign-table flow -----------------------------------------------
   const [showTablePicker, setShowTablePicker] = useState(false);
   const [assigningTable, setAssigningTable] = useState(false);
+	const [showOrderDetails, setShowOrderDetails] = useState(false);
+	const [editingNoteItemId, setEditingNoteItemId] = useState<string | null>(null);
 
   // ----- modifier picker state --------------------------------------------
   const [modifierPickerItem, setModifierPickerItem] = useState<MenuItem | null>(null); // item being customised
@@ -633,6 +641,10 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
               total_cents?: number;
               total_amount_cents?: number;
               total?: number;
+              customer_id?: string | null;
+              customer_name?: string | null;
+              customer_phone?: string | null;
+              notes?: string | null;
               items?: Array<{
                 id: string;
                 item_name?: string;
@@ -675,7 +687,15 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
               modifier_names: Array.isArray(it.modifier_names) ? it.modifier_names : [],
             })),
           }));
-          next[session.id] = ticketFromSession({ session, table, section, orders: sentOrders });
+          const rawOrders = raw.orders || [];
+          const latestOrder = rawOrders.length > 0 ? rawOrders[rawOrders.length - 1] : undefined;
+          next[session.id] = {
+            ...ticketFromSession({ session, table, section, orders: sentOrders }),
+            customerId: latestOrder?.customer_id || undefined,
+            customerName: latestOrder?.customer_name || undefined,
+            customerPhone: latestOrder?.customer_phone || undefined,
+            notes: latestOrder?.notes || undefined,
+          };
         });
         setTickets(next);
       } catch (err) {
@@ -699,6 +719,32 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
   }, [items, categoryId, search]);
 
   const activeTicket = activeTicketId ? tickets[activeTicketId] : null;
+	const editingNoteItem = activeTicket?.newItems.find((item) => item.id === editingNoteItemId);
+
+	const handleSaveOrderDetails = useCallback((details: OrderDetails) => {
+		if (!activeTicketId) return;
+		setTickets((previous) => {
+			const ticket = previous[activeTicketId];
+			if (!ticket) return previous;
+			return { ...previous, [activeTicketId]: { ...ticket, ...details } };
+		});
+		toast({ title: 'Datos del pedido guardados', description: 'Se incluirán en la comanda al enviar a cocina.' });
+	}, [activeTicketId, toast]);
+
+	const handleSaveItemNotes = useCallback((notes?: string) => {
+		if (!activeTicketId || !editingNoteItemId) return;
+		setTickets((previous) => {
+			const ticket = previous[activeTicketId];
+			if (!ticket) return previous;
+			return {
+				...previous,
+				[activeTicketId]: {
+					...ticket,
+					newItems: ticket.newItems.map((item) => item.id === editingNoteItemId ? { ...item, notes } : item),
+				},
+			};
+		});
+	}, [activeTicketId, editingNoteItemId]);
 
   // Keep the kitchen state visible beside the order. The sent section used
   // to be a one-time client snapshot, so it stayed on "Enviado" even after
@@ -976,6 +1022,10 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
         tableNumber: activeTicket.kind === 'table' ? String(activeTicket.table_number || activeTicket.label || '') : undefined,
         tableSessionId: activeTicket.kind === 'table' ? activeTicket.sessionId : undefined,
         registerSessionId: registerSession?.id,
+				customerId: activeTicket.customerId,
+				customerName: activeTicket.customerName,
+				customerPhone: activeTicket.customerPhone,
+				notes: activeTicket.notes,
         items: activeTicket.newItems.map((ni) => {
           const lineItem: {
             item_id: string;
@@ -1033,7 +1083,7 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
     } finally {
       setSending(false);
     }
-  }, [activeTicket, registerSession, activeLocation?.id, toast, scale]);
+	}, [activeTicket, registerSession, activeLocation?.id, toast, scale]);
 
   const handleOpenCharge = () => {
     if (!activeTicket || activeTicket.sentOrders.length === 0) return;
@@ -1635,8 +1685,10 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
           sentOrders={activeTicket?.sentOrders || []}
           onBumpQty={handleBumpQty}
           onRemoveItem={handleRemoveItem}
+          onEditItemNotes={setEditingNoteItemId}
           onSend={handleSend}
           onCharge={handleOpenCharge}
+			onEditDetails={() => setShowOrderDetails(true)}
           onAdjust={handleOpenAdjustment}
           onAdjustSuccess={() => {
             // Inline adjustment succeeded — refresh sent orders for the active ticket.
@@ -1666,6 +1718,26 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
         locationId={activeLocation?.id || ''}
         onSuccess={() => toast({ title: 'Devolución procesada' })}
       />
+		<OrderDetailsDialog
+			open={showOrderDetails}
+			onOpenChange={setShowOrderDetails}
+			orderLabel={activeTicket?.label || (activeTicket?.kind === 'table' ? `Mesa ${activeTicket.table_number || ''}` : 'Pedido de mostrador')}
+			orderType={activeTicket?.kind === 'table' ? 'dine_in' : 'takeaway'}
+			value={{
+				customerId: activeTicket?.customerId,
+				customerName: activeTicket?.customerName,
+				customerPhone: activeTicket?.customerPhone,
+				notes: activeTicket?.notes,
+			}}
+			onSave={handleSaveOrderDetails}
+		/>
+		<ItemNoteDialog
+			open={Boolean(editingNoteItem)}
+			onOpenChange={(open) => { if (!open) setEditingNoteItemId(null); }}
+			itemName={editingNoteItem?.name || 'Producto'}
+			value={editingNoteItem?.notes}
+			onSave={handleSaveItemNotes}
+		/>
 
       {/* Charge — method picker. Cash/Card are two equal payment rails, not a
           good/bad pair — success is reserved for a completed "paid" state

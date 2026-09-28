@@ -23,6 +23,8 @@ func matchMemberRoute(method, path string) (memberRoute, bool) {
 		return memberRoute{name: "create-invite"}, true
 	case len(p) == 3 && p[0] == "member-invites" && p[2] == "revoke" && method == "POST":
 		return memberRoute{name: "revoke-invite", id: p[1]}, true
+	case len(p) == 3 && p[0] == "member-invites" && p[2] == "renew" && method == "POST":
+		return memberRoute{name: "renew-invite", id: p[1]}, true
 	case len(p) == 1 && p[0] == "members" && method == "GET":
 		return memberRoute{name: "list-members"}, true
 	case len(p) == 2 && p[0] == "members" && method == "DELETE":
@@ -51,6 +53,8 @@ func (a *application) handleMemberAPI(ctx context.Context, request events.APIGat
 		response = a.createMemberInvite(ctx, request, claims.UserID)
 	case "revoke-invite":
 		response = a.revokeMemberInvite(ctx, request, claims.UserID, route.id)
+	case "renew-invite":
+		response = a.renewMemberInvite(ctx, request, claims.UserID, route.id)
 	case "list-members":
 		response = a.listActiveMembers(ctx, request, claims.UserID)
 	case "remove-member":
@@ -69,8 +73,43 @@ func validMemberInviteRole(role string) bool {
 	return false
 }
 
-func (a *application) changeMemberRole(ctx context.Context, request events.APIGatewayV2HTTPRequest, userID, profileID string) events.APIGatewayV2HTTPResponse {
+func memberRoleRank(role string) int {
+	switch role {
+	case "owner":
+		return 4
+	case "admin":
+		return 3
+	case "manager":
+		return 2
+	case "staff", "kitchen", "pos":
+		return 1
+	default:
+		return 0
+	}
+}
+
+func canAssignMemberRole(actorRole, assignedRole string) bool {
+	return validMemberInviteRole(assignedRole) && memberRoleRank(actorRole) > memberRoleRank(assignedRole)
+}
+
+func canManageMemberRole(actorRole, targetRole string) bool {
+	return targetRole != "owner" && targetRole != "driver" && memberRoleRank(actorRole) > memberRoleRank(targetRole)
+}
+
+func (a *application) memberManagementOrganization(ctx context.Context, request events.APIGatewayV2HTTPRequest, userID string) (string, string, events.APIGatewayV2HTTPResponse, bool) {
 	orgID, response, ok := a.managerOrganization(ctx, request, userID)
+	if !ok {
+		return "", "", response, false
+	}
+	membership, err := a.getMembership(ctx, userID, orgID)
+	if err != nil {
+		return "", "", dataAccessError(err), false
+	}
+	return orgID, displayString(membership["role"]), events.APIGatewayV2HTTPResponse{}, true
+}
+
+func (a *application) changeMemberRole(ctx context.Context, request events.APIGatewayV2HTTPRequest, userID, profileID string) events.APIGatewayV2HTTPResponse {
+	orgID, actorRole, response, ok := a.memberManagementOrganization(ctx, request, userID)
 	if !ok {
 		return response
 	}
@@ -83,11 +122,15 @@ func (a *application) changeMemberRole(ctx context.Context, request events.APIGa
 	}
 	role := strings.ToLower(strings.TrimSpace(displayString(input["role"])))
 	if !validMemberInviteRole(role) {
-		return errorResponse(400, "invalid member role")
+		return errorResponse(400, "el rol indicado no es válido")
 	}
 	membership, err := a.getMembership(ctx, profileID, orgID)
-	if err != nil || displayString(membership["role"]) == "owner" || displayString(membership["role"]) == "driver" {
-		return errorResponse(404, "member not found in this organization")
+	targetRole := displayString(membership["role"])
+	if err != nil || targetRole == "driver" {
+		return errorResponse(404, "el usuario no pertenece a esta organización")
+	}
+	if !canManageMemberRole(actorRole, targetRole) || !canAssignMemberRole(actorRole, role) {
+		return errorResponse(403, "no podés modificar usuarios de igual o mayor nivel ni asignar ese rol")
 	}
 	membership["role"], membership["capabilities"], membership["updated_at"] = role, memberCapabilities(role), time.Now().UTC().Format(time.RFC3339Nano)
 	userMembership, orgMembership, err := membershipItems(profileID, orgID, membership)
@@ -120,7 +163,7 @@ func memberCapabilities(role string) map[string]any {
 }
 
 func (a *application) listMemberInvites(ctx context.Context, request events.APIGatewayV2HTTPRequest, userID string) events.APIGatewayV2HTTPResponse {
-	orgID, response, ok := a.managerOrganization(ctx, request, userID)
+	orgID, _, response, ok := a.memberManagementOrganization(ctx, request, userID)
 	if !ok {
 		return response
 	}
@@ -131,7 +174,7 @@ func (a *application) listMemberInvites(ctx context.Context, request events.APIG
 	result := make([]map[string]any, 0)
 	for _, row := range rows {
 		if validMemberInviteRole(displayString(row["role"])) && displayString(row["status"]) == "pending" {
-			result = append(result, row)
+			result = append(result, publicInvitePayload(row, ""))
 		}
 	}
 	sort.Slice(result, func(i, j int) bool {
@@ -141,7 +184,7 @@ func (a *application) listMemberInvites(ctx context.Context, request events.APIG
 }
 
 func (a *application) createMemberInvite(ctx context.Context, request events.APIGatewayV2HTTPRequest, userID string) events.APIGatewayV2HTTPResponse {
-	orgID, response, ok := a.managerOrganization(ctx, request, userID)
+	orgID, actorRole, response, ok := a.memberManagementOrganization(ctx, request, userID)
 	if !ok {
 		return response
 	}
@@ -152,11 +195,14 @@ func (a *application) createMemberInvite(ctx context.Context, request events.API
 	email, err := normalizeEmail(displayString(input["email"]))
 	role := strings.ToLower(strings.TrimSpace(displayString(input["role"])))
 	if err != nil || !validMemberInviteRole(role) {
-		return errorResponse(400, "valid email and role are required")
+		return errorResponse(400, "se requiere un correo válido y un rol permitido")
+	}
+	if !canAssignMemberRole(actorRole, role) {
+		return errorResponse(403, "no podés asignar un rol de igual o mayor nivel que el tuyo")
 	}
 	if invited, findErr := a.findUserByEmail(ctx, email); findErr == nil {
 		if _, memberErr := a.getMembership(ctx, invited.ID, orgID); memberErr == nil {
-			return errorResponse(409, "user is already a member of this organization")
+			return errorResponse(409, "el usuario ya pertenece a esta organización")
 		}
 	}
 	rows, err := a.queryDataRows(ctx, orgID, "organization_invites")
@@ -165,10 +211,18 @@ func (a *application) createMemberInvite(ctx context.Context, request events.API
 	}
 	for _, row := range rows {
 		if strings.EqualFold(displayString(row["email"]), email) && displayString(row["status"]) == "pending" {
-			return errorResponse(409, "a pending invite already exists for this email")
+			return errorResponse(409, "ya existe una invitación pendiente para este correo")
 		}
 	}
-	invite, err := a.createStoredRow(ctx, orgID, "organization_invites", map[string]any{"email": email, "role": role, "status": "pending", "invited_by": userID})
+	registrationToken, registrationTokenHash, err := newInviteRegistrationToken()
+	if err != nil {
+		return dataAccessError(err)
+	}
+	invite, err := a.createStoredRow(ctx, orgID, "organization_invites", map[string]any{
+		"email": email, "role": role, "status": "pending", "invited_by": userID,
+		"registration_token_hash": registrationTokenHash,
+		"expires_at":              time.Now().UTC().Add(inviteRegistrationTTL).Format(time.RFC3339Nano),
+	})
 	if err != nil {
 		return dataAccessError(err)
 	}
@@ -178,17 +232,21 @@ func (a *application) createMemberInvite(ctx context.Context, request events.API
 			return dataAccessError(err)
 		}
 	}
-	return mustJSONResponse(201, invite)
+	return mustJSONResponse(201, publicInvitePayload(invite, registrationToken))
 }
 
 func (a *application) revokeMemberInvite(ctx context.Context, request events.APIGatewayV2HTTPRequest, userID, inviteID string) events.APIGatewayV2HTTPResponse {
-	orgID, response, ok := a.managerOrganization(ctx, request, userID)
+	orgID, actorRole, response, ok := a.memberManagementOrganization(ctx, request, userID)
 	if !ok {
 		return response
 	}
 	invite, err := a.dataRowByID(ctx, orgID, "organization_invites", inviteID)
-	if err != nil || !validMemberInviteRole(displayString(invite["role"])) || displayString(invite["status"]) != "pending" {
-		return errorResponse(404, "invite not found or already processed")
+	inviteRole := displayString(invite["role"])
+	if err != nil || !validMemberInviteRole(inviteRole) || displayString(invite["status"]) != "pending" {
+		return errorResponse(404, "la invitación no existe o ya fue procesada")
+	}
+	if !canAssignMemberRole(actorRole, inviteRole) {
+		return errorResponse(403, "no podés administrar una invitación de igual o mayor nivel")
 	}
 	invite["status"], invite["updated_at"] = "rejected", time.Now().UTC().Format(time.RFC3339Nano)
 	if err := a.putDataRow(ctx, orgID, "organization_invites", invite, false); err != nil {
@@ -197,8 +255,35 @@ func (a *application) revokeMemberInvite(ctx context.Context, request events.API
 	return events.APIGatewayV2HTTPResponse{StatusCode: 204}
 }
 
+func (a *application) renewMemberInvite(ctx context.Context, request events.APIGatewayV2HTTPRequest, userID, inviteID string) events.APIGatewayV2HTTPResponse {
+	orgID, actorRole, response, ok := a.memberManagementOrganization(ctx, request, userID)
+	if !ok {
+		return response
+	}
+	invite, err := a.dataRowByID(ctx, orgID, "organization_invites", inviteID)
+	inviteRole := displayString(invite["role"])
+	if err != nil || !validMemberInviteRole(inviteRole) || displayString(invite["status"]) != "pending" {
+		return errorResponse(404, "la invitación no existe o ya fue procesada")
+	}
+	if !canAssignMemberRole(actorRole, inviteRole) {
+		return errorResponse(403, "no podés administrar una invitación de igual o mayor nivel")
+	}
+	registrationToken, registrationTokenHash, err := newInviteRegistrationToken()
+	if err != nil {
+		return dataAccessError(err)
+	}
+	now := time.Now().UTC()
+	invite["registration_token_hash"] = registrationTokenHash
+	invite["expires_at"] = now.Add(inviteRegistrationTTL).Format(time.RFC3339Nano)
+	invite["updated_at"] = now.Format(time.RFC3339Nano)
+	if err := a.putDataRow(ctx, orgID, "organization_invites", invite, false); err != nil {
+		return dataAccessError(err)
+	}
+	return mustJSONResponse(200, publicInvitePayload(invite, registrationToken))
+}
+
 func (a *application) listActiveMembers(ctx context.Context, request events.APIGatewayV2HTTPRequest, userID string) events.APIGatewayV2HTTPResponse {
-	orgID, response, ok := a.managerOrganization(ctx, request, userID)
+	orgID, _, response, ok := a.memberManagementOrganization(ctx, request, userID)
 	if !ok {
 		return response
 	}
@@ -222,7 +307,7 @@ func (a *application) listActiveMembers(ctx context.Context, request events.APIG
 }
 
 func (a *application) removeActiveMember(ctx context.Context, request events.APIGatewayV2HTTPRequest, userID, profileID string) events.APIGatewayV2HTTPResponse {
-	orgID, response, ok := a.managerOrganization(ctx, request, userID)
+	orgID, actorRole, response, ok := a.memberManagementOrganization(ctx, request, userID)
 	if !ok {
 		return response
 	}
@@ -230,10 +315,14 @@ func (a *application) removeActiveMember(ctx context.Context, request events.API
 		return errorResponse(400, "cannot remove yourself")
 	}
 	membership, err := a.getMembership(ctx, profileID, orgID)
-	if err != nil || displayString(membership["role"]) == "driver" {
-		return errorResponse(404, "member not found in this organization")
+	targetRole := displayString(membership["role"])
+	if err != nil || targetRole == "driver" {
+		return errorResponse(404, "el usuario no pertenece a esta organización")
 	}
-	if displayString(membership["role"]) == "owner" {
+	if !canManageMemberRole(actorRole, targetRole) {
+		return errorResponse(403, "no podés quitar usuarios de igual o mayor nivel")
+	}
+	if targetRole == "owner" {
 		rows, queryErr := a.queryJSONRows(ctx, "ORG#"+orgID, "MEMBER#")
 		if queryErr != nil {
 			return dataAccessError(queryErr)
@@ -245,7 +334,7 @@ func (a *application) removeActiveMember(ctx context.Context, request events.API
 			}
 		}
 		if owners <= 1 {
-			return errorResponse(409, "organization must retain at least one owner")
+			return errorResponse(409, "la organización debe conservar al menos un propietario")
 		}
 	}
 	_, err = a.dynamo.TransactWriteItems(ctx, &dynamodb.TransactWriteItemsInput{TransactItems: []types.TransactWriteItem{
@@ -277,6 +366,7 @@ func (a *application) acceptMemberInvite(ctx context.Context, invite map[string]
 		return err
 	}
 	invite["status"], invite["accepted_by"], invite["accepted_at"], invite["updated_at"] = "accepted", userID, now, now
+	delete(invite, "registration_token_hash")
 	inviteItem, err := jsonDataItem("ORG#"+orgID, "DATA#organization_invites#"+displayString(invite["id"]), "organization_invites", displayString(invite["id"]), invite)
 	if err != nil {
 		return err
@@ -285,14 +375,14 @@ func (a *application) acceptMemberInvite(ctx context.Context, invite map[string]
 	return err
 }
 
-func (a *application) acceptMatchingMemberInvites(ctx context.Context, userID, email string) error {
+func (a *application) acceptMatchingMemberInvites(ctx context.Context, userID, email, registrationToken string) error {
 	result, err := a.dynamo.Scan(ctx, &dynamodb.ScanInput{TableName: aws.String(a.table), FilterExpression: aws.String("entity_type = :type"), ExpressionAttributeValues: map[string]types.AttributeValue{":type": &types.AttributeValueMemberS{Value: "organization_invites"}}})
 	if err != nil {
 		return err
 	}
 	for _, item := range result.Items {
 		row, ok := decodeJSONItem(item)
-		if !ok || !strings.EqualFold(displayString(row["email"]), email) || displayString(row["status"]) != "pending" || !validMemberInviteRole(displayString(row["role"])) {
+		if !ok || !strings.EqualFold(displayString(row["email"]), email) || !validMemberInviteRole(displayString(row["role"])) || !inviteRegistrationTokenMatches(row, registrationToken, time.Now().UTC()) {
 			continue
 		}
 		if err := a.acceptMemberInvite(ctx, row, userID); err != nil && err != errConflict {

@@ -212,6 +212,8 @@ func (a *application) getTableSessionDetail(ctx context.Context, orgID, sessionI
 			"status": valueOr(order, "status", ""), "payment_status": paymentStatus,
 			"paid_cents": paidCents, "total_cents": totalCents, "kitchen_status": aggregateKDSStatus(kdsStatusesForOrder(kdsTickets, orderID)),
 			"course_number": valueOr(order, "course_number", nil), "created_at": order["created_at"], "items": items,
+			"customer_id": valueOr(order, "customer_id", nil), "customer_name": valueOr(order, "customer_name", nil),
+			"customer_phone": valueOr(order, "customer_phone", nil), "notes": valueOr(order, "notes", nil),
 		})
 	}
 	sort.Slice(linkedOrders, func(i, j int) bool {

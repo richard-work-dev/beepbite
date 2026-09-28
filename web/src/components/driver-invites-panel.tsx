@@ -3,9 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Truck, Loader2, Mail, X, CheckCircle, AlertCircle, UserMinus } from 'lucide-react';
+import { Truck, Loader2, Mail, X, CheckCircle, AlertCircle, UserMinus, Copy, RefreshCw } from 'lucide-react';
 import {
-  listDriverInvites, inviteDriver, revokeDriverInvite,
+  listDriverInvites, inviteDriver, renewDriverInvite, revokeDriverInvite,
   listActiveDrivers, removeDriver,
   type DriverInvite, type Driver,
 } from '@/services/driver-invites';
@@ -26,6 +26,25 @@ export default function DriverInvitesPanel() {
   const [email, setEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [msg, setMsg] = useState<StatusMessage | null>(null);
+	const [shareUrl, setShareUrl] = useState('');
+	const [renewingId, setRenewingId] = useState<string | null>(null);
+
+	const buildRegistrationUrl = (invite: DriverInvite) => {
+		if (!invite.registration_token) return '';
+		const url = new URL('/signup', window.location.origin);
+		url.searchParams.set('email', invite.email);
+		url.searchParams.set('invite', invite.registration_token);
+		return url.toString();
+	};
+
+	const copyRegistrationUrl = async (url: string) => {
+		try {
+			await navigator.clipboard.writeText(url);
+			setMsg({ kind: 'ok', text: 'Enlace de registro copiado. Vence en 7 días.' });
+		} catch {
+			setMsg({ kind: 'err', text: 'No se pudo copiar. Seleccioná el enlace y copialo manualmente.' });
+		}
+	};
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -75,8 +94,9 @@ export default function DriverInvitesPanel() {
     setSubmitting(true);
     setMsg(null);
     try {
-      await inviteDriver(value);
-      setMsg({ kind: 'ok', text: `Invitación enviada a ${value}. Tendrá acceso de repartidor cuando se registre con este correo.` });
+		const invite = await inviteDriver(value);
+		setShareUrl(buildRegistrationUrl(invite));
+		setMsg({ kind: 'ok', text: invite.status === 'accepted' ? `${value} ya tenía una cuenta y recibió acceso de repartidor.` : `Invitación creada para ${value}. Copiá y compartí el enlace seguro.` });
       setEmail('');
       await load();
     } catch (err) {
@@ -85,6 +105,21 @@ export default function DriverInvitesPanel() {
       setSubmitting(false);
     }
   };
+
+	const handleRenew = async (invite: DriverInvite) => {
+		setRenewingId(invite.id);
+		setMsg(null);
+		try {
+			const renewed = await renewDriverInvite(invite.id);
+			setShareUrl(buildRegistrationUrl(renewed));
+			setMsg({ kind: 'ok', text: `Se generó un enlace nuevo para ${invite.email}. El anterior dejó de funcionar.` });
+			await load();
+		} catch (err) {
+			setMsg({ kind: 'err', text: err instanceof Error ? err.message : 'No se pudo renovar la invitación' });
+		} finally {
+			setRenewingId(null);
+		}
+	};
 
   const handleRevoke = async (id: string) => {
     try {
@@ -132,6 +167,17 @@ export default function DriverInvitesPanel() {
           </div>
         )}
 
+		{shareUrl && (
+			<div className="space-y-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
+				<p className="text-sm font-semibold">Enlace privado de registro</p>
+				<div className="flex gap-2">
+					<Input value={shareUrl} readOnly onFocus={(event) => event.currentTarget.select()} aria-label="Enlace de registro del repartidor" />
+					<Button type="button" size="icon" onClick={() => void copyRegistrationUrl(shareUrl)} aria-label="Copiar enlace"><Copy className="h-4 w-4" /></Button>
+				</div>
+				<p className="text-xs text-muted-foreground">Vence en 7 días y solo funciona con el correo invitado.</p>
+			</div>
+		)}
+
         <div>
           <h4 className="text-sm font-semibold text-foreground mb-2">Invitaciones pendientes</h4>
           {loading ? (
@@ -151,6 +197,9 @@ export default function DriverInvitesPanel() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge variant="outline" className="text-xs">Repartidor</Badge>
+					<Button variant="ghost" size="sm" disabled={renewingId === inv.id} onClick={() => void handleRenew(inv)} aria-label={`Generar enlace nuevo para ${inv.email}`}>
+						{renewingId === inv.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+					</Button>
                     <Button
                       variant="ghost"
                       size="sm"

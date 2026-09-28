@@ -47,7 +47,7 @@ interface CustomerSearchProps {
 
 export default function CustomerSearch({
   onSelect,
-  placeholder = 'Search by name or phone…',
+	placeholder = 'Buscar por nombre o teléfono…',
   limit = 20,
   className,
   debounceMs = 300,
@@ -72,7 +72,7 @@ export default function CustomerSearch({
     if (latestQueryRef.current !== q) return;
     setLoading(false);
     if (apiErr) {
-      setError(apiErr.message || 'Search failed');
+		setError(apiErr.message || 'No se pudo buscar clientes');
       setResults([]);
     } else {
       setResults(data?.customers ?? []);
@@ -124,7 +124,7 @@ export default function CustomerSearch({
           ) : results.length === 0 ? (
             <div className="flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground">
               <UserX className="h-4 w-4 shrink-0" />
-              No customers found for <span className="font-medium">&ldquo;{query}&rdquo;</span>
+								No se encontraron clientes para <span className="font-medium">&ldquo;{query}&rdquo;</span>
             </div>
           ) : (
             results.map((c) => (
@@ -141,10 +141,10 @@ export default function CustomerSearch({
                   </div>
                   <div className="shrink-0 text-right">
                     <p className="text-xs text-muted-foreground">
-                      {c.total_orders} {c.total_orders === 1 ? 'order' : 'orders'}
+										{c.total_orders} {c.total_orders === 1 ? 'pedido' : 'pedidos'}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Last: {fmtDate(c.last_order_date)}
+										Último: {fmtDate(c.last_order_date)}
                     </p>
                   </div>
                 </div>

@@ -263,11 +263,11 @@ const auth = {
   async signUp({ email, password, options }: {
     email: string;
     password: string;
-    options?: { data?: unknown; emailRedirectTo?: string };
+	options?: { data?: unknown; emailRedirectTo?: string; invitationToken?: string };
   }) {
     const { data, error } = await request<AuthSession & { user?: unknown }>('POST', '/auth/signup', {
       auth: false,
-      body: { email, password, meta: options?.data },
+		body: { email, password, meta: options?.data, invitation_token: options?.invitationToken },
     });
     if (error) return { data: null, error };
     writeAuth(data);

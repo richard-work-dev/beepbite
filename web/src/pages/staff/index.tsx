@@ -41,7 +41,6 @@ import { cn } from "@/lib/utils";
 import { getRoleColor } from "@/lib/role-colors";
 import { formatDistanceToNow, format, parseISO } from 'date-fns';
 import DriverInvitesPanel from '@/components/driver-invites-panel';
-import MemberInvitesPanel from '@/components/member-invites-panel';
 
 // Mirrors backend/migrations/001_baseline.sql `staff` table.
 interface StaffMember {
@@ -1458,8 +1457,15 @@ const Staff = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Team members — invite by email+role + manage pending/active non-driver members */}
-      <MemberInvitesPanel />
+			<Card className="border-primary/20 bg-primary/5">
+				<CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+					<div className="flex min-w-0 flex-1 items-start gap-3">
+						<Shield className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+						<div><p className="font-semibold">Accesos y roles del sistema</p><p className="text-sm text-muted-foreground">Las cuentas de acceso, invitaciones y permisos se administran en una pantalla protegida.</p></div>
+					</div>
+					<Button asChild variant="outline"><Link to="/members">Gestionar usuarios y roles</Link></Button>
+				</CardContent>
+			</Card>
 
       {/* Drivers — invite by email + manage pending driver invites */}
       <DriverInvitesPanel />

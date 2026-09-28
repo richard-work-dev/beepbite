@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	"crypto/subtle"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -12,6 +15,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
+
+const inviteRegistrationTTL = 7 * 24 * time.Hour
 
 type singleStoreConfig struct {
 	Enabled      bool
@@ -102,13 +107,52 @@ func (c singleStoreConfig) signupItems(userID, email string, createdAt time.Time
 	}, nil
 }
 
-func (a *application) hasPendingStoreInvite(ctx context.Context, email string) (bool, error) {
+func newInviteRegistrationToken() (string, string, error) {
+	token, err := randomID()
+	if err != nil {
+		return "", "", err
+	}
+	sum := sha256.Sum256([]byte(token))
+	return token, hex.EncodeToString(sum[:]), nil
+}
+
+func inviteRegistrationTokenMatches(invite map[string]any, token string, now time.Time) bool {
+	if strings.TrimSpace(token) == "" || displayString(invite["status"]) != "pending" {
+		return false
+	}
+	expiresAt, err := time.Parse(time.RFC3339Nano, displayString(invite["expires_at"]))
+	if err != nil || !expiresAt.After(now) {
+		return false
+	}
+	sum := sha256.Sum256([]byte(token))
+	provided := hex.EncodeToString(sum[:])
+	expected := displayString(invite["registration_token_hash"])
+	return len(expected) == len(provided) && subtle.ConstantTimeCompare([]byte(expected), []byte(provided)) == 1
+}
+
+func publicInvitePayload(invite map[string]any, registrationToken string) map[string]any {
+	result := make(map[string]any, len(invite)+1)
+	for key, value := range invite {
+		if key != "registration_token_hash" {
+			result[key] = value
+		}
+	}
+	if registrationToken != "" {
+		result["registration_token"] = registrationToken
+	}
+	if expiresAt, err := time.Parse(time.RFC3339Nano, displayString(invite["expires_at"])); err == nil {
+		result["is_expired"] = !expiresAt.After(time.Now().UTC())
+	}
+	return result
+}
+
+func (a *application) hasPendingStoreInvite(ctx context.Context, email, registrationToken string) (bool, error) {
 	rows, err := a.scanDataRowsByEntity(ctx, "organization_invites")
 	if err != nil {
 		return false, err
 	}
 	for _, row := range rows {
-		if strings.EqualFold(displayString(row["email"]), email) && displayString(row["status"]) == "pending" {
+		if strings.EqualFold(displayString(row["email"]), email) && inviteRegistrationTokenMatches(row, registrationToken, time.Now().UTC()) {
 			return true, nil
 		}
 	}

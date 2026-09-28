@@ -24,6 +24,8 @@ func matchDriverRoute(method, path string) (driverRoute, bool) {
 		return driverRoute{name: "create-invite"}, true
 	case len(p) == 3 && p[0] == "driver-invites" && p[2] == "revoke" && method == "POST":
 		return driverRoute{name: "revoke-invite", id: p[1]}, true
+	case len(p) == 3 && p[0] == "driver-invites" && p[2] == "renew" && method == "POST":
+		return driverRoute{name: "renew-invite", id: p[1]}, true
 	case len(p) == 1 && p[0] == "drivers" && method == "GET":
 		return driverRoute{name: "list-drivers"}, true
 	case len(p) == 2 && p[0] == "drivers" && method == "DELETE":
@@ -58,6 +60,8 @@ func (a *application) handleDriverAPI(ctx context.Context, request events.APIGat
 		response = a.createDriverInvite(ctx, request, claims.UserID)
 	case "revoke-invite":
 		response = a.revokeDriverInvite(ctx, request, claims.UserID, route.id)
+	case "renew-invite":
+		response = a.renewDriverInvite(ctx, request, claims.UserID, route.id)
 	case "list-drivers":
 		response = a.listActiveDrivers(ctx, request, claims.UserID)
 	case "remove-driver":
@@ -99,7 +103,7 @@ func (a *application) listDriverInvites(ctx context.Context, request events.APIG
 	invites := make([]map[string]any, 0)
 	for _, row := range rows {
 		if displayString(row["role"]) == "driver" && displayString(row["status"]) == "pending" {
-			invites = append(invites, row)
+			invites = append(invites, publicInvitePayload(row, ""))
 		}
 	}
 	sort.Slice(invites, func(i, j int) bool {
@@ -135,8 +139,14 @@ func (a *application) createDriverInvite(ctx context.Context, request events.API
 			return errorResponse(409, "a pending driver invite already exists for this email")
 		}
 	}
+	registrationToken, registrationTokenHash, err := newInviteRegistrationToken()
+	if err != nil {
+		return dataAccessError(err)
+	}
 	invite, err := a.createStoredRow(ctx, orgID, "organization_invites", map[string]any{
 		"email": email, "role": "driver", "status": "pending", "invited_by": userID,
+		"registration_token_hash": registrationTokenHash,
+		"expires_at":              time.Now().UTC().Add(inviteRegistrationTTL).Format(time.RFC3339Nano),
 	})
 	if err != nil {
 		return dataAccessError(err)
@@ -147,7 +157,7 @@ func (a *application) createDriverInvite(ctx context.Context, request events.API
 			return dataAccessError(acceptErr)
 		}
 	}
-	return mustJSONResponse(201, invite)
+	return mustJSONResponse(201, publicInvitePayload(invite, registrationToken))
 }
 
 func (a *application) revokeDriverInvite(ctx context.Context, request events.APIGatewayV2HTTPRequest, userID, inviteID string) events.APIGatewayV2HTTPResponse {
@@ -164,6 +174,29 @@ func (a *application) revokeDriverInvite(ctx context.Context, request events.API
 		return dataAccessError(err)
 	}
 	return events.APIGatewayV2HTTPResponse{StatusCode: 204}
+}
+
+func (a *application) renewDriverInvite(ctx context.Context, request events.APIGatewayV2HTTPRequest, userID, inviteID string) events.APIGatewayV2HTTPResponse {
+	orgID, response, ok := a.managerOrganization(ctx, request, userID)
+	if !ok {
+		return response
+	}
+	invite, err := a.dataRowByID(ctx, orgID, "organization_invites", inviteID)
+	if err != nil || displayString(invite["role"]) != "driver" || displayString(invite["status"]) != "pending" {
+		return errorResponse(404, "la invitación no existe o ya fue procesada")
+	}
+	registrationToken, registrationTokenHash, err := newInviteRegistrationToken()
+	if err != nil {
+		return dataAccessError(err)
+	}
+	now := time.Now().UTC()
+	invite["registration_token_hash"] = registrationTokenHash
+	invite["expires_at"] = now.Add(inviteRegistrationTTL).Format(time.RFC3339Nano)
+	invite["updated_at"] = now.Format(time.RFC3339Nano)
+	if err := a.putDataRow(ctx, orgID, "organization_invites", invite, false); err != nil {
+		return dataAccessError(err)
+	}
+	return mustJSONResponse(200, publicInvitePayload(invite, registrationToken))
 }
 
 func (a *application) listActiveDrivers(ctx context.Context, request events.APIGatewayV2HTTPRequest, userID string) events.APIGatewayV2HTTPResponse {
@@ -441,13 +474,13 @@ func (a *application) createDriverPing(ctx context.Context, userID, body string)
 	return mustJSONResponse(201, ping)
 }
 
-func (a *application) acceptMatchingDriverInvites(ctx context.Context, userID, email string) error {
+func (a *application) acceptMatchingDriverInvites(ctx context.Context, userID, email, registrationToken string) error {
 	rows, err := a.scanDataRowsByEntity(ctx, "organization_invites")
 	if err != nil {
 		return err
 	}
 	for _, invite := range rows {
-		if strings.EqualFold(displayString(invite["email"]), email) && displayString(invite["role"]) == "driver" && displayString(invite["status"]) == "pending" {
+		if strings.EqualFold(displayString(invite["email"]), email) && displayString(invite["role"]) == "driver" && inviteRegistrationTokenMatches(invite, registrationToken, time.Now().UTC()) {
 			if err := a.acceptDriverInvite(ctx, invite, userID); err != nil && !errors.Is(err, errConflict) {
 				return err
 			}
@@ -463,6 +496,7 @@ func (a *application) acceptDriverInvite(ctx context.Context, invite map[string]
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	invite["status"], invite["updated_at"] = "accepted", now
+	delete(invite, "registration_token_hash")
 	if _, err := a.getMembership(ctx, userID, orgID); err == nil {
 		return a.putDataRow(ctx, orgID, "organization_invites", invite, false)
 	}

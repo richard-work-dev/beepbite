@@ -51,3 +51,30 @@ func TestSingleStoreOwnerSignupItems(t *testing.T) {
 		t.Fatalf("staff signup should not bootstrap a store: items=%d err=%v", len(invitedItems), err)
 	}
 }
+
+func TestInviteRegistrationToken(t *testing.T) {
+	token, hash, err := newInviteRegistrationToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC()
+	invite := map[string]any{
+		"status":                  "pending",
+		"registration_token_hash": hash,
+		"expires_at":              now.Add(time.Hour).Format(time.RFC3339Nano),
+	}
+	if !inviteRegistrationTokenMatches(invite, token, now) {
+		t.Fatal("fresh token should match")
+	}
+	if inviteRegistrationTokenMatches(invite, "wrong", now) {
+		t.Fatal("wrong token must not match")
+	}
+	invite["expires_at"] = now.Add(-time.Second).Format(time.RFC3339Nano)
+	if inviteRegistrationTokenMatches(invite, token, now) {
+		t.Fatal("expired token must not match")
+	}
+	public := publicInvitePayload(invite, token)
+	if _, leaked := public["registration_token_hash"]; leaked {
+		t.Fatal("public invite must not leak the token hash")
+	}
+}

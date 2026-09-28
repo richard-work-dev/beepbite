@@ -278,6 +278,14 @@ function ticketFromSession({ session, table, section, orders = [] }: {
 // ---------------------------------------------------------------------------
 
 export default function PosWorkspacePage() {
+  return <PosWorkspaceContent />;
+}
+
+export function EmbeddedPosWorkspace() {
+  return <PosWorkspaceContent embedded />;
+}
+
+function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { activeLocation, user, userProfile, signOut } = useAuth();
@@ -1250,7 +1258,7 @@ export default function PosWorkspacePage() {
 
   if (!isAuthed) {
     return (
-      <div className="h-screen flex items-center justify-center bg-background">
+      <div className={cn('flex items-center justify-center bg-background', embedded ? 'h-full' : 'h-[100dvh]')}>
         <Loader2 className="w-6 h-6 animate-spin text-primary" />
       </div>
     );
@@ -1263,12 +1271,12 @@ export default function PosWorkspacePage() {
     : 0;
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-br from-background to-primary/5 dark:to-primary/10 overflow-hidden">
+    <div className={cn('flex flex-col overflow-hidden bg-gradient-to-br from-background to-primary/5 dark:to-primary/10', embedded ? 'h-full' : 'h-[100dvh]')}>
       {/* ============================== TOP BAR ============================== */}
       <header className="bg-card border-b border-border shadow-sm shrink-0">
-        <div className="flex items-center justify-between px-4 py-2.5">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-md">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-2 py-2.5 sm:flex-nowrap sm:px-4">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <div className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/80 shadow-md min-[420px]:flex">
               <Receipt className="w-5 h-5 text-primary-foreground" />
             </div>
             <div className="flex flex-col leading-tight min-w-0">
@@ -1328,7 +1336,7 @@ export default function PosWorkspacePage() {
             </div>
           )}
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex w-full shrink-0 items-center justify-end gap-1 sm:w-auto">
             {/* Move/Assign Table + Split act directly on the active ticket, so
                 they get the primary tint — same visual family as the ticket
                 panel's own guest-count pill. Return/Kitchen/End shift are
@@ -1337,8 +1345,8 @@ export default function PosWorkspacePage() {
             {activeTicket && isDineInMode && (
               <Button size="sm" variant="outline" onClick={handleStartEatIn}
                 aria-label={activeTicket.kind === 'walkin' ? 'Asignar esta cuenta a una mesa' : 'Mover a otra mesa'}
-                className="border-primary/30 text-primary hover:bg-primary/10 h-9 focus-visible:ring-2 focus-visible:ring-primary">
-                <MapPin className="w-3.5 h-3.5 mr-1.5" aria-hidden="true" />
+                className="h-9 w-9 border-primary/30 p-0 text-primary hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-primary md:w-auto md:px-3">
+                <MapPin className="h-3.5 w-3.5 md:mr-1.5" aria-hidden="true" />
                 <span className="hidden md:inline">
                   {activeTicket.kind === 'walkin' ? 'Asignar mesa' : 'Cambiar mesa'}
                 </span>
@@ -1347,36 +1355,36 @@ export default function PosWorkspacePage() {
             {activeTicket?.kind === 'table' && activeTicket?.sentOrders?.length > 0 && (
               <Button size="sm" variant="outline" onClick={() => setShowSplitBySeat(true)}
                 aria-label="Dividir la cuenta por asiento"
-                className="border-primary/30 text-primary hover:bg-primary/10 h-9 focus-visible:ring-2 focus-visible:ring-primary">
-                <Scissors className="w-3.5 h-3.5 mr-1.5" aria-hidden="true" />
+                className="h-9 w-9 border-primary/30 p-0 text-primary hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-primary md:w-auto md:px-3">
+                <Scissors className="h-3.5 w-3.5 md:mr-1.5" aria-hidden="true" />
                 <span className="hidden md:inline">Dividir</span>
               </Button>
             )}
             <Button size="sm" variant="outline" onClick={() => setIsReturnOpen(true)} disabled={isStaffSession && !registerSession}
               aria-label="Procesar una devolución"
-              className="h-9 focus-visible:ring-2 focus-visible:ring-ring">
-              <RotateCcw className="w-3.5 h-3.5 mr-1.5" aria-hidden="true" />
+              className="h-9 w-9 p-0 focus-visible:ring-2 focus-visible:ring-ring md:w-auto md:px-3">
+              <RotateCcw className="h-3.5 w-3.5 md:mr-1.5" aria-hidden="true" />
               <span className="hidden md:inline">Devolución</span>
             </Button>
             <Button size="sm" variant="outline" onClick={() => navigate('/kds/expo')}
               aria-label="Abrir pantalla de cocina"
-              className="h-9 focus-visible:ring-2 focus-visible:ring-ring">
-              <ChefHat className="w-3.5 h-3.5 mr-1.5" aria-hidden="true" />
+              className="h-9 w-9 p-0 focus-visible:ring-2 focus-visible:ring-ring md:w-auto md:px-3">
+              <ChefHat className="h-3.5 w-3.5 md:mr-1.5" aria-hidden="true" />
               <span className="hidden md:inline">Cocina</span>
             </Button>
             {/* End shift / Switch user — shown when an actor overlay is active. */}
             {actor && (
               <Button size="sm" variant="outline" onClick={handleEndShift}
                 aria-label="Finalizar turno y volver al acceso con PIN"
-                className="h-9 focus-visible:ring-2 focus-visible:ring-ring">
-                <UserCheck className="w-3.5 h-3.5 mr-1.5" aria-hidden="true" />
+                className="h-9 w-9 p-0 focus-visible:ring-2 focus-visible:ring-ring md:w-auto md:px-3">
+                <UserCheck className="h-3.5 w-3.5 md:mr-1.5" aria-hidden="true" />
                 <span className="hidden md:inline">Finalizar turno</span>
               </Button>
             )}
             <Button size="sm" variant="ghost" onClick={handleSignOut}
               aria-label="Cerrar sesión"
-              className="text-muted-foreground hover:text-foreground h-9 focus-visible:ring-2 focus-visible:ring-ring">
-              <LogOut className="w-3.5 h-3.5 mr-1.5" aria-hidden="true" />
+              className="h-9 w-9 p-0 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring md:w-auto md:px-3">
+              <LogOut className="h-3.5 w-3.5 md:mr-1.5" aria-hidden="true" />
               <span className="hidden md:inline">Cerrar sesión</span>
             </Button>
           </div>

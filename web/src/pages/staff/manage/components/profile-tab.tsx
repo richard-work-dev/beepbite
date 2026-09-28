@@ -47,7 +47,7 @@ interface ProfileTabProps {
 
 export function ProfileTab({ staff }: ProfileTabProps) {
   const hireDate = staff.hire_date
-    ? new Date(staff.hire_date).toLocaleDateString(undefined, {
+    ? new Date(staff.hire_date).toLocaleDateString('es-AR', {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
@@ -55,7 +55,7 @@ export function ProfileTab({ staff }: ProfileTabProps) {
     : null;
 
   const createdDate = staff.created_at
-    ? new Date(staff.created_at).toLocaleDateString(undefined, {
+    ? new Date(staff.created_at).toLocaleDateString('es-AR', {
         year: 'numeric',
         month: 'short',
         day: 'numeric',
@@ -98,7 +98,7 @@ export function ProfileTab({ staff }: ProfileTabProps) {
                 ) : (
                   <XCircle className="w-3 h-3 mr-1" />
                 )}
-                {staff.is_active ? 'Active' : 'Inactive'}
+                {staff.is_active ? 'Activo' : 'Inactivo'}
               </Badge>
             </div>
           </div>
@@ -108,19 +108,19 @@ export function ProfileTab({ staff }: ProfileTabProps) {
       {/* details grid */}
       <Card className="border-primary/15">
         <CardContent className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-5">
-          <Field icon={AtSign}    label="Username"    value={staff.username ?? '—'} />
-          <Field icon={Mail}      label="Email"       value={staff.email} />
-          <Field icon={Phone}     label="Phone"       value={staff.phone} />
-          <Field icon={User}      label="Employee ID" value={staff.employee_id} />
-          <Field icon={Calendar}  label="Hire date"   value={hireDate} />
-          <Field icon={Calendar}  label="Record created" value={createdDate} />
+          <Field icon={AtSign}    label="Usuario"          value={staff.username ?? '—'} />
+          <Field icon={Mail}      label="Correo"           value={staff.email} />
+          <Field icon={Phone}     label="Teléfono"         value={staff.phone} />
+          <Field icon={User}      label="Legajo"           value={staff.employee_id} />
+          <Field icon={Calendar}  label="Fecha de ingreso" value={hireDate} />
+          <Field icon={Calendar}  label="Registro creado"  value={createdDate} />
         </CardContent>
       </Card>
 
       {staff.notes && (
         <Card className="border-primary/15">
           <CardContent className="p-5">
-            <p className="text-xs font-medium text-muted-foreground mb-1.5">Notes</p>
+            <p className="text-xs font-medium text-muted-foreground mb-1.5">Notas</p>
             <p className="text-sm text-foreground whitespace-pre-wrap">{staff.notes}</p>
           </CardContent>
         </Card>

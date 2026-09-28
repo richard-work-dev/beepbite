@@ -505,31 +505,31 @@ const LocationSettings = () => {
       {/* Settings tabs */}
       <Reveal delay={0.1}>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 h-auto p-1 bg-muted/60 rounded-xl">
+          <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-xl bg-muted/60 p-1">
             <TabsTrigger
               value="details"
-              className="flex items-center gap-2 text-xs sm:text-sm py-2.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary"
+              className="flex shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-xs data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm sm:text-sm"
             >
               <MapPin className="w-4 h-4" />
               <span>Datos</span>
             </TabsTrigger>
             <TabsTrigger
               value="regional"
-              className="flex items-center gap-2 text-xs sm:text-sm py-2.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary"
+              className="flex shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-xs data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm sm:text-sm"
             >
               <Globe className="w-4 h-4" />
               <span>Configuración regional</span>
             </TabsTrigger>
             <TabsTrigger
               value="delivery"
-              className="flex items-center gap-2 text-xs sm:text-sm py-2.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary"
+              className="flex shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-xs data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm sm:text-sm"
             >
               <Truck className="w-4 h-4" />
               <span>Entrega</span>
             </TabsTrigger>
             <TabsTrigger
               value="status"
-              className="flex items-center gap-2 text-xs sm:text-sm py-2.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary"
+              className="flex shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-xs data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm sm:text-sm"
             >
               <SettingsIcon className="w-4 h-4" />
               <span>Estado</span>
@@ -1199,7 +1199,7 @@ const LocationSettings = () => {
                   </div>
 
                   {/* Live summary */}
-                  <div className="grid grid-cols-3 gap-3 p-4 bg-primary/5 rounded-xl border border-primary/15">
+                  <div className="grid grid-cols-1 gap-3 rounded-xl border border-primary/15 bg-primary/5 p-4 sm:grid-cols-3">
                     <div className="text-center">
                       <p className={cn('text-xl font-bold font-display', formData.is_active ? 'text-primary' : 'text-muted-foreground')}>
                         {formData.is_active ? 'Sí' : 'No'}

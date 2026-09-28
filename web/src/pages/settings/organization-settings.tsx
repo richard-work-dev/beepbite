@@ -261,10 +261,10 @@ const OrganizationSettings = () => {
       {/* Settings tabs */}
       <Reveal delay={0.1}>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 h-auto p-1 bg-muted/60 rounded-xl">
+          <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-xl bg-muted/60 p-1">
             <TabsTrigger
               value="organization"
-              className="flex items-center gap-2 text-xs sm:text-sm py-2.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary"
+              className="flex shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-xs data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm sm:text-sm"
             >
               <Building2 className="w-4 h-4" />
               <span className="hidden xs:inline">Organización</span>
@@ -272,14 +272,14 @@ const OrganizationSettings = () => {
             </TabsTrigger>
             <TabsTrigger
               value="locations"
-              className="flex items-center gap-2 text-xs sm:text-sm py-2.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary"
+              className="flex shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-xs data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm sm:text-sm"
             >
               <MapPin className="w-4 h-4" />
               <span>Locales</span>
             </TabsTrigger>
             <TabsTrigger
               value="businessinfo"
-              className="flex items-center gap-2 text-xs sm:text-sm py-2.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary"
+              className="flex shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-xs data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm sm:text-sm"
             >
               <FileText className="w-4 h-4" />
               <span className="hidden xs:inline">Datos comerciales</span>
@@ -339,7 +339,7 @@ const OrganizationSettings = () => {
                   </div>
 
                   {/* Summary info strip */}
-                  <div className="grid grid-cols-3 gap-3 p-4 bg-primary/5 rounded-xl border border-primary/15">
+                  <div className="grid grid-cols-1 gap-3 rounded-xl border border-primary/15 bg-primary/5 p-4 sm:grid-cols-3">
                     <div className="text-center">
                       <p className="text-xl font-bold font-display text-foreground">{locations.length}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">Locales totales</p>

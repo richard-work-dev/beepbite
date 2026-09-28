@@ -39,6 +39,14 @@ interface OptimisticActions {
 }
 
 export default function StationPage() {
+  return <StationContent />;
+}
+
+export function EmbeddedStationPage() {
+  return <StationContent embedded />;
+}
+
+function StationContent({ embedded = false }: { embedded?: boolean }) {
   const { stationId } = useParams<{ stationId: string }>();
   const [tickets, setTickets] = useState<KdsTicket[]>([]); // active tickets only
   const [loading, setLoading] = useState(true);
@@ -351,7 +359,7 @@ export default function StationPage() {
 
   // -------- render --------
   return (
-    <div className="flex h-screen flex-col bg-gray-950 text-gray-50">
+    <div className={cn('flex flex-col bg-gray-950 text-gray-50', embedded ? 'h-full' : 'h-[100dvh]')}>
       {/* ------------------------------------------------------------------ */}
       {/* SSE disconnection banner — sits above the header so it's impossible */}
       {/* to miss on a wall-mounted screen.                                   */}
@@ -361,7 +369,7 @@ export default function StationPage() {
           role="alert"
           aria-live="assertive"
           className={cn(
-            'flex items-center justify-center gap-3 px-4 py-2.5 text-sm font-semibold',
+            'flex flex-wrap items-center justify-center gap-2 px-3 py-2.5 text-center text-sm font-semibold sm:gap-3 sm:px-4',
             sseOffline
               ? 'bg-red-700 text-white'
               : 'bg-amber-500 text-amber-950',
@@ -390,8 +398,8 @@ export default function StationPage() {
       {/* ------------------------------------------------------------------ */}
       {/* Header                                                              */}
       {/* ------------------------------------------------------------------ */}
-      <header className="flex items-center justify-between border-b border-gray-800 bg-gray-900 px-5 py-3">
-        <div className="flex items-center gap-4">
+      <header className="flex flex-col items-stretch gap-3 border-b border-gray-800 bg-gray-900 px-3 py-3 sm:px-5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
           {/* Orange left accent */}
           <div className="h-8 w-1.5 rounded-full bg-orange-500" aria-hidden="true" />
           <div className="flex flex-col leading-tight">
@@ -417,12 +425,12 @@ export default function StationPage() {
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:justify-end lg:overflow-visible lg:pb-0">
           <select value={serviceFilter} onChange={(event) => setServiceFilter(event.target.value as typeof serviceFilter)} aria-label="Filtrar comandas por modalidad" className="h-9 rounded-md border border-gray-700 bg-gray-800 px-2 text-xs font-semibold text-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-400">
             <option value="all">Todas</option><option value="dine_in">Salón</option><option value="pickup">Retiro</option><option value="delivery">A domicilio</option>
           </select>
-          <Button size="sm" variant={delayedOnly ? 'default' : 'outline'} onClick={() => setDelayedOnly((value) => !value)} className="text-xs">Demoradas</Button>
-          <Button size="sm" variant={soundEnabled ? 'default' : 'outline'} onClick={() => setSoundEnabled((value) => !value)} className="text-xs">{soundEnabled ? 'Sonido activo' : 'Activar sonido'}</Button>
+          <Button size="sm" variant={delayedOnly ? 'default' : 'outline'} onClick={() => setDelayedOnly((value) => !value)} className="shrink-0 text-xs">Demoradas</Button>
+          <Button size="sm" variant={soundEnabled ? 'default' : 'outline'} onClick={() => setSoundEnabled((value) => !value)} className="shrink-0 text-xs">{soundEnabled ? 'Sonido activo' : 'Activar sonido'}</Button>
           {/* Quiet connection indicator when connected */}
           {!sseOffline && !sseReconnecting && (
             <ConnectionPill status={sseStatus} />
@@ -457,7 +465,7 @@ export default function StationPage() {
               variant="outline"
               onClick={() => onRecall(lastBump.ticket)}
               aria-label={`Recuperar la comanda ${lastBump.ticket.ticket_number}`}
-              className="gap-1.5 border-amber-500 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 hover:text-amber-200"
+              className="shrink-0 gap-1.5 border-amber-500 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 hover:text-amber-200"
             >
               <RotateCcw className="size-3.5" />
               Recuperar #{lastBump.ticket.ticket_number}
@@ -489,7 +497,7 @@ export default function StationPage() {
       {/* ------------------------------------------------------------------ */}
       {/* Main ticket grid                                                    */}
       {/* ------------------------------------------------------------------ */}
-      <main className="flex-1 overflow-auto p-4">
+      <main className="flex-1 overflow-auto p-3 sm:p-4">
         {loading ? (
           <LoadingState />
         ) : fetchError ? (

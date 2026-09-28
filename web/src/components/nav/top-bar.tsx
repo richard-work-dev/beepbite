@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ComponentType } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { LogOut, Users, ChevronDown, UserCircle, BarChart3, MessageSquare, Hash, X, MapPin, ChefHat, CookingPot, Building2, Check, Store, Folder, Receipt, MonitorPlay, Truck, LockKeyhole, LayoutDashboard, PackageSearch, PackageOpen, ClipboardList, ClipboardCheck, PackageCheck, FileCheck2, Zap } from 'lucide-react';
+import { LogOut, Users, ChevronDown, UserCircle, BarChart3, MessageSquare, Hash, X, MapPin, ChefHat, CookingPot, Building2, Check, Store, Folder, Receipt, MonitorPlay, Truck, LockKeyhole, LayoutDashboard, PackageSearch, PackageOpen, ClipboardList, ClipboardCheck, PackageCheck, FileCheck2, Zap, Menu, LayoutGrid, CalendarDays, ListChecks, WalletCards, Gift, FileText, Clock3, ContactRound } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { useActor } from '@/context/actor-token-context';
 import { hasAnyAccess } from '@/lib/access-control';
@@ -100,10 +100,6 @@ const TopBar = () => {
       .slice(0, 2);
   };
 
-  const isActivePath = (path: string) => {
-    return location.pathname === path;
-  };
-
   const canAccess = (capability?: string) => {
     if (!capability) return true;
     return hasAnyAccess(activeMembership, [capability], actor?.capabilities, actor?.role);
@@ -113,9 +109,14 @@ const TopBar = () => {
     setIsSideNavOpen(false);
   };
 
-  const toggleSideNav = () => {
-    setIsSideNavOpen(!isSideNavOpen);
+  const toggleSideNav = (trigger?: HTMLButtonElement) => {
+    if (trigger) menuTriggerRef.current = trigger;
+    setIsSideNavOpen((open) => !open);
   };
+
+  useEffect(() => {
+    setIsSideNavOpen(false);
+  }, [location.pathname, location.search]);
 
   // Escape closes the panel; Tab/Shift+Tab is trapped inside it while open
   // so a keyboard user can't tab into the (still-visible, click-blocked-only)
@@ -123,6 +124,9 @@ const TopBar = () => {
   // button that opened it rather than being dropped back to <body>.
   useEffect(() => {
     if (!isSideNavOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
 
     const panel = sideNavRef.current;
     const focusable = panel?.querySelectorAll<HTMLElement>(
@@ -151,6 +155,7 @@ const TopBar = () => {
     document.addEventListener('keydown', handleKeyDown);
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = previousOverflow;
       menuTriggerRef.current?.focus();
     };
   }, [isSideNavOpen]);
@@ -171,12 +176,18 @@ const TopBar = () => {
         { name: t('nav.sideBar.posWorkspace'), path: '/pos/workspace', icon: Receipt, description: t('nav.sideBar.posWorkspaceDesc'), capability: 'can_pos' },
         { name: t('nav.sideBar.kitchenWorkspace'), path: '/work', icon: LayoutDashboard, description: t('nav.sideBar.kitchenWorkspaceDesc'), capability: 'can_kds' },
         { name: t('nav.sideBar.kitchenDisplay'), path: '/kds/expo', icon: MonitorPlay, description: t('nav.sideBar.kitchenDisplayDesc'), capability: 'can_kds' },
+        { name: 'Salón y mesas', path: '/floor', icon: LayoutGrid, description: 'Estado y distribución de las mesas', capability: 'can_pos' },
+        { name: 'Reservas', path: '/reservations', icon: CalendarDays, description: 'Agenda de reservas del local', capability: 'can_pos' },
+        { name: 'Lista de espera', path: '/waitlist', icon: ListChecks, description: 'Clientes esperando una mesa', capability: 'can_pos' },
       ]
     },
     {
       title: t('nav.sideBar.operations'),
       items: [
         { name: t('nav.sideBar.reports'), path: '/reports', icon: BarChart3, description: t('nav.sideBar.reportsDesc'), capability: 'can_view_reports' },
+        { name: 'Caja', path: '/cash', icon: WalletCards, description: 'Aperturas, cierres y movimientos', capability: 'can_pos' },
+        { name: 'Facturas', path: '/invoices', icon: FileText, description: 'Comprobantes y facturación', capability: 'can_view_reports' },
+        { name: 'Tarjetas de regalo', path: '/gift-cards', icon: Gift, description: 'Emisión, consulta y saldos', capability: 'can_pos' },
         { name: t('nav.sideBar.menu'), path: '/menu', icon: ChefHat, description: t('nav.sideBar.menuDesc'), capability: 'can_manage_menu' },
         { name: t('nav.sideBar.categories'), path: '/categories', icon: Folder, description: t('nav.sideBar.categoriesDesc'), capability: 'can_manage_menu' },
       ]
@@ -199,6 +210,8 @@ const TopBar = () => {
       items: [
         { name: t('nav.sideBar.members'), path: '/members', icon: Users, description: t('nav.sideBar.membersDesc'), capability: 'can_manage_staff' },
         { name: t('nav.sideBar.staff'), path: '/staff', icon: UserCircle, description: t('nav.sideBar.staffDesc'), capability: 'can_manage_staff' },
+        { name: 'Fichas del personal', path: '/staff/manage', icon: ContactRound, description: 'Perfil, seguridad, sueldo y horarios', capability: 'can_manage_staff' },
+        { name: 'Control horario', path: '/timeclock', icon: Clock3, description: 'Entradas y salidas del personal', capability: 'can_manage_staff' },
         { name: t('nav.sideBar.driverPortal'), path: '/driver', icon: Truck, description: t('nav.sideBar.driverPortalDesc'), capability: 'can_drive' },
       ]
     },
@@ -211,6 +224,20 @@ const TopBar = () => {
     }
   ];
 
+  const availablePrimaryItems = topNavigationItems.filter((item) => canAccess(item.capability));
+  const mobilePrimaryItems = availablePrimaryItems.filter((item) => item.path !== '/reviews').slice(0, 3);
+  const availableNavItems = [
+    ...availablePrimaryItems,
+    ...sideNavigationSections.flatMap((section) => section.items.filter((item) => canAccess(item.capability))),
+  ];
+  const activeNavPath = availableNavItems
+    .filter((item) => location.pathname === item.path || location.pathname.startsWith(`${item.path}/`))
+    .sort((a, b) => b.path.length - a.path.length)[0]?.path;
+  const isActivePath = (path: string) => activeNavPath === path;
+  const isDocsPage = location.pathname === '/docs' || location.pathname.startsWith('/docs/');
+  const showAppNavigation = Boolean(user && !isLandingPage && !isDocsPage);
+  const isMoreActive = Boolean(activeNavPath && !mobilePrimaryItems.some((item) => item.path === activeNavPath));
+
   return (
     <>
       <header className={cn(
@@ -219,18 +246,18 @@ const TopBar = () => {
           ? 'border-border/60 bg-background/90 backdrop-blur-sm'
           : 'border-border bg-background',
       )}>
-        <nav className="h-16 px-4 sm:px-6 lg:px-8 xl:px-12">
+        <nav className="h-16 px-3 sm:px-5 lg:px-8 xl:px-12">
           <div className="h-full flex items-center justify-between max-w-content mx-auto">
             {/* Left: Logo and Navigation */}
-            <div className="flex items-center gap-6">
-              <Link to="/" className="flex items-center" aria-label="RikoPollo, inicio">
-                <Logo variant="minimal" />
+            <div className="flex min-w-0 items-center gap-6">
+              <Link to={user ? '/home' : '/'} className="flex min-w-0 items-center" aria-label="RikoPollo, inicio">
+                <Logo variant="minimal" className="[&>span]:hidden min-[390px]:[&>span]:inline" />
               </Link>
 
               {/* Desktop Navigation - Show for authenticated users */}
               {user && (
-                <nav className="hidden sm:flex items-center gap-1.5" aria-label="Navegación principal">
-                  {topNavigationItems.filter((item) => canAccess(item.capability)).map((item) => {
+                <nav className="hidden lg:flex items-center gap-1.5" aria-label="Navegación principal">
+                  {availablePrimaryItems.map((item) => {
                     const Icon = item.icon;
                     const isActive = isActivePath(item.path);
 
@@ -254,32 +281,6 @@ const TopBar = () => {
                 </nav>
               )}
 
-              {/* Mobile Navigation - Show for authenticated users */}
-              {user && (
-                <nav className="flex sm:hidden items-center gap-1" aria-label="Navegación principal">
-                  {topNavigationItems.filter((item) => canAccess(item.capability)).slice(0, 2).map((item) => {
-                    const Icon = item.icon;
-                    const isActive = isActivePath(item.path);
-
-                    return (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        aria-current={isActive ? 'page' : undefined}
-                        aria-label={item.name}
-                        className={cn(
-                          "flex items-center justify-center w-9 h-9 rounded-md text-xs font-semibold transition-colors",
-                          isActive
-                            ? "bg-primary text-primary-foreground"
-                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                        )}
-                      >
-                        <Icon className="w-4 h-4" aria-hidden="true" />
-                      </Link>
-                    );
-                  })}
-                </nav>
-              )}
             </div>
 
             {/* Right: Sync status, location, user menu */}
@@ -289,11 +290,11 @@ const TopBar = () => {
                   {/* Sync status — always visible, not tucked in a menu. See
                       src/components/ui/sync-status.jsx: offline queueing is
                       real (src/offline/queue.js) and staff need to see it. */}
-                  {!isLandingPage && <SyncStatusBadge className="hidden md:inline-flex" />}
+                  {!isLandingPage && <SyncStatusBadge className="hidden lg:inline-flex" />}
 
                   {/* Location Selector - Desktop */}
                   {!isLandingPage && (
-                    <div className="hidden md:block">
+                    <div className="hidden lg:block">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
@@ -340,12 +341,11 @@ const TopBar = () => {
 
                   {/* User Menu Button */}
                   <Button
-                    ref={menuTriggerRef}
                     variant="outline"
                     className="h-11 w-11 rounded-md p-0"
                     aria-label={t('auth.openNavMenu')}
                     aria-expanded={isSideNavOpen}
-                    onClick={toggleSideNav}
+                    onClick={(event) => toggleSideNav(event.currentTarget)}
                   >
                     <Avatar className="h-8 w-8">
                       <AvatarImage src={userProfile?.avatar_url ?? undefined} alt="" className="object-cover" />
@@ -379,6 +379,52 @@ const TopBar = () => {
         </nav>
       </header>
 
+      {showAppNavigation && (
+        <nav
+          className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_-18px_rgba(0,0,0,0.45)] backdrop-blur lg:hidden"
+          aria-label="Navegación principal móvil"
+        >
+          <div
+            className="mx-auto grid h-16 max-w-xl"
+            style={{ gridTemplateColumns: `repeat(${mobilePrimaryItems.length + 1}, minmax(0, 1fr))` }}
+          >
+            {mobilePrimaryItems.map((item) => {
+              const Icon = item.icon;
+              const active = isActivePath(item.path);
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  aria-current={active ? 'page' : undefined}
+                  className={cn(
+                    'relative flex min-w-0 flex-col items-center justify-center gap-1 px-1 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+                    active ? 'text-primary' : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground',
+                  )}
+                >
+                  {active && <span className="absolute inset-x-4 top-0 h-0.5 rounded-full bg-primary" aria-hidden="true" />}
+                  <Icon className="h-5 w-5" aria-hidden="true" />
+                  <span className="w-full truncate text-center">{item.name}</span>
+                </Link>
+              );
+            })}
+            <button
+              type="button"
+              onClick={(event) => toggleSideNav(event.currentTarget)}
+              aria-expanded={isSideNavOpen}
+              aria-haspopup="dialog"
+              className={cn(
+                'relative flex min-w-0 flex-col items-center justify-center gap-1 px-1 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+                isMoreActive || isSideNavOpen ? 'text-primary' : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground',
+              )}
+            >
+              {(isMoreActive || isSideNavOpen) && <span className="absolute inset-x-4 top-0 h-0.5 rounded-full bg-primary" aria-hidden="true" />}
+              <Menu className="h-5 w-5" aria-hidden="true" />
+              <span>Más</span>
+            </button>
+          </div>
+        </nav>
+      )}
+
       {/* Side Navigation */}
       {user && isSideNavOpen && (
         <>
@@ -395,12 +441,12 @@ const TopBar = () => {
             role="dialog"
             aria-modal="true"
             aria-label={t('auth.openNavMenu')}
-            className="fixed top-0 right-0 h-full w-80 sm:w-96 bg-background border-l-2 border-border shadow-2xl z-[9999] animate-in slide-in-from-right duration-200"
+            className="fixed inset-y-0 right-0 z-[9999] h-[100dvh] w-full max-w-sm animate-in border-l-2 border-border bg-background shadow-2xl slide-in-from-right duration-200"
           >
             <div className="h-full flex flex-col">
 
               {/* Header */}
-              <div className="bg-primary px-6 py-4 flex-shrink-0">
+              <div className="flex-shrink-0 bg-primary px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
                     <Avatar className="h-10 w-10 border-2 border-primary-foreground/40">
@@ -429,14 +475,48 @@ const TopBar = () => {
                   </Button>
                 </div>
                 {/* Sync status repeated here — mobile users don't see the top-bar badge. */}
-                <div className="mt-3 md:hidden">
+                <div className="mt-3 lg:hidden">
                   <SyncStatusBadge className="bg-primary-foreground/15 text-primary-foreground [&_svg]:text-primary-foreground" />
                 </div>
               </div>
 
               {/* Scrollable Content */}
               <div className="flex-1 overflow-y-auto">
-                <div className="p-6 space-y-6">
+                <div className="space-y-6 p-4 sm:p-6">
+                  {locations?.length > 0 && (
+                    <div className="space-y-2 lg:hidden">
+                      <h3 className="px-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                        Local activo
+                      </h3>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" className="h-auto w-full justify-start gap-3 px-3 py-3">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10">
+                              <MapPin className="h-[1.125rem] w-[1.125rem] text-primary" aria-hidden="true" />
+                            </div>
+                            <span className="min-w-0 flex-1 truncate text-left text-sm font-semibold">
+                              {activeLocation?.name || t('nav.topBar.selectLocation')}
+                            </span>
+                            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="max-h-[50dvh] w-[calc(100vw-2rem)] max-w-[22rem] overflow-y-auto">
+                          <DropdownMenuLabel>{t('nav.topBar.switchLocation')}</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          {locations.map((loc) => (
+                            <DropdownMenuItem
+                              key={loc.id}
+                              onClick={() => handleSwitchLocation(loc.id)}
+                              className={cn('gap-2 py-3', activeLocation?.id === loc.id && 'bg-primary/10')}
+                            >
+                              {activeLocation?.id === loc.id ? <Check className="h-4 w-4 text-primary" /> : <Store className="h-4 w-4" />}
+                              <span className="truncate">{loc.name}</span>
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  )}
                   {sideNavigationSections.map((section) => (
                     <div key={section.title} className="space-y-2">
                       <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-1">
@@ -508,7 +588,7 @@ const TopBar = () => {
                           <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-80 max-h-[60vh] overflow-y-auto" sideOffset={8}>
+                      <DropdownMenuContent align="end" className="max-h-[60dvh] w-[calc(100vw-2rem)] max-w-80 overflow-y-auto" sideOffset={8}>
                         <DropdownMenuLabel className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                           {t('nav.sideBar.yourOrganizations')}
                         </DropdownMenuLabel>
@@ -560,7 +640,7 @@ const TopBar = () => {
               </div>
 
               {/* Fixed Bottom — Staff login + Sign Out */}
-              <div className="flex-shrink-0 p-4 border-t-2 border-border bg-muted/40 space-y-1.5">
+              <div className="flex-shrink-0 space-y-1.5 border-t-2 border-border bg-muted/40 px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
                 {/* Staff / employee PIN login — shared-terminal "switch user" */}
                 <button
                   type="button"

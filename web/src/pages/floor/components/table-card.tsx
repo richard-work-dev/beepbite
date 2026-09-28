@@ -36,28 +36,28 @@ interface StatusMeta {
 // naturally for either.
 const STATUS_META: Record<TableStatus, StatusMeta> = {
   available: {
-    label: 'Available',
+    label: 'Disponible',
     icon: CheckCircle2,
     roundel: 'bg-success text-success-foreground',
     tile: 'bg-success/10 border-success/50 text-success',
     border: 'border-solid',
   },
   occupied: {
-    label: 'Occupied',
+    label: 'Ocupada',
     icon: UtensilsCrossed,
     roundel: 'bg-primary text-primary-foreground',
     tile: 'bg-primary/10 border-primary/50 text-primary',
     border: 'border-solid',
   },
   reserved: {
-    label: 'Reserved',
+    label: 'Reservada',
     icon: CalendarClock,
     roundel: 'bg-warning text-warning-foreground',
     tile: 'bg-warning/10 border-warning/50 text-warning',
     border: 'border-solid',
   },
   out_of_service: {
-    label: 'Out of service',
+    label: 'Fuera de servicio',
     icon: Wrench,
     roundel: 'bg-muted-foreground text-background',
     tile: 'bg-muted border-border text-muted-foreground',
@@ -164,7 +164,7 @@ export default function TableCard({
           width: TABLE_WIDTH,
           height: TABLE_HEIGHT,
         }}
-        aria-label={`Table ${table.label}, ${meta.label}, seats ${table.capacity}`}
+        aria-label={`Mesa ${table.label}, ${meta.label}, capacidad para ${table.capacity}`}
       >
         <CardContent table={table} badge={badge} busy={busy} />
       </button>
@@ -204,7 +204,7 @@ function DraggableTable({ table, x, y, badge, busy, meta }: DraggableTableProps)
       ref={setNodeRef}
       style={style}
       className="absolute touch-none focus-ring-strong"
-      aria-label={`Table ${table.label}, ${meta.label}, seats ${table.capacity}. Drag to reposition.`}
+      aria-label={`Mesa ${table.label}, ${meta.label}, capacidad para ${table.capacity}. Arrastrá para cambiarla de lugar.`}
       {...listeners}
       {...attributes}
     >

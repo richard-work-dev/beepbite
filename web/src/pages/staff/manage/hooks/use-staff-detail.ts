@@ -42,7 +42,7 @@ export function useStaffDetail(locationId: string | undefined) {
       setStaffList(data ?? []);
     } catch (e) {
       console.error('Error fetching staff list:', e);
-      setListError(e instanceof Error ? e.message : 'Failed to load staff.');
+      setListError(e instanceof Error ? e.message : 'No se pudo cargar el personal.');
     } finally {
       setLoadingList(false);
     }
@@ -61,7 +61,7 @@ export function useStaffDetail(locationId: string | undefined) {
       setRates(data ?? []);
     } catch (e) {
       console.error('Error fetching pay rates:', e);
-      setRatesError(e instanceof Error ? e.message : 'Failed to load pay rates.');
+      setRatesError(e instanceof Error ? e.message : 'No se pudo cargar la remuneración.');
     } finally {
       setLoadingRates(false);
     }
@@ -83,7 +83,7 @@ export function useStaffDetail(locationId: string | undefined) {
       setShifts(data ?? []);
     } catch (e) {
       console.error('Error fetching shifts:', e);
-      setShiftsError(e instanceof Error ? e.message : 'Failed to load shifts.');
+      setShiftsError(e instanceof Error ? e.message : 'No se pudieron cargar los horarios.');
     } finally {
       setLoadingShifts(false);
     }

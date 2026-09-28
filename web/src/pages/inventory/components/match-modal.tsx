@@ -99,7 +99,7 @@ export function MatchModal({ invoice, open, onClose, onMatched }: MatchModalProp
         </DialogHeader>
 
         {/* Invoice summary */}
-        <div className="grid grid-cols-3 gap-4 text-sm border border-border rounded p-3 bg-muted/40">
+        <div className="grid grid-cols-1 gap-4 rounded border border-border bg-muted/40 p-3 text-sm sm:grid-cols-3">
           <div>
             <p className="text-muted-foreground text-xs">Total de factura</p>
             <p className="font-semibold tabular-nums">{fmtCents(invoice.total_cents)}</p>

@@ -68,8 +68,8 @@ export function useTables(locationId: string | undefined, { pollMs = 0 }: { poll
         api.request<FloorTable[]>('GET', `/data/tables?eq=location_id,${locationId}&order=label.asc`),
       ]);
       if (!mounted.current) return;
-      if (sRes.error) throw new Error(sRes.error.message || 'failed loading sections');
-      if (tRes.error) throw new Error(tRes.error.message || 'failed loading tables');
+      if (sRes.error) throw new Error(sRes.error.message || 'No se pudieron cargar las secciones');
+      if (tRes.error) throw new Error(tRes.error.message || 'No se pudieron cargar las mesas');
       setSections(Array.isArray(sRes.data) ? sRes.data : []);
       setTables(Array.isArray(tRes.data) ? tRes.data : []);
       setError(null);

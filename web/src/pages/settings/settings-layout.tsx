@@ -97,6 +97,7 @@ function isItemActive(item: SettingsNavItem, currentPath: string, currentSearch:
 
 export default function SettingsLayout() {
   const { pathname, search } = useLocation();
+  const flatItems = SECTIONS.flatMap((section) => section.items);
 
   return (
     <PageContainer>
@@ -106,9 +107,38 @@ export default function SettingsLayout() {
         description="Configurá tu organización, la tienda y las integraciones del sistema."
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] lg:grid-cols-[240px_1fr] gap-6">
+      <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-[220px_1fr] md:gap-6 lg:grid-cols-[240px_1fr]">
+        <nav
+          className="sticky top-16 z-30 -mx-3 overflow-x-auto border-y border-border/60 bg-background/95 px-3 py-2 backdrop-blur sm:-mx-5 sm:px-5 md:hidden"
+          aria-label="Navegación de configuración"
+        >
+          <ul className="flex min-w-max gap-2">
+            {flatItems.map((item) => {
+              const Icon = item.icon;
+              const active = isItemActive(item, pathname, search);
+              return (
+                <li key={item.to}>
+                  <NavLink
+                    to={item.to}
+                    aria-current={active ? 'page' : undefined}
+                    className={cn(
+                      'flex h-11 items-center gap-2 rounded-xl border px-3 text-sm font-semibold transition-colors',
+                      active
+                        ? 'border-primary/30 bg-primary text-primary-foreground'
+                        : 'border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground',
+                    )}
+                  >
+                    <Icon className="h-4 w-4" aria-hidden="true" />
+                    <span>{item.label}</span>
+                  </NavLink>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+
         {/* Sidebar */}
-        <aside className="md:sticky md:top-20 md:self-start">
+        <aside className="hidden md:sticky md:top-20 md:block md:self-start">
           <nav
             className="rounded-2xl border border-border/60 bg-card shadow-card p-3 space-y-1"
             aria-label="Navegación de configuración"

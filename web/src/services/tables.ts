@@ -160,6 +160,10 @@ export interface SessionOrder {
   total_cents: number;
   course_number: number | null;
   created_at: string;
+  customer_id?: string | null;
+  customer_name?: string | null;
+  customer_phone?: string | null;
+  notes?: string | null;
   items: SessionOrderItem[];
 }
 

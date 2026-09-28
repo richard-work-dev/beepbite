@@ -352,6 +352,9 @@ func (a *application) createPOSOrder(ctx context.Context, orgID, body string) ev
 		if item["is_86ed"] == true || item["is_active"] == false {
 			return errorResponse(409, "item is unavailable")
 		}
+		if len(strings.TrimSpace(displayString(line["notes"]))) > 300 {
+			return errorResponse(400, "las instrucciones de un producto no pueden superar los 300 caracteres")
+		}
 		baseUnit, ok := integerValue(item["price_cents"])
 		if !ok {
 			if price, numberOK := numericValue(item["price"]); numberOK {
@@ -381,6 +384,26 @@ func (a *application) createPOSOrder(ctx context.Context, orgID, body string) ev
 		return dataAccessError(err)
 	}
 
+	customerID := strings.TrimSpace(displayString(input["customer_id"]))
+	customerName := strings.TrimSpace(displayString(input["customer_name"]))
+	customerPhone := strings.TrimSpace(displayString(input["customer_phone"]))
+	if len(customerName) > 120 || len(customerPhone) > 40 || len(strings.TrimSpace(displayString(input["notes"]))) > 500 {
+		return errorResponse(400, "los datos del cliente o las observaciones son demasiado largos")
+	}
+	if customerID != "" {
+		customer, customerErr := a.dataRowByID(ctx, orgID, "customers", customerID)
+		if customerErr != nil {
+			return errorResponse(400, "el cliente seleccionado no existe")
+		}
+		storedName := strings.TrimSpace(strings.Join([]string{displayString(customer["first_name"]), displayString(customer["last_name"])}, " "))
+		if storedName != "" {
+			customerName = storedName
+		}
+		if storedPhone := strings.TrimSpace(displayString(customer["whatsapp_number"])); storedPhone != "" {
+			customerPhone = storedPhone
+		}
+	}
+
 	location, _ := a.dataRowByID(ctx, orgID, "locations", locationID)
 	taxRate, _ := numericValue(location["tax_rate"])
 	taxInclusive, _ := location["tax_inclusive"].(bool)
@@ -404,7 +427,8 @@ func (a *application) createPOSOrder(ctx context.Context, orgID, body string) ev
 		"currency_code": valueOr(location, "currency_code", "USD"), "currency_decimals": int64(2),
 		"tax_rate": taxRate, "tax_inclusive": taxInclusive, "tax_label": valueOr(location, "tax_label", "Tax"),
 		"table_number": valueOr(input, "table_number", nil), "table_session_id": nullableString(tableSessionID),
-		"register_session_id": valueOr(input, "register_session_id", nil), "customer_id": valueOr(input, "customer_id", nil),
+		"register_session_id": valueOr(input, "register_session_id", nil), "customer_id": nullableString(customerID),
+		"customer_name": nullableString(customerName), "customer_phone": nullableString(customerPhone),
 		"notes": valueOr(input, "notes", nil), "party_size": valueOr(input, "party_size", 1), "held_at": nil,
 	}
 	created, err := a.createStoredRow(ctx, orgID, "orders", order)

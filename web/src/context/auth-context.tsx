@@ -81,7 +81,7 @@ export interface AuthContextValue {
   switchOrganizationBySlug: (slug: string) => void;
   switchLocation: (locationId: string) => Location | undefined;
   getOrganizationBySlug: (slug: string) => Organization | undefined;
-  signUp: (email: string, password: string) => Promise<unknown>;
+	signUp: (email: string, password: string, invitationToken?: string) => Promise<unknown>;
   signIn: (email: string, password: string) => Promise<unknown>;
   signOut: () => Promise<void>;
   forgotPassword: (email: string) => Promise<{ error: unknown }>;
@@ -416,12 +416,13 @@ export function AuthProvider({ children, onNavigate, pathname }: {
   }, [onNavigate, pathname]);
 
   // Auth methods
-  const signUp = useCallback(async (email: string, password: string) => {
+	const signUp = useCallback(async (email: string, password: string, invitationToken?: string) => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/`,
+		options: {
+			emailRedirectTo: `${window.location.origin}/`,
+			invitationToken,
       },
     });
     if (error) throw error;

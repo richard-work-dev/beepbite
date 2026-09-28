@@ -278,6 +278,9 @@ export async function submitPosOrder({
   tableNumber,
   tableSessionId,
   registerSessionId,
+	customerId,
+	customerName,
+	customerPhone,
   items,
   notes,
 }: {
@@ -286,6 +289,9 @@ export async function submitPosOrder({
   tableNumber?: string;
   tableSessionId?: string;
   registerSessionId?: string;
+	customerId?: string;
+	customerName?: string;
+	customerPhone?: string;
   items: unknown[];
   notes?: string;
 }): Promise<CreatedOrder> {
@@ -294,6 +300,9 @@ export async function submitPosOrder({
     order_type: string;
     register_session_id?: string;
     table_session_id?: string;
+		customer_id?: string;
+		customer_name?: string;
+		customer_phone?: string;
     items: unknown[];
     table_number?: string;
     notes?: string;
@@ -305,6 +314,9 @@ export async function submitPosOrder({
   };
   if (tableNumber) body.table_number = tableNumber;
   if (tableSessionId) body.table_session_id = tableSessionId;
+	if (customerId) body.customer_id = customerId;
+	if (customerName) body.customer_name = customerName;
+	if (customerPhone) body.customer_phone = customerPhone;
   if (notes) body.notes = notes;
 
   const { data, error } = await api.request<CreatedOrder>('POST', '/pos/orders', { body });

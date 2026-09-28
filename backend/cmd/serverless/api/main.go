@@ -46,9 +46,10 @@ type application struct {
 }
 
 type credentialsRequest struct {
-	Email    string         `json:"email"`
-	Password string         `json:"password"`
-	Meta     map[string]any `json:"meta,omitempty"`
+	Email           string         `json:"email"`
+	Password        string         `json:"password"`
+	InvitationToken string         `json:"invitation_token,omitempty"`
+	Meta            map[string]any `json:"meta,omitempty"`
 }
 
 type refreshRequest struct {
@@ -209,12 +210,12 @@ func (a *application) signUp(ctx context.Context, request events.APIGatewayV2HTT
 		return errorResponse(400, "se requiere un correo válido y una contraseña de al menos 12 caracteres, con mayúscula, minúscula y número"), nil
 	}
 	if a.singleStore.Enabled && !strings.EqualFold(email, a.singleStore.OwnerEmail) {
-		invited, inviteErr := a.hasPendingStoreInvite(ctx, email)
+		invited, inviteErr := a.hasPendingStoreInvite(ctx, email, input.InvitationToken)
 		if inviteErr != nil {
 			return events.APIGatewayV2HTTPResponse{}, inviteErr
 		}
 		if !invited {
-			return errorResponse(403, "el registro requiere una invitación"), nil
+			return errorResponse(403, "la invitación no es válida, no coincide con el correo o ya venció"), nil
 		}
 	}
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(input.Password), accountHashCost)
@@ -260,8 +261,8 @@ func (a *application) signUp(ctx context.Context, request events.APIGatewayV2HTT
 		return events.APIGatewayV2HTTPResponse{}, err
 	}
 	// Invite acceptance is best-effort so a transient lookup cannot block signup.
-	_ = a.acceptMatchingDriverInvites(ctx, userID, email)
-	_ = a.acceptMatchingMemberInvites(ctx, userID, email)
+	_ = a.acceptMatchingDriverInvites(ctx, userID, email, input.InvitationToken)
+	_ = a.acceptMatchingMemberInvites(ctx, userID, email, input.InvitationToken)
 	return jsonResponse(201, session)
 }
 

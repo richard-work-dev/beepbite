@@ -22,6 +22,9 @@ export interface MemberInvite {
   invited_by: string | null;
   created_at: string;
   updated_at: string;
+	expires_at?: string;
+	is_expired?: boolean;
+	registration_token?: string;
 }
 
 // Mirrors backend/internal/handlers/memberinvite/store.go ActiveMember.
@@ -31,6 +34,7 @@ export interface Member {
   full_name: string;
   role: string;
   joined_at: string;
+	capabilities?: Record<string, boolean> | string[] | string | null;
 }
 
 interface FetchError extends Error {
@@ -39,11 +43,11 @@ interface FetchError extends Error {
 
 export async function listMemberInvites(): Promise<MemberInvite[]> {
   const { data, error } = await api.request<MemberInvite[] | { invites: MemberInvite[] }>('GET', '/member-invites');
-  if (error) throw new Error(error.message || 'Failed to load member invites');
+  if (error) throw new Error(error.message || 'No se pudieron cargar las invitaciones');
   return Array.isArray(data) ? data : (data?.invites ?? []);
 }
 
-export async function inviteMember(email: string, role: string) {
+export async function inviteMember(email: string, role: string): Promise<MemberInvite> {
   const { data, error } = await api.request<MemberInvite>('POST', '/member-invites', {
     body: {
       email: String(email || '').trim(),
@@ -51,26 +55,42 @@ export async function inviteMember(email: string, role: string) {
     },
   });
   if (error) {
-    const e: FetchError = new Error(error.message || 'Failed to invite member');
+    const e: FetchError = new Error(error.message || 'No se pudo invitar al usuario');
     e.status = error.status;
     throw e;
   }
-  return data;
+  return data!;
+}
+
+export async function renewMemberInvite(id: string): Promise<MemberInvite> {
+  const { data, error } = await api.request<MemberInvite>('POST', `/member-invites/${encodeURIComponent(id)}/renew`);
+  if (error) throw new Error(error.message || 'No se pudo generar un nuevo enlace');
+  return data!;
 }
 
 export async function revokeMemberInvite(id: string) {
   const { error } = await api.request('POST', `/member-invites/${id}/revoke`);
-  if (error) throw new Error(error.message || 'Failed to revoke invite');
+  if (error) throw new Error(error.message || 'No se pudo cancelar la invitación');
 }
 
 // Active members (accepted, role != driver).
 export async function listActiveMembers(): Promise<Member[]> {
   const { data, error } = await api.request<Member[] | { members: Member[] }>('GET', '/members');
-  if (error) throw new Error(error.message || 'Failed to load members');
+  if (error) throw new Error(error.message || 'No se pudieron cargar los usuarios');
   return Array.isArray(data) ? data : (data?.members ?? []);
 }
 
 export async function removeMember(profileId: string) {
-  const { error } = await api.request('DELETE', `/members/${profileId}`);
-  if (error) throw new Error(error.message || 'Failed to remove member');
+	const { error } = await api.request('DELETE', `/members/${encodeURIComponent(profileId)}`);
+	if (error) throw new Error(error.message || 'No se pudo quitar el acceso');
+}
+
+export async function changeMemberRole(profileId: string, role: string) {
+  const { data, error } = await api.request<{ profile_id: string; role: string; capabilities: Record<string, boolean> }>(
+    'PATCH',
+    `/members/${encodeURIComponent(profileId)}`,
+    { body: { role } },
+  );
+  if (error) throw new Error(error.message || 'No se pudo actualizar el rol');
+  return data!;
 }

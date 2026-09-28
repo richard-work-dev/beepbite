@@ -10,6 +10,7 @@ func TestMatchDriverRoute(t *testing.T) {
 		{"GET", "/driver-invites", "list-invites", true},
 		{"POST", "/driver-invites", "create-invite", true},
 		{"POST", "/driver-invites/inv-1/revoke", "revoke-invite", true},
+		{"POST", "/driver-invites/inv-1/renew", "renew-invite", true},
 		{"GET", "/drivers", "list-drivers", true},
 		{"DELETE", "/drivers/user-1", "remove-driver", true},
 		{"GET", "/driver/assignments", "assignments", true},

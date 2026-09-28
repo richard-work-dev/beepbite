@@ -19,6 +19,9 @@ export interface DriverInvite {
   invited_by: string | null;
   created_at: string;
   updated_at: string;
+	expires_at?: string;
+	is_expired?: boolean;
+	registration_token?: string;
 }
 
 // Mirrors backend/internal/handlers/driverinvite/store.go ActiveDriver.
@@ -39,7 +42,7 @@ export async function listDriverInvites(): Promise<DriverInvite[]> {
   return Array.isArray(data) ? data : (data?.invites ?? []);
 }
 
-export async function inviteDriver(email: string) {
+export async function inviteDriver(email: string): Promise<DriverInvite> {
   const { data, error } = await api.request<DriverInvite>('POST', '/driver-invites', {
     body: { email: String(email || '').trim() },
   });
@@ -48,7 +51,13 @@ export async function inviteDriver(email: string) {
     e.status = error.status;
     throw e;
   }
-  return data;
+	return data!;
+}
+
+export async function renewDriverInvite(id: string): Promise<DriverInvite> {
+  const { data, error } = await api.request<DriverInvite>('POST', `/driver-invites/${encodeURIComponent(id)}/renew`);
+  if (error) throw new Error(error.message || 'No se pudo generar un nuevo enlace');
+  return data!;
 }
 
 export async function revokeDriverInvite(id: string) {

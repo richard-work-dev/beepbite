@@ -189,6 +189,8 @@ const Home = () => {
     return orders.filter(
       (o) =>
         o.order_number?.toLowerCase().includes(q) ||
+        o.customer_name?.toLowerCase().includes(q) ||
+        o.customer_phone?.includes(q) ||
         o.customers?.whatsapp_number?.includes(q) ||
         o.customers?.first_name?.toLowerCase().includes(q) ||
         o.customers?.last_name?.toLowerCase().includes(q) ||

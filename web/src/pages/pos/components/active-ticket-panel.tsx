@@ -572,7 +572,7 @@ function TicketFooter({
 					{sending ? <span className="flex items-center gap-1.5"><Loader2 className="h-4 w-4 animate-spin" />Enviando…</span> : <span className="flex items-center gap-1.5"><ChefHat className="h-4 w-4" />Revisar y enviar{newItemsCount > 0 && <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/25 text-[11px] font-bold leading-none">{newItemsCount}</span>}</span>}
 				</Button>
 			</AlertDialogTrigger>
-			<AlertDialogContent>
+			<AlertDialogContent className="max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] overflow-y-auto p-4 sm:p-6">
 				<AlertDialogHeader>
 					<AlertDialogTitle>Enviar pedido a cocina</AlertDialogTitle>
 					<AlertDialogDescription>Revisá los datos antes de crear la comanda. Después de que cocina comience a prepararla, los productos ya no se podrán editar.</AlertDialogDescription>
@@ -580,6 +580,7 @@ function TicketFooter({
 				<div className="space-y-2 rounded-lg border bg-muted/40 p-3 text-sm">
 					<div className="flex justify-between gap-3"><span>Destino</span><strong>{ticket?.kind === 'table' ? `Mesa ${ticket.table_number || ''}` : 'Para llevar'}</strong></div>
 					<div className="flex justify-between gap-3"><span>Cliente</span><strong className="truncate">{ticket?.customerName || 'Mostrador'}</strong></div>
+					<div className="flex justify-between gap-3"><span>Teléfono</span><strong className="truncate">{ticket?.customerPhone || 'Sin teléfono'}</strong></div>
 					<div className="flex justify-between gap-3"><span>Productos</span><strong>{newItemsCount}</strong></div>
 					<div className="flex justify-between gap-3"><span>Subtotal nuevo</span><strong>{format(newSubtotalCents)}</strong></div>
 					{ticket?.notes && <div className="border-t pt-2"><span className="text-muted-foreground">Observaciones:</span><p className="mt-1 font-medium text-foreground">{ticket.notes}</p></div>}

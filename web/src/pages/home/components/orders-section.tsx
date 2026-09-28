@@ -49,6 +49,18 @@ function getStatusLabelShort(status: string): string {
   return labels[status] || status;
 }
 
+function orderCustomerName(order: HomeOrder): string {
+  const relatedName = [order.customers?.first_name, order.customers?.last_name]
+    .filter(Boolean)
+    .join(' ')
+    .trim();
+  return order.customer_name?.trim() || relatedName || 'Mostrador';
+}
+
+function orderCustomerPhone(order: HomeOrder): string {
+  return order.customer_phone?.trim() || order.customers?.whatsapp_number?.trim() || '';
+}
+
 // ── Skeleton card ─────────────────────────────────────────────────────────────
 
 function OrderCardSkeleton() {
@@ -150,6 +162,8 @@ function OrderDetailsView({
   // KWD, so a literal 100 would misplace the decimal point.
   const { format, scale } = useMoney();
   const toMinor = (major: number | string | null | undefined) => Math.round(parseFloat(String(major || 0)) * scale);
+  const customerName = selectedOrderDetails ? orderCustomerName(selectedOrderDetails) : 'Mostrador';
+  const customerPhone = selectedOrderDetails ? orderCustomerPhone(selectedOrderDetails) : '';
 
   return (
     <div className="absolute inset-0 flex flex-col">
@@ -239,12 +253,12 @@ function OrderDetailsView({
               </div>
               <div className="rounded-xl border border-border bg-card px-3 py-1">
                 <InfoRow label="Nombre">
-                  {selectedOrderDetails.customers?.first_name} {selectedOrderDetails.customers?.last_name || 'N/A'}
+                  <span className="break-words font-medium">{customerName}</span>
                 </InfoRow>
                 <InfoRow label="Teléfono">
-                  <span className="inline-flex items-center gap-1 bg-primary/10 text-primary px-2 py-0.5 rounded-full text-xs font-medium">
+                  <span className="inline-flex max-w-full items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                     <PhoneCall className="w-3 h-3" aria-hidden="true" />
-                    {selectedOrderDetails.customers?.whatsapp_number || 'Sin teléfono'}
+                    <span className="break-all">{customerPhone || 'Sin teléfono'}</span>
                   </span>
                 </InfoRow>
                 {selectedOrderDetails.customers?.email && (
@@ -558,6 +572,8 @@ function OrderCard({
   onMarkPaid,
 }: OrderCardProps) {
   const nextStatus = getNextStatus(order.status);
+  const customerName = orderCustomerName(order);
+  const customerPhone = orderCustomerPhone(order);
 
   return (
     <article
@@ -577,14 +593,13 @@ function OrderCard({
 
         {/* Customer info */}
         <div className="space-y-0.5 mb-3">
-          {order.customers?.first_name && (
-            <p className="text-sm font-medium text-foreground truncate">
-              {order.customers.first_name} {order.customers.last_name}
-            </p>
-          )}
+          <p className="flex items-center gap-1 text-sm font-medium text-foreground">
+            <User className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <span className="truncate">{customerName}</span>
+          </p>
           <p className="text-xs text-muted-foreground flex items-center gap-1 truncate">
             <PhoneCall className="w-3 h-3 flex-shrink-0 text-muted-foreground" aria-hidden="true" />
-            <span className="truncate">{order.customers?.whatsapp_number || 'Sin teléfono'}</span>
+            <span className="truncate">{customerPhone || 'Sin teléfono'}</span>
           </p>
           <p className="text-xs text-muted-foreground flex items-center gap-1">
             <Timer className="w-3 h-3 flex-shrink-0" aria-hidden="true" />

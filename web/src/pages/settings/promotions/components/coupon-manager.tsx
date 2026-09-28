@@ -145,7 +145,7 @@ export default function CouponManager({ promotionId, promotionName }: {
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
               Agregar código
             </p>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               <div className="col-span-3 sm:col-span-1">
                 <Label htmlFor={`cc-code-${promotionId}`} className="text-xs">
                   Código *

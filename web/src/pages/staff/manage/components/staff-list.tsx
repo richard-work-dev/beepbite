@@ -16,11 +16,12 @@ function getInitials(first?: string | null, last?: string | null) {
 interface StaffListProps {
   staffList: Staff[];
   loading: boolean;
+  error?: string | null;
   selectedStaff: Staff | null;
   onSelect: (member: Staff) => void;
 }
 
-export function StaffList({ staffList, loading, selectedStaff, onSelect }: StaffListProps) {
+export function StaffList({ staffList, loading, error, selectedStaff, onSelect }: StaffListProps) {
   const [query, setQuery] = useState('');
 
   const filtered = staffList.filter((m) => {
@@ -40,7 +41,8 @@ export function StaffList({ staffList, loading, selectedStaff, onSelect }: Staff
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             className="pl-9 h-9 text-sm border-border focus:border-primary focus:ring-primary/20"
-            placeholder="Search staff…"
+            placeholder="Buscar personal…"
+            aria-label="Buscar personal"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -55,10 +57,14 @@ export function StaffList({ staffList, loading, selectedStaff, onSelect }: Staff
               <Skeleton key={i} className="h-14 rounded-lg" />
             ))}
           </div>
+        ) : error ? (
+          <div role="alert" className="p-4 text-center text-sm text-destructive">
+            {error}
+          </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <User className="w-8 h-8 mb-2" />
-            <p className="text-sm">{query ? 'No match' : 'No staff members'}</p>
+            <p className="text-sm">{query ? 'No hay coincidencias' : 'No hay personal registrado'}</p>
           </div>
         ) : (
           <ul className="p-2 space-y-0.5">
@@ -103,7 +109,7 @@ export function StaffList({ staffList, loading, selectedStaff, onSelect }: Staff
                             variant="outline"
                             className="text-[10px] px-1.5 py-0 bg-muted text-muted-foreground border-border"
                           >
-                            Inactive
+                            Inactivo
                           </Badge>
                         )}
                       </div>

@@ -11,6 +11,7 @@ import { AlertCircle, CheckCircle2, ChefHat, Loader2, RefreshCw, RotateCcw } fro
 
 import { api } from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { ExpoOrderCard } from './components/expo-order-card';
 import { useTick } from './hooks/use-tick';
 import type { ExpoOrder, ExpoStationTicket, KdsTicketAction } from './types';
@@ -55,6 +56,14 @@ function decodeStationTickets(raw: string | ExpoStationTicket[] | undefined): Ex
 }
 
 export default function ExpoPage() {
+  return <ExpoContent />;
+}
+
+export function EmbeddedExpoPage() {
+  return <ExpoContent embedded />;
+}
+
+function ExpoContent({ embedded = false }: { embedded?: boolean }) {
   const [orders, setOrders] = useState<ExpoOrder[]>([]); // merged: order + station_tickets[]
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -181,17 +190,17 @@ export default function ExpoPage() {
   }).length;
 
   return (
-    <div className="flex h-screen flex-col bg-gray-950 text-gray-50">
+    <div className={cn('flex flex-col bg-gray-950 text-gray-50', embedded ? 'h-full' : 'h-[100dvh]')}>
       {/* ------------------------------------------------------------------ */}
       {/* Header                                                              */}
       {/* ------------------------------------------------------------------ */}
-      <header className="relative flex items-center justify-between gap-4 border-b border-gray-800 bg-gray-900 px-5 py-4">
+      <header className="relative flex flex-wrap items-center justify-between gap-3 border-b border-gray-800 bg-gray-900 px-3 py-3 sm:px-5 sm:py-4">
         {/* Orange left accent */}
         <div className="absolute inset-y-0 left-0 w-1.5 rounded-r bg-orange-500" aria-hidden="true" />
 
-        <div className="flex items-center gap-4 pl-4">
+        <div className="flex min-w-0 items-center gap-3 pl-2 sm:gap-4 sm:pl-4">
           {/* Icon */}
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-orange-500/15">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-orange-500/15 sm:size-11">
             <ChefHat className="size-6 text-orange-400" aria-hidden="true" />
           </div>
 
@@ -207,7 +216,7 @@ export default function ExpoPage() {
 
           {/* Status pills — only when we have data */}
           {!loading && !loadError && orders.length > 0 && (
-            <div className="flex items-center gap-2">
+            <div className="hidden items-center gap-2 sm:flex">
               {readyCount > 0 && (
                 <span className="rounded-full bg-emerald-700 px-3 py-0.5 text-xs font-bold text-emerald-100">
                   {readyCount} {readyCount === 1 ? 'listo' : 'listos'}
@@ -223,11 +232,11 @@ export default function ExpoPage() {
         </div>
 
         {/* Refresh button + polling indicator */}
-        <div className="flex items-center gap-3">
+        <div className="ml-auto flex items-center gap-2 sm:gap-3">
           {refreshing && (
             <span className="flex items-center gap-1.5 text-xs text-gray-400">
               <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-              Actualizando…
+              <span className="hidden sm:inline">Actualizando…</span>
             </span>
           )}
           <Button
@@ -238,7 +247,7 @@ export default function ExpoPage() {
             className="gap-1.5 border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white"
           >
             <RefreshCw className={refreshing ? 'size-4 animate-spin' : 'size-4'} aria-hidden="true" />
-            Actualizar
+            <span className="hidden sm:inline">Actualizar</span>
           </Button>
         </div>
       </header>
@@ -246,7 +255,7 @@ export default function ExpoPage() {
       {/* ------------------------------------------------------------------ */}
       {/* Main content                                                        */}
       {/* ------------------------------------------------------------------ */}
-      <main className="flex-1 overflow-auto p-5">
+      <main className="flex-1 overflow-auto p-3 sm:p-5">
         {lastBump && now < lastBump.expiresAt && (
           <div role="status" aria-live="polite" className="mx-auto mb-4 flex max-w-3xl items-center justify-between gap-3 rounded-lg border border-emerald-700 bg-emerald-950/70 px-4 py-3 text-sm font-semibold text-emerald-100">
             <span className="flex items-center gap-2">

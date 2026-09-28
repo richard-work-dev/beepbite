@@ -91,10 +91,10 @@ export default function FloorLive() {
         `/tables/${table.id}/open-session`,
         { body: { party_size: 1 } }
       );
-      if (err) throw new Error(err.message || 'failed to open session');
+      if (err) throw new Error(err.message || 'No se pudo abrir la mesa');
       // Optimistically mark occupied and stash the new session id.
       patchTableLocal(table.id, { status: 'occupied', table_session_id: data?.id });
-      setFlash({ type: 'ok', message: `Session opened for ${table.label}` });
+      setFlash({ type: 'ok', message: `Mesa ${table.label} abierta correctamente` });
       // Refresh to pick up any server-side status changes. refresh()
       // (useTables' fetchAll) is fully try/catch/finally-wrapped — a
       // genuinely safe fire-and-forget.
@@ -110,8 +110,8 @@ export default function FloorLive() {
     return (
       <div className="flex flex-col items-center justify-center py-16">
         <AlertCircle className="w-12 h-12 text-muted-foreground mb-3" />
-        <h2 className="text-xl font-semibold">No location selected</h2>
-        <p className="text-muted-foreground mt-1">Pick a location to view its floor.</p>
+        <h2 className="text-xl font-semibold">No hay un local seleccionado</h2>
+        <p className="text-muted-foreground mt-1">Seleccioná un local para ver el salón.</p>
       </div>
     );
   }
@@ -120,18 +120,18 @@ export default function FloorLive() {
     <PageContainer>
       <PageHeader
         icon={LayoutGrid}
-        title="Floor"
-        description={`Live table status for ${activeLocation.name} — auto-refreshing every ${LIVE_REFRESH_MS / 1000}s.`}
+        title="Salón y mesas"
+        description={`Estado en vivo de ${activeLocation.name}. Se actualiza cada ${LIVE_REFRESH_MS / 1000} segundos.`}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
             <Button variant="outline" size="sm" onClick={refresh} disabled={loading}>
               <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
+              Actualizar
             </Button>
             <Button asChild size="sm">
               <Link to="/floor/edit">
                 <Settings2 className="h-4 w-4 mr-2" />
-                Edit Floor
+                Editar salón
               </Link>
             </Button>
           </div>
@@ -144,20 +144,20 @@ export default function FloorLive() {
         <CardContent className="p-4 flex flex-wrap gap-3">
           <Badge className="gap-1.5 bg-success/15 text-success hover:bg-success/15">
             <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
-            Available {statusCounts.available}
+            Disponibles {statusCounts.available}
           </Badge>
           <Badge className="gap-1.5 bg-primary/15 text-primary hover:bg-primary/15">
             <UtensilsCrossed className="h-3.5 w-3.5" aria-hidden="true" />
-            Occupied {statusCounts.occupied}
+            Ocupadas {statusCounts.occupied}
           </Badge>
           <Badge className="gap-1.5 bg-warning/15 text-warning hover:bg-warning/15">
             <CalendarClock className="h-3.5 w-3.5" aria-hidden="true" />
-            Reserved {statusCounts.reserved}
+            Reservadas {statusCounts.reserved}
           </Badge>
           {statusCounts.out_of_service > 0 && (
             <Badge variant="secondary" className="gap-1.5">
               <Wrench className="h-3.5 w-3.5" aria-hidden="true" />
-              Out of service {statusCounts.out_of_service}
+              Fuera de servicio {statusCounts.out_of_service}
             </Badge>
           )}
         </CardContent>
@@ -181,9 +181,9 @@ export default function FloorLive() {
         <Card>
           <CardContent className="p-6 text-center">
             <AlertCircle className="h-8 w-8 text-destructive mx-auto mb-2" />
-            <h3 className="font-medium text-foreground mb-1">Couldn&apos;t load floor</h3>
+            <h3 className="font-medium text-foreground mb-1">No se pudo cargar el salón</h3>
             <p className="text-sm text-muted-foreground mb-4">{error}</p>
-            <Button size="sm" variant="outline" onClick={refresh}>Try again</Button>
+            <Button size="sm" variant="outline" onClick={refresh}>Reintentar</Button>
           </CardContent>
         </Card>
       )}
@@ -200,22 +200,21 @@ export default function FloorLive() {
           {loading && tables.length === 0 ? (
             <Card>
               <CardContent className="p-12 text-center text-muted-foreground">
-                Loading floor…
+                Cargando salón…
               </CardContent>
             </Card>
           ) : tables.length === 0 ? (
             <Card>
               <CardContent className="p-10 text-center">
                 <LayoutGrid className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                <h3 className="font-medium text-foreground mb-1">No floor plan yet</h3>
+                <h3 className="font-medium text-foreground mb-1">Todavía no hay un plano del salón</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Design your floor plan — place tables in the editor — before cashiers
-                  can seat dine-in guests at the POS.
+                  Diseñá el salón y ubicá las mesas para poder asignar los pedidos desde el punto de venta.
                 </p>
                 <Button asChild>
                   <Link to="/floor/edit">
                     <Settings2 className="h-4 w-4 mr-2" />
-                    Open Floor Editor
+                    Abrir editor del salón
                   </Link>
                 </Button>
               </CardContent>
@@ -223,7 +222,7 @@ export default function FloorLive() {
           ) : visibleTables.length === 0 ? (
             <Card>
               <CardContent className="p-8 text-center text-muted-foreground text-sm">
-                No tables in this section.
+                No hay mesas en esta sección.
               </CardContent>
             </Card>
           ) : (

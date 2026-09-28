@@ -44,12 +44,19 @@ function toISO(date: Date) {
 }
 
 function fmt(date: Date) {
-  return date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  return date.toLocaleDateString('es-AR', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
 function fmtShort(date: Date) {
-  return date.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' });
+  return date.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric' });
 }
+
+const SHIFT_STATUS_LABELS: Record<string, string> = {
+  scheduled: 'Programado',
+  completed: 'Completado',
+  no_show: 'Ausente',
+  cancelled: 'Cancelado',
+};
 
 // ── shift cell ───────────────────────────────────────────────────────────────
 
@@ -77,7 +84,7 @@ function ShiftCell({ shift, onDelete, deleting }: ShiftCellProps) {
           shift.status === 'no_show'   && 'bg-destructive/10 text-destructive border-destructive/30',
         )}
       >
-        {shift.status}
+        {SHIFT_STATUS_LABELS[shift.status] || shift.status}
       </Badge>
       <Button
         type="button"
@@ -85,8 +92,8 @@ function ShiftCell({ shift, onDelete, deleting }: ShiftCellProps) {
         size="icon"
         onClick={() => onDelete(shift)}
         disabled={deleting}
-        className="absolute bottom-1 right-1 h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive hover:bg-transparent"
-        aria-label="Delete shift"
+        className="absolute bottom-1 right-1 h-7 w-7 p-0 text-muted-foreground opacity-100 transition-opacity hover:bg-transparent hover:text-destructive sm:h-5 sm:w-5 sm:opacity-0 sm:group-hover:opacity-100"
+        aria-label="Eliminar turno"
       >
         <Trash2 className="w-3 h-3" />
       </Button>
@@ -114,7 +121,7 @@ function CreateShiftDialog({ open, onOpenChange, date, staff, locationId, onSubm
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (form.start >= form.end) { setError('End time must be after start time.'); return; }
+    if (form.start >= form.end) { setError('La hora de salida debe ser posterior a la de entrada.'); return; }
     setSaving(true);
     setError('');
     const payload: StaffShiftInput = {
@@ -139,16 +146,16 @@ function CreateShiftDialog({ open, onOpenChange, date, staff, locationId, onSubm
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Plus className="w-4 h-4 text-primary" />
-            Add shift
+            Agregar turno
           </DialogTitle>
           <DialogDescription>
-            Schedule a shift for {staff.first_name} on {date}.
+            Programá un turno para {staff.first_name} el {date}.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="start">Start</Label>
+              <Label htmlFor="start">Entrada</Label>
               <Input
                 id="start"
                 type="time"
@@ -158,7 +165,7 @@ function CreateShiftDialog({ open, onOpenChange, date, staff, locationId, onSubm
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="end">End</Label>
+              <Label htmlFor="end">Salida</Label>
               <Input
                 id="end"
                 type="time"
@@ -169,10 +176,10 @@ function CreateShiftDialog({ open, onOpenChange, date, staff, locationId, onSubm
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="shift_notes">Notes (optional)</Label>
+            <Label htmlFor="shift_notes">Notas (opcional)</Label>
             <Input
               id="shift_notes"
-              placeholder="e.g. Opening shift"
+              placeholder="Ej.: turno de apertura"
               value={form.notes}
               onChange={(e) => set('notes', e.target.value)}
             />
@@ -191,14 +198,14 @@ function CreateShiftDialog({ open, onOpenChange, date, staff, locationId, onSubm
               onClick={() => onOpenChange(false)}
               disabled={saving}
             >
-              Cancel
+              Cancelar
             </Button>
             <Button
               type="submit"
               disabled={saving}
               className="flex-1"
             >
-              {saving ? 'Saving…' : 'Add shift'}
+              {saving ? 'Guardando…' : 'Agregar turno'}
             </Button>
           </div>
         </form>
@@ -244,7 +251,7 @@ export function ScheduleTab({ staff, locationId, shifts, loading, error, fetchSh
   }, {});
 
   const handleDelete = async (shift: StaffShift) => {
-    if (!confirm('Delete this shift?')) return;
+    if (!confirm('¿Eliminar este turno?')) return;
     setDeleting(shift.id);
     await deleteShift(shift.id, staff.id, weekStart, weekEnd);
     setDeleting(null);
@@ -273,8 +280,9 @@ export function ScheduleTab({ staff, locationId, shifts, loading, error, fetchSh
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       {/* week grid */}
-      <div className="grid grid-cols-7 gap-1">
-        {weekDays.map((day) => {
+      <div className="overflow-x-auto pb-2 overscroll-x-contain">
+        <div className="grid min-w-[720px] grid-cols-7 gap-1">
+          {weekDays.map((day) => {
           const iso = toISO(day);
           const dayShifts = shiftsByDate[iso] ?? [];
           const isToday = iso === todayStr;
@@ -310,8 +318,8 @@ export function ScheduleTab({ staff, locationId, shifts, loading, error, fetchSh
                   variant="ghost"
                   size="icon"
                   onClick={() => setCreateDate(iso)}
-                  className="absolute inset-0 h-auto w-auto flex items-end justify-center pb-1 opacity-0 hover:opacity-100 hover:bg-transparent transition-opacity"
-                  aria-label={`Add shift on ${iso}`}
+                  className="absolute inset-0 flex h-auto w-auto items-end justify-center pb-1 opacity-100 transition-opacity hover:bg-transparent sm:opacity-0 sm:hover:opacity-100"
+                  aria-label={`Agregar turno el ${iso}`}
                 >
                   <span className="w-5 h-5 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center text-primary">
                     <Plus className="w-3 h-3" />
@@ -320,11 +328,12 @@ export function ScheduleTab({ staff, locationId, shifts, loading, error, fetchSh
               </div>
             </div>
           );
-        })}
+          })}
+        </div>
       </div>
 
       <p className="text-xs text-muted-foreground text-center">
-        Click the + on any day cell to add a shift. Hover a shift to delete.
+        Tocá el signo + de un día para agregar un turno. Usá la papelera para eliminarlo.
       </p>
 
       {createDate && (

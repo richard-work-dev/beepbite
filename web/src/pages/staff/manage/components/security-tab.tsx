@@ -35,8 +35,8 @@ function ResetPasswordDialog({ staff, open, onOpenChange, onSubmit }: ResetPassw
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (pw.length < 8) { setError('Password must be at least 8 characters.'); return; }
-    if (pw !== confirm) { setError('Passwords do not match.'); return; }
+    if (pw.length < 8) { setError('La contraseña debe tener al menos 8 caracteres.'); return; }
+    if (pw !== confirm) { setError('Las contraseñas no coinciden.'); return; }
     setSaving(true);
     setError('');
     const { error: apiErr } = await onSubmit(pw);
@@ -60,43 +60,43 @@ function ResetPasswordDialog({ staff, open, onOpenChange, onSubmit }: ResetPassw
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <KeyRound className="w-4 h-4 text-primary" />
-            Reset password
+            Restablecer contraseña
           </DialogTitle>
           <DialogDescription>
-            Set a new password for {staff.first_name} {staff.last_name}.
+            Definí una nueva contraseña para {staff.first_name} {staff.last_name}.
           </DialogDescription>
         </DialogHeader>
 
         {success ? (
           <div className="py-4 text-center space-y-3">
-            <p className="text-sm text-success font-medium">Password updated successfully.</p>
+            <p className="text-sm text-success font-medium">La contraseña se actualizó correctamente.</p>
             <Button
               onClick={() => { reset(); onOpenChange(false); }}
             >
-              Done
+              Listo
             </Button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4 mt-2">
             <div className="space-y-1.5">
-              <Label htmlFor="new_pw">New password</Label>
+              <Label htmlFor="new_pw">Nueva contraseña</Label>
               <Input
                 id="new_pw"
                 type="password"
                 autoComplete="new-password"
-                placeholder="Min. 8 characters"
+                placeholder="Mínimo 8 caracteres"
                 value={pw}
                 onChange={(e) => setPw(e.target.value)}
                 required
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="confirm_pw">Confirm password</Label>
+              <Label htmlFor="confirm_pw">Confirmar contraseña</Label>
               <Input
                 id="confirm_pw"
                 type="password"
                 autoComplete="new-password"
-                placeholder="Repeat password"
+                placeholder="Repetí la contraseña"
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
                 required
@@ -118,14 +118,14 @@ function ResetPasswordDialog({ staff, open, onOpenChange, onSubmit }: ResetPassw
                 onClick={() => { reset(); onOpenChange(false); }}
                 disabled={saving}
               >
-                Cancel
+                Cancelar
               </Button>
               <Button
                 type="submit"
                 disabled={saving}
                 className="flex-1"
               >
-                {saving ? 'Saving…' : 'Set password'}
+                {saving ? 'Guardando…' : 'Guardar contraseña'}
               </Button>
             </div>
           </form>
@@ -155,7 +155,7 @@ function ResetPinDialog({ staff, open, onOpenChange, onSubmit }: ResetPinDialogP
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (pin.length < 4 || pin.length > 6 || !/^\d+$/.test(pin)) {
-      setError('PIN must be 4–6 digits.');
+      setError('El PIN debe tener entre 4 y 6 dígitos.');
       return;
     }
     setSaving(true);
@@ -178,33 +178,33 @@ function ResetPinDialog({ staff, open, onOpenChange, onSubmit }: ResetPinDialogP
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Hash className="w-4 h-4 text-primary" />
-            Reset PIN
+            Restablecer PIN
           </DialogTitle>
           <DialogDescription>
-            Set a new 4–6 digit PIN for {staff.first_name} {staff.last_name}.
+            Definí un nuevo PIN de 4 a 6 dígitos para {staff.first_name} {staff.last_name}.
           </DialogDescription>
         </DialogHeader>
 
         {success ? (
           <div className="py-4 text-center space-y-3">
-            <p className="text-sm text-success font-medium">PIN updated successfully.</p>
+            <p className="text-sm text-success font-medium">El PIN se actualizó correctamente.</p>
             <Button
               onClick={() => { reset(); onOpenChange(false); }}
             >
-              Done
+              Listo
             </Button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4 mt-2">
             <div className="space-y-1.5">
-              <Label htmlFor="pin">New PIN</Label>
+              <Label htmlFor="pin">Nuevo PIN</Label>
               <Input
                 id="pin"
                 type="password"
                 inputMode="numeric"
                 pattern="\d{4,6}"
                 maxLength={6}
-                placeholder="4–6 digits"
+                placeholder="4 a 6 dígitos"
                 value={pin}
                 onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
                 required
@@ -226,14 +226,14 @@ function ResetPinDialog({ staff, open, onOpenChange, onSubmit }: ResetPinDialogP
                 onClick={() => { reset(); onOpenChange(false); }}
                 disabled={saving}
               >
-                Cancel
+                Cancelar
               </Button>
               <Button
                 type="submit"
                 disabled={saving}
                 className="flex-1"
               >
-                {saving ? 'Saving…' : 'Set PIN'}
+                {saving ? 'Guardando…' : 'Guardar PIN'}
               </Button>
             </div>
           </form>
@@ -266,9 +266,9 @@ export function SecurityTab({ staff, resetPassword, resetPin }: SecurityTabProps
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Use these actions to set credentials for{' '}
+        Usá estas acciones para definir las credenciales de{' '}
         <span className="font-medium text-foreground">{staff.first_name} {staff.last_name}</span>.
-        The change takes effect immediately on the next sign-in.
+        El cambio se aplica en el próximo inicio de sesión.
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -280,8 +280,8 @@ export function SecurityTab({ staff, resetPassword, resetPin }: SecurityTabProps
                 <KeyRound className="w-4 h-4 text-primary" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-foreground">Password</p>
-                <p className="text-xs text-muted-foreground">Used for staff app login</p>
+                <p className="text-sm font-semibold text-foreground">Contraseña</p>
+                <p className="text-xs text-muted-foreground">Acceso a la aplicación del personal</p>
               </div>
             </div>
             <Button
@@ -290,7 +290,7 @@ export function SecurityTab({ staff, resetPassword, resetPin }: SecurityTabProps
               className="w-full border-primary/20 text-primary hover:bg-primary/10"
               onClick={() => setPwOpen(true)}
             >
-              Reset password
+              Restablecer contraseña
             </Button>
           </CardContent>
         </Card>
@@ -304,7 +304,7 @@ export function SecurityTab({ staff, resetPassword, resetPin }: SecurityTabProps
               </div>
               <div>
                 <p className="text-sm font-semibold text-foreground">PIN</p>
-                <p className="text-xs text-muted-foreground">Fast register sign-in (4–6 digits)</p>
+                <p className="text-xs text-muted-foreground">Acceso rápido a caja (4 a 6 dígitos)</p>
               </div>
             </div>
             <Button
@@ -313,7 +313,7 @@ export function SecurityTab({ staff, resetPassword, resetPin }: SecurityTabProps
               className="w-full border-primary/20 text-primary hover:bg-primary/10"
               onClick={() => setPinOpen(true)}
             >
-              Reset PIN
+              Restablecer PIN
             </Button>
           </CardContent>
         </Card>

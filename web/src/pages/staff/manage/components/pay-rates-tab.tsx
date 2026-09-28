@@ -25,11 +25,11 @@ import { Plus, TrendingUp, Clock } from 'lucide-react';
 import type { Staff, PayRate } from '../types';
 
 const RATE_TYPES = [
-  { value: 'hourly',         label: 'Hourly' },
-  { value: 'salary_monthly', label: 'Monthly salary' },
-  { value: 'salary_annual',  label: 'Annual salary' },
-  { value: 'commission',     label: 'Commission' },
-  { value: 'per_shift',      label: 'Per shift' },
+  { value: 'hourly',         label: 'Por hora' },
+  { value: 'salary_monthly', label: 'Sueldo mensual' },
+  { value: 'salary_annual',  label: 'Sueldo anual' },
+  { value: 'commission',     label: 'Comisión' },
+  { value: 'per_shift',      label: 'Por turno' },
 ];
 
 // cents → major-unit string e.g. 4500 → "45.00"
@@ -50,7 +50,7 @@ function RateCard({ rate }: { rate: PayRate }) {
   const effectiveRange =
     rate.effective_until
       ? `${rate.effective_from} → ${rate.effective_until}`
-      : `From ${rate.effective_from} (current)`;
+      : `Desde ${rate.effective_from} (vigente)`;
 
   return (
     <Card
@@ -67,7 +67,7 @@ function RateCard({ rate }: { rate: PayRate }) {
             <span className="text-sm font-semibold text-foreground">{label}</span>
             {rate.is_current && (
               <Badge variant="success" className="text-[10px] px-1.5 py-0">
-                Current
+                Vigente
               </Badge>
             )}
           </div>
@@ -78,9 +78,9 @@ function RateCard({ rate }: { rate: PayRate }) {
           </p>
           {rate.overtime_multiplier && rate.overtime_multiplier !== 1 && (
             <p className="text-xs text-muted-foreground">
-              OT ×{rate.overtime_multiplier}
+              Hora extra ×{rate.overtime_multiplier}
               {rate.overtime_threshold_hours_per_week
-                ? ` after ${rate.overtime_threshold_hours_per_week}h/wk`
+                ? ` después de ${rate.overtime_threshold_hours_per_week} h/semana`
                 : ''}
             </p>
           )}
@@ -128,7 +128,7 @@ function AddRateDialog({ staffId, open, onOpenChange, onSubmit }: AddRateDialogP
     e.preventDefault();
     const cents = majorToCents(form.amount);
     if (cents === null || cents < 0) {
-      setError('Enter a valid amount.');
+      setError('Ingresá un importe válido.');
       return;
     }
     setSaving(true);
@@ -159,16 +159,15 @@ function AddRateDialog({ staffId, open, onOpenChange, onSubmit }: AddRateDialogP
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-primary" />
-            Add Pay Rate
+            Agregar remuneración
           </DialogTitle>
           <DialogDescription>
-            Creates a new effective-dated rate. Any existing current rate of the
-            same type will be automatically retired.
+            Crea una nueva remuneración con fecha de vigencia. La anterior del mismo tipo quedará en el historial.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
           <div className="space-y-1.5">
-            <Label htmlFor="rate_type">Rate type</Label>
+            <Label htmlFor="rate_type">Tipo</Label>
             <Select value={form.rate_type} onValueChange={(v) => set('rate_type', v)}>
               <SelectTrigger id="rate_type">
                 <SelectValue />
@@ -182,13 +181,13 @@ function AddRateDialog({ staffId, open, onOpenChange, onSubmit }: AddRateDialogP
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="amount">Amount (major units)</Label>
+            <Label htmlFor="amount">Importe</Label>
             <Input
               id="amount"
               type="number"
               min="0"
               step="0.01"
-              placeholder="e.g. 45.00"
+              placeholder="Ej.: 45000"
               value={form.amount}
               onChange={(e) => set('amount', e.target.value)}
               required
@@ -196,7 +195,7 @@ function AddRateDialog({ staffId, open, onOpenChange, onSubmit }: AddRateDialogP
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="effective_from">Effective from</Label>
+            <Label htmlFor="effective_from">Vigente desde</Label>
             <Input
               id="effective_from"
               type="date"
@@ -206,7 +205,7 @@ function AddRateDialog({ staffId, open, onOpenChange, onSubmit }: AddRateDialogP
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="ot_mult">Overtime multiplier</Label>
+            <Label htmlFor="ot_mult">Multiplicador de hora extra</Label>
             <Input
               id="ot_mult"
               type="number"
@@ -218,10 +217,10 @@ function AddRateDialog({ staffId, open, onOpenChange, onSubmit }: AddRateDialogP
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="notes">Notes (optional)</Label>
+            <Label htmlFor="notes">Notas (opcional)</Label>
             <Input
               id="notes"
-              placeholder="e.g. Post-probation adjustment"
+              placeholder="Ej.: ajuste posterior al período de prueba"
               value={form.notes}
               onChange={(e) => set('notes', e.target.value)}
             />
@@ -237,14 +236,14 @@ function AddRateDialog({ staffId, open, onOpenChange, onSubmit }: AddRateDialogP
               onClick={() => onOpenChange(false)}
               disabled={saving}
             >
-              Cancel
+              Cancelar
             </Button>
             <Button
               type="submit"
               disabled={saving}
               className="flex-1"
             >
-              {saving ? 'Saving…' : 'Add rate'}
+              {saving ? 'Guardando…' : 'Agregar'}
             </Button>
           </div>
         </form>
@@ -269,11 +268,11 @@ export function PayRatesTab({ staff, rates, loading, error, createRate }: PayRat
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-foreground">Pay rates</h3>
+          <h3 className="text-sm font-semibold text-foreground">Remuneración</h3>
           <p className="text-xs text-muted-foreground">
-            Amounts displayed in major units; stored as cents.
+            Historial de importes y fechas de vigencia.
           </p>
         </div>
         <Button
@@ -281,7 +280,7 @@ export function PayRatesTab({ staff, rates, loading, error, createRate }: PayRat
           onClick={() => setDialogOpen(true)}
         >
           <Plus className="w-3.5 h-3.5 mr-1" />
-          Add rate
+          Agregar
         </Button>
       </div>
 
@@ -299,21 +298,21 @@ export function PayRatesTab({ staff, rates, loading, error, createRate }: PayRat
         <Card className="border-dashed border-border">
           <CardContent className="p-8 text-center text-muted-foreground">
             <TrendingUp className="w-8 h-8 mx-auto mb-2 opacity-40" />
-            <p className="text-sm">No pay rates on record.</p>
+            <p className="text-sm">No hay remuneraciones registradas.</p>
           </CardContent>
         </Card>
       )}
 
       {currentRates.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Current</p>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Vigentes</p>
           {currentRates.map((r) => <RateCard key={r.id} rate={r} />)}
         </div>
       )}
 
       {historicalRates.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Historical</p>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Historial</p>
           {historicalRates.map((r) => <RateCard key={r.id} rate={r} />)}
         </div>
       )}

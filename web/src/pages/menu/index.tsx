@@ -991,10 +991,10 @@ const Menu = () => {
 
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3 rounded-xl">
-          <TabsTrigger value="overview">Resumen</TabsTrigger>
-          <TabsTrigger value="breakdown">Detalle de recetas</TabsTrigger>
-          <TabsTrigger value="analysis">Análisis de costos</TabsTrigger>
+        <TabsList className="flex w-full justify-start gap-1 overflow-x-auto rounded-xl">
+          <TabsTrigger value="overview" className="shrink-0">Resumen</TabsTrigger>
+          <TabsTrigger value="breakdown" className="shrink-0">Detalle de recetas</TabsTrigger>
+          <TabsTrigger value="analysis" className="shrink-0">Análisis de costos</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-6 space-y-4">
@@ -1369,10 +1369,10 @@ const Menu = () => {
           </DialogHeader>
 
           <Tabs defaultValue="ingredients" className="mt-2">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="ingredients">Ingredientes</TabsTrigger>
-              <TabsTrigger value="prep">Pasos de preparación</TabsTrigger>
-              <TabsTrigger value="modifiers">Modificadores</TabsTrigger>
+            <TabsList className="flex w-full justify-start gap-1 overflow-x-auto">
+              <TabsTrigger value="ingredients" className="shrink-0">Ingredientes</TabsTrigger>
+              <TabsTrigger value="prep" className="shrink-0">Pasos de preparación</TabsTrigger>
+              <TabsTrigger value="modifiers" className="shrink-0">Modificadores</TabsTrigger>
             </TabsList>
 
             <TabsContent value="ingredients" className="mt-3">

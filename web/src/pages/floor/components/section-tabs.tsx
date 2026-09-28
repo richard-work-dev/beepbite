@@ -27,17 +27,17 @@ export default function SectionTabs({
 }: SectionTabsProps) {
   return (
     <Tabs value={value || 'all'} onValueChange={onValueChange}>
-      <TabsList className="flex flex-wrap gap-1">
+      <TabsList className="flex w-full justify-start gap-1 overflow-x-auto">
         {showAll && (
-          <TabsTrigger value="all" className="flex items-center gap-2">
-            All
+          <TabsTrigger value="all" className="flex shrink-0 items-center gap-2">
+            Todas
             {typeof counts.all === 'number' && (
               <Badge variant="secondary" className="text-xs">{counts.all}</Badge>
             )}
           </TabsTrigger>
         )}
         {sections.map((s) => (
-          <TabsTrigger key={s.id} value={s.id} className="flex items-center gap-2">
+          <TabsTrigger key={s.id} value={s.id} className="flex shrink-0 items-center gap-2">
             {s.name}
             {typeof counts[s.id] === 'number' && (
               <Badge variant="secondary" className="text-xs">{counts[s.id]}</Badge>

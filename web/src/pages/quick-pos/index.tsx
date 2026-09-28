@@ -21,6 +21,7 @@ import KioskTenderModal from './components/kiosk-tender-modal';
 import KioskModifierPrompt from './components/kiosk-modifier-prompt';
 import ReceiptModal from '@/pages/pos/components/receipt-modal';
 import { OfflineBanner } from '@/components/ui/sync-status';
+import { cn } from '@/lib/utils';
 
 // ---- Kiosk menu types -----------------------------------------------------
 // Mirrors backend/migrations/001_baseline.sql `categories` table (subset).
@@ -103,7 +104,7 @@ function computeModifierPrice(basePrice: number, modifiers: KioskModifier[]) {
 
 // ---- component ----------------------------------------------------------
 
-const QuickPOS = () => {
+const QuickPOSContent = ({ embedded = false }: { embedded?: boolean }) => {
   const { slug } = useParams<{ slug: string }>();
   const { activeLocation } = useAuth();
 
@@ -431,7 +432,7 @@ const QuickPOS = () => {
 
   if (storeLoading) {
     return (
-      <div className="fixed inset-0 bg-primary/5 flex items-center justify-center">
+      <div className={cn('inset-0 flex items-center justify-center bg-primary/5', embedded ? 'absolute' : 'fixed')}>
         <div className="flex flex-col items-center gap-4 text-primary" role="status" aria-label="Cargando menú">
           <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
             <Loader2 className="w-10 h-10 animate-spin text-primary" />
@@ -444,7 +445,7 @@ const QuickPOS = () => {
 
   if (storeError || !store) {
     return (
-      <div className="fixed inset-0 bg-primary/5 flex items-center justify-center p-6">
+      <div className={cn('inset-0 flex items-center justify-center bg-primary/5 p-6', embedded ? 'absolute' : 'fixed')}>
         <div className="flex flex-col items-center gap-4 text-center max-w-sm" role="alert">
           <div className="w-20 h-20 rounded-full bg-destructive/10 flex items-center justify-center">
             <AlertCircle className="w-10 h-10 text-destructive" />
@@ -462,7 +463,7 @@ const QuickPOS = () => {
 
   return (
     // Full-screen, no scrollbars, kiosk-friendly
-    <div className="fixed inset-0 bg-primary/5 flex flex-col overflow-hidden">
+    <div className={cn('inset-0 flex flex-col overflow-hidden bg-primary/5', embedded ? 'absolute' : 'fixed')}>
       {/* Minimal header strip — store name only, no nav */}
       <header className="shrink-0 bg-primary px-5 py-3.5 flex items-center gap-3 shadow-md">
         <h1 className="font-display text-primary-foreground text-xl tracking-tight truncate">{storeName}</h1>
@@ -528,5 +529,9 @@ const QuickPOS = () => {
     </div>
   );
 };
+
+const QuickPOS = () => <QuickPOSContent />;
+
+export const EmbeddedQuickPOS = () => <QuickPOSContent embedded />;
 
 export default QuickPOS;

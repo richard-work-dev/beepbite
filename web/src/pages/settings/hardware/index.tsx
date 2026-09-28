@@ -548,7 +548,7 @@ function PrinterSheet({ open, onClose, onSave, printer, stations }: {
 
           {/* Host / Port — only relevant for network */}
           {form.connection === 'network' && (
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="col-span-2 space-y-1.5">
                 <Label htmlFor="hw-host">Host / IP</Label>
                 <Input

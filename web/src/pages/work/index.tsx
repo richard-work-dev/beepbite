@@ -64,13 +64,13 @@ interface MembershipCaps {
 // ---------------------------------------------------------------------------
 
 // POS views
-const PosWorkspace = lazy(() => import('@/pages/pos/workspace'));
-const QuickPOS = lazy(() => import('@/pages/quick-pos'));
+const PosWorkspace = lazy(() => import('@/pages/pos/workspace').then((module) => ({ default: module.EmbeddedPosWorkspace })));
+const QuickPOS = lazy(() => import('@/pages/quick-pos').then((module) => ({ default: module.EmbeddedQuickPOS })));
 const FloorLive = lazy(() => import('@/pages/floor'));
 
 // Kitchen views
-const StationPage = lazy(() => import('@/pages/kds/station'));
-const ExpoPage = lazy(() => import('@/pages/kds/expo'));
+const StationPage = lazy(() => import('@/pages/kds/station').then((module) => ({ default: module.EmbeddedStationPage })));
+const ExpoPage = lazy(() => import('@/pages/kds/expo').then((module) => ({ default: module.EmbeddedExpoPage })));
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -271,7 +271,7 @@ function TabButton({ active, onClick, children }: TabButtonProps) {
       className={cn(
         // font-display: this is the "which screen am I on" label — read at a
         // glance while reaching for the tab, same job as a KDS ticket header.
-        'h-auto rounded-none px-5 py-3 font-display text-sm tracking-wide border-b-2 hover:bg-transparent',
+        'h-auto shrink-0 rounded-none border-b-2 px-3 py-3 font-display text-xs tracking-wide hover:bg-transparent sm:px-5 sm:text-sm',
         active
           ? 'border-primary text-primary'
           : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted',
@@ -299,7 +299,7 @@ function ViewPill({ active, onClick, children }: ViewPillProps) {
       variant={active ? 'default' : 'outline'}
       onClick={onClick}
       aria-pressed={active}
-      className="h-auto rounded-full px-3.5 py-1.5 text-xs font-semibold"
+      className="h-auto shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold"
     >
       {children}
     </Button>
@@ -413,7 +413,7 @@ function KitchenPanel({ kdsView }: KitchenPanelProps) {
 
 function POSPanel({ posView }: { posView: PosViewId }) {
   return (
-    <div className="flex-1 overflow-auto">
+    <div className="relative h-full flex-1 overflow-auto">
       {posView === 'full' && (
         <Suspense fallback={<ViewLoader />}>
           <PosWorkspace />
@@ -511,7 +511,7 @@ export default function WorkspacePage() {
 
   if (membershipError || (!showPOS && !showKitchen)) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background p-6">
+      <div className="flex h-full items-center justify-center bg-background p-6">
         <div role="alert" className="w-full max-w-md rounded-xl border border-destructive/30 bg-card p-6 text-center shadow-sm">
           <ShieldAlert className="mx-auto h-10 w-10 text-destructive" aria-hidden="true" />
           <h1 className="mt-3 text-lg font-bold text-foreground">No se pudo habilitar el espacio de trabajo</h1>
@@ -530,7 +530,7 @@ export default function WorkspacePage() {
   if (activeTab === null) return <ViewLoader />;
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-background">
+    <div className="flex h-full flex-col overflow-hidden bg-background">
       {/* ----------------------------------------------------------------- */}
       {/* Top bar: tab switcher + view picker                               */}
       {/*                                                                   */}
@@ -546,10 +546,10 @@ export default function WorkspacePage() {
       {/* .dark tokens were tuned to match the KDS's literal grays/orange   */}
       {/* for exactly this reason.                                         */}
       {/* ----------------------------------------------------------------- */}
-      <div className="dark flex items-center gap-0 border-b border-border bg-card shrink-0 shadow-sm">
+      <div className="dark flex shrink-0 flex-col gap-0 border-b border-border bg-card shadow-sm sm:flex-row sm:items-center">
         {/* Tab buttons */}
-        <div className="flex items-center border-r border-border pr-4">
-          <div className="flex items-center gap-2.5 pl-4 pr-3" aria-hidden="true">
+        <div className="flex w-full items-center overflow-x-auto border-b border-border sm:w-auto sm:border-b-0 sm:border-r sm:pr-4">
+          <div className="hidden items-center gap-2.5 pl-4 pr-3 min-[420px]:flex" aria-hidden="true">
             <span className="h-6 w-1 rounded-full bg-primary" />
             <Monitor className="h-4 w-4 text-muted-foreground" />
           </div>
@@ -572,7 +572,7 @@ export default function WorkspacePage() {
         </div>
 
         {/* View pills */}
-        <div className="flex items-center gap-2 px-4 overflow-x-auto">
+        <div className="flex w-full items-center gap-2 overflow-x-auto px-3 py-2 sm:w-auto sm:px-4 sm:py-0">
           {activeTab === 'pos' &&
             POS_VIEWS.map((v) => (
               <ViewPill
@@ -599,7 +599,7 @@ export default function WorkspacePage() {
             (unlike the chrome-less POS/KDS, which use the full-width
             OfflineBanner instead), so the compact top-bar badge belongs here
             rather than a banner. */}
-        <div className="ml-auto flex items-center px-4 shrink-0">
+        <div className="ml-auto hidden shrink-0 items-center px-4 lg:flex">
           <SyncStatusBadge className="hidden sm:inline-flex" />
         </div>
       </div>
@@ -607,7 +607,7 @@ export default function WorkspacePage() {
       {/* ----------------------------------------------------------------- */}
       {/* View content area                                                 */}
       {/* ----------------------------------------------------------------- */}
-      <div className="flex-1 overflow-hidden">
+      <div className="min-h-0 flex-1 overflow-hidden">
         {activeTab === 'pos' && <POSPanel posView={posView} />}
         {activeTab === 'kitchen' && (
           <KitchenPanel kdsView={kdsView} />

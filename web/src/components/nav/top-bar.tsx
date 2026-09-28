@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ComponentType } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { LogOut, Users, ChevronDown, UserCircle, BarChart3, MessageSquare, Hash, X, MapPin, ChefHat, Building2, Check, Store, Folder, Receipt, MonitorPlay, Truck, LockKeyhole, LayoutDashboard, PackageSearch, PackageOpen, ClipboardList, ClipboardCheck, PackageCheck, FileCheck2, Zap } from 'lucide-react';
+import { LogOut, Users, ChevronDown, UserCircle, BarChart3, MessageSquare, Hash, X, MapPin, ChefHat, CookingPot, Building2, Check, Store, Folder, Receipt, MonitorPlay, Truck, LockKeyhole, LayoutDashboard, PackageSearch, PackageOpen, ClipboardList, ClipboardCheck, PackageCheck, FileCheck2, Zap } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { useActor } from '@/context/actor-token-context';
 import { hasAnyAccess } from '@/lib/access-control';
@@ -186,6 +186,7 @@ const TopBar = () => {
       items: [
         { name: 'Control diario', path: '/inventory/daily-counts', icon: ClipboardCheck, description: 'Conteo de apertura y cierre del día', capability: 'can_manage_menu' },
         { name: 'Insumos', path: '/inventory/items', icon: PackageOpen, description: 'Productos, unidades y stock mínimo', capability: 'can_manage_menu' },
+        { name: 'Recetas de inventario', path: '/inventory/recipes', icon: CookingPot, description: 'Consumo automático por producto vendido', capability: 'can_manage_menu' },
         { name: 'Proveedores', path: '/inventory/suppliers', icon: PackageSearch, description: 'Contactos y condiciones de compra', capability: 'can_manage_menu' },
         { name: 'Órdenes de compra', path: '/inventory/purchase-orders', icon: ClipboardList, description: 'Pedidos y seguimiento a proveedores', capability: 'can_manage_menu' },
         { name: 'Reposición sugerida', path: '/inventory/purchase-orders/auto-suggestions', icon: Zap, description: 'Compras sugeridas por stock mínimo', capability: 'can_manage_menu' },

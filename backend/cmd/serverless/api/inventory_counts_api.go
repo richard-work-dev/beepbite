@@ -351,16 +351,10 @@ func (a *application) applyInventoryCountAdjustment(ctx context.Context, orgID, 
 }
 
 func (a *application) syncInventoryMenuAvailability(ctx context.Context, orgID string, inventoryItem map[string]any, before, after float64, now string) error {
-	linkedItemID := displayString(inventoryItem["link_to_item_id"])
-	if linkedItemID == "" || (before <= 0) == (after <= 0) {
+	if absInventoryVariance(before-after) < 0.0000001 {
 		return nil
 	}
-	menuItem, err := a.dataRowByID(ctx, orgID, "items", linkedItemID)
-	if err != nil || menuItem["auto_86_when_inventory_empty"] != true {
-		return nil
-	}
-	menuItem["is_86ed"], menuItem["updated_at"] = after <= 0, now
-	return a.putDataRow(ctx, orgID, "items", menuItem, false)
+	return a.syncMenuAvailabilityForInventoryItem(ctx, orgID, inventoryItem, now)
 }
 
 func absInventoryVariance(value float64) float64 {

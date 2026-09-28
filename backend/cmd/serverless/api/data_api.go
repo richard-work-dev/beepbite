@@ -1109,6 +1109,9 @@ func dataAccessError(err error) events.APIGatewayV2HTTPResponse {
 		return errorResponse(404, "not found")
 	case errors.Is(err, errConflict):
 		return errorResponse(409, "conflict")
+	case errors.Is(err, errInsufficientInventory):
+		message := strings.TrimSpace(strings.TrimPrefix(err.Error(), errInsufficientInventory.Error()+":"))
+		return errorResponse(409, message)
 	case errors.Is(err, errInvalidData):
 		message := strings.TrimSpace(strings.TrimPrefix(err.Error(), errInvalidData.Error()+":"))
 		return errorResponse(400, message)

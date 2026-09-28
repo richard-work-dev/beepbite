@@ -30,6 +30,10 @@ func matchInventoryRoute(method, path string) (inventoryRoute, bool) {
 		return inventoryRoute{name: "daily_counts_open"}, true
 	case method == "POST" && len(segments) == 4 && segments[0] == "inventory" && segments[1] == "daily-counts" && segments[3] == "close":
 		return inventoryRoute{name: "daily_counts_close", param: segments[2]}, true
+	case method == "GET" && len(segments) == 2 && segments[0] == "inventory" && segments[1] == "recipes":
+		return inventoryRoute{name: "recipes_list"}, true
+	case method == "PUT" && len(segments) == 3 && segments[0] == "inventory" && segments[1] == "recipes":
+		return inventoryRoute{name: "recipes_replace", param: segments[2]}, true
 	case method == "POST" && len(segments) == 2 && segments[0] == "inventory" && segments[1] == "purchase-orders":
 		return inventoryRoute{name: "po_create"}, true
 	case method == "POST" && len(segments) == 4 && segments[0] == "inventory" && segments[1] == "purchase-orders" && segments[3] == "submit":
@@ -78,6 +82,10 @@ func (a *application) handleInventoryAPI(ctx context.Context, request events.API
 		response = a.openDailyInventoryCount(ctx, orgID, claims.UserID, request.Body)
 	case "daily_counts_close":
 		response = a.closeDailyInventoryCount(ctx, orgID, claims.UserID, route.param, request.Body)
+	case "recipes_list":
+		response = a.listInventoryRecipes(ctx, orgID, request.RawQueryString)
+	case "recipes_replace":
+		response = a.replaceInventoryRecipe(ctx, orgID, claims.UserID, route.param, request.Body)
 	case "po_create":
 		response = a.createPurchaseOrder(ctx, orgID, request.Body)
 	case "po_submit":
@@ -647,13 +655,8 @@ func (a *application) receiveGoodsReceipt(ctx context.Context, orgID, actorID, r
 		if err := a.putDataRow(ctx, orgID, "inventory_items", line.inventoryItem, false); err != nil {
 			return dataAccessError(err)
 		}
-		if linkedItemID := displayString(line.inventoryItem["link_to_item_id"]); linkedItemID != "" && currentStock <= 0 && newStock > 0 {
-			if menuItem, getErr := a.dataRowByID(ctx, orgID, "items", linkedItemID); getErr == nil && menuItem["auto_86_when_inventory_empty"] == true {
-				menuItem["is_86ed"], menuItem["updated_at"] = false, now
-				if putErr := a.putDataRow(ctx, orgID, "items", menuItem, false); putErr != nil {
-					return dataAccessError(putErr)
-				}
-			}
+		if err := a.syncInventoryMenuAvailability(ctx, orgID, line.inventoryItem, currentStock, newStock, now); err != nil {
+			return dataAccessError(err)
 		}
 		movement, err := a.createStoredRow(ctx, orgID, "stock_movements", map[string]any{
 			"inventory_item_id": line.inventoryItem["id"], "movement_type": "purchase", "quantity": line.quantity,

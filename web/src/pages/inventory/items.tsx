@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
-import { AlertCircle, Edit, PackageOpen, Plus, Search } from 'lucide-react';
+import { AlertCircle, CookingPot, Edit, PackageOpen, Plus, Search } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/context/auth-context';
 import { api } from '@/lib/api-client';
@@ -50,6 +51,7 @@ function formatQuantity(value: number): string {
 
 export default function InventoryItemsPage() {
   const { activeLocation } = useAuth();
+  const navigate = useNavigate();
   const [items, setItems] = useState<InventoryCatalogItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -161,7 +163,12 @@ export default function InventoryItemsPage() {
         icon={PackageOpen}
         title="Insumos de inventario"
         description={`Productos que se contarán al abrir y cerrar ${activeLocation.name}`}
-        actions={<Button onClick={openCreate}><Plus className="mr-2 size-4" /> Nuevo insumo</Button>}
+        actions={(
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => navigate('/inventory/recipes')}><CookingPot className="mr-2 size-4" /> Recetas</Button>
+            <Button onClick={openCreate}><Plus className="mr-2 size-4" /> Nuevo insumo</Button>
+          </div>
+        )}
       />
 
       <div className="relative max-w-sm">

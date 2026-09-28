@@ -14,6 +14,8 @@ func TestMatchInventoryRoute(t *testing.T) {
 		{"GET", "/inventory/daily-counts", "daily_counts_list", ""},
 		{"POST", "/inventory/daily-counts/open", "daily_counts_open", ""},
 		{"POST", "/inventory/daily-counts/count-1/close", "daily_counts_close", "count-1"},
+		{"GET", "/inventory/recipes", "recipes_list", ""},
+		{"PUT", "/inventory/recipes/menu-1", "recipes_replace", "menu-1"},
 		{"POST", "/inventory/purchase-orders", "po_create", ""},
 		{"POST", "/inventory/purchase-orders/po-1/submit", "po_submit", "po-1"},
 		{"GET", "/inventory/goods-receipts", "grn_list", ""},
@@ -29,6 +31,48 @@ func TestMatchInventoryRoute(t *testing.T) {
 	}
 	if _, ok := matchInventoryRoute("DELETE", "/inventory/purchase-orders/po-1"); ok {
 		t.Fatal("unexpected route match")
+	}
+}
+
+func TestParseInventoryRecipeComponents(t *testing.T) {
+	components, err := parseInventoryRecipeComponents([]any{
+		map[string]any{"inventory_item_id": "pollo", "quantity": json.Number("0.25")},
+		map[string]any{"inventory_item_id": "papas", "quantity": float64(0.15)},
+	})
+	if err != nil || components["pollo"] != 0.25 || components["papas"] != 0.15 {
+		t.Fatalf("unexpected recipe components: %#v, %v", components, err)
+	}
+	if _, err := parseInventoryRecipeComponents([]any{
+		map[string]any{"inventory_item_id": "pollo", "quantity": 1},
+		map[string]any{"inventory_item_id": "pollo", "quantity": 2},
+	}); err == nil {
+		t.Fatal("expected duplicate inventory item to fail")
+	}
+	if _, err := parseInventoryRecipeComponents([]any{
+		map[string]any{"inventory_item_id": "pollo", "quantity": 0},
+	}); err == nil {
+		t.Fatal("expected zero quantity to fail")
+	}
+}
+
+func TestInventoryRequirementsAggregatesOrderAndRecipeQuantities(t *testing.T) {
+	orderItems := []map[string]any{
+		{"item_id": "combo", "quantity": 2},
+		{"item_id": "combo", "quantity": 1},
+		{"item_id": "other", "quantity": 4},
+	}
+	recipes := []map[string]any{
+		{"menu_item_id": "combo", "inventory_item_id": "pollo", "quantity": 0.5, "is_active": true},
+		{"menu_item_id": "combo", "inventory_item_id": "papas", "quantity": 0.2, "is_active": true},
+		{"menu_item_id": "other", "inventory_item_id": "papas", "quantity": 0.1, "is_active": true},
+		{"menu_item_id": "combo", "inventory_item_id": "salsa", "quantity": 1, "is_active": false},
+	}
+	requirements := inventoryRequirements(orderItems, recipes)
+	if requirements["pollo"] != 1.5 || requirements["papas"] != 1.0 {
+		t.Fatalf("unexpected requirements: %#v", requirements)
+	}
+	if _, exists := requirements["salsa"]; exists {
+		t.Fatalf("inactive component must not be consumed: %#v", requirements)
 	}
 }
 

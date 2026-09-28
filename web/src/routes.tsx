@@ -111,6 +111,7 @@ const HouseAccounts = lazyImport(() => import('./pages/house-accounts'));
 const HouseAccountDetail = lazyImport(() => import('./pages/house-accounts/detail'));
 const InventoryDailyCounts = lazyImport(() => import('./pages/inventory/daily-counts'));
 const InventoryItems = lazyImport(() => import('./pages/inventory/items'));
+const InventoryRecipes = lazyImport(() => import('./pages/inventory/recipes'));
 const InventorySuppliers = lazyImport(() => import('./pages/inventory/suppliers'));
 const InventoryPOs = lazyImport(() => import('./pages/inventory/purchase-orders'));
 const InventoryAutoPO = lazyImport(() => import('./pages/inventory/auto-suggestions'));
@@ -327,6 +328,7 @@ const AppRoutes = () => {
           {/* Inventory + procurement */}
           <Route path="/inventory/daily-counts" element={<Protected capabilities={['can_manage_menu']}><InventoryDailyCounts /></Protected>} />
           <Route path="/inventory/items" element={<Protected capabilities={['can_manage_menu']}><InventoryItems /></Protected>} />
+          <Route path="/inventory/recipes" element={<Protected capabilities={['can_manage_menu']}><InventoryRecipes /></Protected>} />
           <Route path="/inventory/suppliers" element={<Protected capabilities={['can_manage_menu']}><InventorySuppliers /></Protected>} />
           <Route path="/inventory/purchase-orders" element={<Protected capabilities={['can_manage_menu']}><InventoryPOs /></Protected>} />
           <Route path="/inventory/purchase-orders/auto-suggestions" element={<Protected capabilities={['can_manage_menu']}><InventoryAutoPO /></Protected>} />

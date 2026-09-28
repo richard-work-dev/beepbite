@@ -377,6 +377,9 @@ func (a *application) createPOSOrder(ctx context.Context, orgID, body string) ev
 			"variation_option_ids": valueOr(line, "variation_option_ids", []string{}), "modifiers": modifiers,
 		})
 	}
+	if err := a.validateInventoryForOrder(ctx, orgID, locationID, prepared); err != nil {
+		return dataAccessError(err)
+	}
 
 	location, _ := a.dataRowByID(ctx, orgID, "locations", locationID)
 	taxRate, _ := numericValue(location["tax_rate"])
@@ -447,6 +450,9 @@ func (a *application) modifyPOSOrder(ctx context.Context, orgID, orderID, body s
 	if fmt.Sprint(order["status"]) == "completed" || fmt.Sprint(order["status"]) == "cancelled" {
 		return errorResponse(409, "order cannot be modified")
 	}
+	if a.inventoryConsumptionExists(ctx, orgID, orderID) {
+		return errorResponse(409, "el pedido ya descontó inventario; anulalo y creá uno nuevo para conservar la trazabilidad")
+	}
 	tickets, err := a.queryDataRows(ctx, orgID, "kds_tickets")
 	if err != nil {
 		return dataAccessError(err)
@@ -504,6 +510,9 @@ func (a *application) modifyPOSOrder(ctx context.Context, orgID, orderID, body s
 		lineTotal := unit * qty
 		subtotal += lineTotal
 		prepared = append(prepared, map[string]any{"order_id": orderID, "item_id": itemID, "item_name": item["name"], "category_id": item["category_id"], "quantity": qty, "base_price_cents": baseUnit, "unit_price_cents": unit, "line_total_cents": lineTotal, "special_instructions": valueOr(line, "notes", nil), "course_id": valueOr(line, "course_id", nil), "modifiers": modifiers})
+	}
+	if err := a.validateInventoryForOrder(ctx, orgID, locationID, prepared); err != nil {
+		return dataAccessError(err)
 	}
 	existingItems, err := a.queryDataRows(ctx, orgID, "order_items")
 	if err != nil {
@@ -828,6 +837,15 @@ func (a *application) fanoutKDSRows(ctx context.Context, orgID string, order map
 	}
 	lines, err := a.queryDataRows(ctx, orgID, "order_items")
 	if err != nil {
+		return nil, err
+	}
+	orderLines := make([]map[string]any, 0)
+	for _, line := range lines {
+		if fmt.Sprint(line["order_id"]) == orderID {
+			orderLines = append(orderLines, line)
+		}
+	}
+	if err := a.consumeInventoryForOrder(ctx, orgID, order, orderLines); err != nil {
 		return nil, err
 	}
 	stations, err := a.queryDataRows(ctx, orgID, "kitchen_stations")

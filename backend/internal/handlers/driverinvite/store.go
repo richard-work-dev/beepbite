@@ -23,10 +23,15 @@ import (
 
 // Sentinel errors for HTTP-layer status-code mapping.
 var (
-	ErrInviteNotFound = errors.New("driver invite not found")
-	ErrAlreadyMember  = errors.New("user is already a member of this organization")
-	ErrAlreadyInvited = errors.New("a pending driver invite already exists for this email")
-	ErrDriverNotFound = errors.New("driver not found in this organization")
+	ErrInviteNotFound       = errors.New("driver invite not found")
+	ErrAlreadyMember        = errors.New("user is already a member of this organization")
+	ErrAlreadyInvited       = errors.New("a pending driver invite already exists for this email")
+	ErrDriverNotFound       = errors.New("driver not found in this organization")
+	ErrOrderNotFound        = errors.New("delivery order not found in this organization")
+	ErrNotDeliveryOrder     = errors.New("order is not a delivery order")
+	ErrOrderNotAssignable   = errors.New("order is already complete or canceled")
+	ErrAssignmentInProgress = errors.New("delivery is already accepted or in progress")
+	ErrAssignmentNotFound   = errors.New("active delivery assignment not found")
 )
 
 // DriverInvite mirrors the organization_invites row (role='driver' subset).
@@ -179,10 +184,49 @@ UPDATE organization_invites
 // ActiveDriver is an accepted driver member (role='driver') joined to its
 // profile for display.
 type ActiveDriver struct {
+	MemberID  string    `json:"member_id"`
 	ProfileID string    `json:"profile_id"`
 	Email     string    `json:"email"`
 	FullName  string    `json:"full_name"`
 	JoinedAt  time.Time `json:"joined_at"`
+}
+
+type ManualAssignment struct {
+	ID             string    `json:"id"`
+	OrderID        string    `json:"order_id"`
+	DriverMemberID string    `json:"driver_member_id"`
+	DriverName     string    `json:"driver_name"`
+	DriverEmail    string    `json:"driver_email"`
+	Status         string    `json:"status"`
+	OfferedAt      time.Time `json:"offered_at"`
+}
+
+func (s *Store) GetDeliveryAssignment(ctx context.Context, orgID, orderID string) (*ManualAssignment, error) {
+	var out ManualAssignment
+	err := db.Scoped(ctx, s.pool, db.ServiceRoleScope(), func(tx pgx.Tx) error {
+		return tx.QueryRow(ctx, `
+SELECT da.id, da.order_id, da.driver_member_id, COALESCE(p.full_name, ''), COALESCE(p.email, ''), da.status::text, da.offered_at
+FROM driver_assignments da
+JOIN orders o ON o.id = da.order_id
+JOIN locations l ON l.id = o.location_id
+JOIN organization_members m ON m.id = da.driver_member_id
+JOIN profiles p ON p.id = m.profile_id
+WHERE da.order_id = $1 AND l.organization_id = $2
+  AND da.status IN ('offered', 'accepted', 'picked_up')
+ORDER BY da.offered_at DESC
+LIMIT 1
+`, orderID, orgID).Scan(
+			&out.ID, &out.OrderID, &out.DriverMemberID, &out.DriverName,
+			&out.DriverEmail, &out.Status, &out.OfferedAt,
+		)
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrAssignmentNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
 }
 
 // ListActiveDrivers returns the org's accepted driver members. It runs under
@@ -194,7 +238,7 @@ func (s *Store) ListActiveDrivers(ctx context.Context, orgID string) ([]ActiveDr
 	out := []ActiveDriver{}
 	err := db.Scoped(ctx, s.pool, db.ServiceRoleScope(), func(tx pgx.Tx) error {
 		rows, err := tx.Query(ctx, `
-SELECT m.profile_id, COALESCE(p.email, ''), COALESCE(p.full_name, ''), m.created_at
+SELECT m.id, m.profile_id, COALESCE(p.email, ''), COALESCE(p.full_name, ''), m.created_at
   FROM organization_members m
   JOIN profiles p ON p.id = m.profile_id
  WHERE m.organization_id = $1
@@ -207,7 +251,7 @@ SELECT m.profile_id, COALESCE(p.email, ''), COALESCE(p.full_name, ''), m.created
 		defer rows.Close()
 		for rows.Next() {
 			var d ActiveDriver
-			if err := rows.Scan(&d.ProfileID, &d.Email, &d.FullName, &d.JoinedAt); err != nil {
+			if err := rows.Scan(&d.MemberID, &d.ProfileID, &d.Email, &d.FullName, &d.JoinedAt); err != nil {
 				return err
 			}
 			out = append(out, d)
@@ -218,6 +262,98 @@ SELECT m.profile_id, COALESCE(p.email, ''), COALESCE(p.full_name, ''), m.created
 		return nil, err
 	}
 	return out, nil
+}
+
+func (s *Store) AssignDeliveryOrder(ctx context.Context, orgID, orderID, driverMemberID string) (*ManualAssignment, error) {
+	var out ManualAssignment
+	err := db.Scoped(ctx, s.pool, db.ServiceRoleScope(), func(tx pgx.Tx) error {
+		var fulfillment, orderType, orderStatus string
+		err := tx.QueryRow(ctx, `
+SELECT fulfillment_type::text, COALESCE(order_type, ''), status::text
+FROM orders o
+JOIN locations l ON l.id = o.location_id
+WHERE o.id = $1 AND l.organization_id = $2
+FOR UPDATE OF o
+`, orderID, orgID).Scan(&fulfillment, &orderType, &orderStatus)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrOrderNotFound
+		}
+		if err != nil {
+			return err
+		}
+		if fulfillment != "delivery" && orderType != "delivery" {
+			return ErrNotDeliveryOrder
+		}
+		if orderStatus == "cancelled" || orderStatus == "delivered" || orderStatus == "completed" {
+			return ErrOrderNotAssignable
+		}
+
+		var isDriver bool
+		if err := tx.QueryRow(ctx, `
+SELECT EXISTS(
+  SELECT 1 FROM organization_members
+  WHERE id = $1 AND organization_id = $2 AND role = 'driver' AND archived_at IS NULL
+)
+`, driverMemberID, orgID).Scan(&isDriver); err != nil {
+			return err
+		}
+		if !isDriver {
+			return ErrDriverNotFound
+		}
+
+		rows, err := tx.Query(ctx, `
+SELECT id, driver_member_id, status::text, offered_at
+FROM driver_assignments
+WHERE order_id = $1 AND status IN ('offered', 'accepted', 'picked_up')
+FOR UPDATE
+`, orderID)
+		if err != nil {
+			return err
+		}
+		var offeredIDs []string
+		for rows.Next() {
+			var id, existingDriver, status string
+			var offeredAt time.Time
+			if err := rows.Scan(&id, &existingDriver, &status, &offeredAt); err != nil {
+				rows.Close()
+				return err
+			}
+			if status != "offered" {
+				rows.Close()
+				return ErrAssignmentInProgress
+			}
+			if existingDriver == driverMemberID {
+				out = ManualAssignment{ID: id, OrderID: orderID, DriverMemberID: driverMemberID, Status: status, OfferedAt: offeredAt}
+				rows.Close()
+				return nil
+			}
+			offeredIDs = append(offeredIDs, id)
+		}
+		if err := rows.Err(); err != nil {
+			rows.Close()
+			return err
+		}
+		rows.Close()
+		if len(offeredIDs) > 0 {
+			if _, err := tx.Exec(ctx, `
+UPDATE driver_assignments
+SET status = 'canceled', canceled_reason = 'Reassigned by manager', updated_at = now()
+WHERE id = ANY($1::uuid[])
+`, offeredIDs); err != nil {
+				return err
+			}
+		}
+
+		return tx.QueryRow(ctx, `
+INSERT INTO driver_assignments (order_id, driver_member_id, status)
+VALUES ($1, $2, 'offered')
+RETURNING id, order_id, driver_member_id, status::text, offered_at
+`, orderID, driverMemberID).Scan(&out.ID, &out.OrderID, &out.DriverMemberID, &out.Status, &out.OfferedAt)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
 }
 
 // RemoveDriver deletes the driver-role membership for profileID in orgID,

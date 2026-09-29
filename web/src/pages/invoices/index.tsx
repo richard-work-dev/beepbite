@@ -53,9 +53,9 @@ import { formatMoney } from '@/lib/currency';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function fmtDate(iso: string | null | undefined) {
+function fmtDate(iso: string | null | undefined, locale: string) {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString(undefined, {
+  return new Date(iso).toLocaleDateString(locale, {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -72,12 +72,12 @@ const STATUS_VARIANT: Record<string, 'secondary' | 'default' | 'success' | 'warn
 };
 
 const STATUS_LABEL: Record<string, string> = {
-  draft:     'Draft',
-  sent:      'Sent',
-  paid:      'Paid',
-  overdue:   'Overdue',
-  cancelled: 'Cancelled',
-  void:      'Void',
+  draft:     'Borrador',
+  sent:      'Emitida',
+  paid:      'Pagada',
+  overdue:   'Vencida',
+  cancelled: 'Cancelada',
+  void:      'Anulada',
 };
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -111,13 +111,13 @@ export default function InvoicesPage() {
     try {
       const { data, error: err } = await listInvoices();
       if (err) {
-        setError(err.message || 'Failed to load invoices.');
+        setError(err.message || 'No se pudieron cargar las facturas.');
       } else {
         setInvoices(data || []);
       }
     } catch (err) {
       console.error('Error loading invoices:', err);
-      setError('Failed to load invoices.');
+      setError('No se pudieron cargar las facturas.');
     } finally {
       setLoading(false);
     }
@@ -130,25 +130,35 @@ export default function InvoicesPage() {
   async function handleDelete(id: string | null) {
     if (!id) return;
     setDeletingId(id);
-    const { error: err } = await deleteInvoice(id);
-    if (err) {
-      setError(err.message || 'Failed to delete invoice.');
-    } else {
-      setInvoices((prev) => prev.filter((i) => i.id !== id));
+    try {
+      const { error: err } = await deleteInvoice(id);
+      if (err) {
+        setError(err.message || 'No se pudo eliminar la factura.');
+      } else {
+        setInvoices((prev) => prev.filter((i) => i.id !== id));
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo eliminar la factura.');
+    } finally {
+      setDeletingId(null);
+      setConfirmDeleteId(null);
     }
-    setDeletingId(null);
-    setConfirmDeleteId(null);
   }
 
   async function handleIssue(id: string) {
     setActionLoading(id);
-    const { data, error: err } = await issueInvoice(id);
-    if (err) {
-      setError(err.message || 'Failed to issue invoice.');
-    } else if (data) {
-      setInvoices((prev) => prev.map((i) => (i.id === id ? { ...i, ...data } : i)));
+    try {
+      const { data, error: err } = await issueInvoice(id);
+      if (err) {
+        setError(err.message || 'No se pudo emitir la factura.');
+      } else if (data) {
+        setInvoices((prev) => prev.map((i) => (i.id === id ? { ...i, ...data } : i)));
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo emitir la factura.');
+    } finally {
+      setActionLoading(null);
     }
-    setActionLoading(null);
   }
 
   async function handleDownload(id: string) {
@@ -156,9 +166,10 @@ export default function InvoicesPage() {
     try {
       await downloadInvoicePDF(id);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'PDF download failed.');
+      setError(e instanceof Error ? e.message : 'No se pudo descargar el PDF.');
+    } finally {
+      setActionLoading(null);
     }
-    setActionLoading(null);
   }
 
   // ── Render ───────────────────────────────────────────────────────────────
@@ -167,17 +178,17 @@ export default function InvoicesPage() {
     <PageContainer className="max-w-5xl">
       <PageHeader
         icon={FileText}
-        title="Invoices"
-        description="Create and manage invoices for your B2B customers."
+        title="Facturas"
+        description="Creá y administrá las facturas de tus clientes."
         actions={
           <>
-            <Button variant="outline" size="icon" onClick={load} disabled={loading} title="Refresh">
+            <Button variant="outline" size="icon" onClick={load} disabled={loading} title="Actualizar">
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              <span className="sr-only">Refresh</span>
+              <span className="sr-only">Actualizar</span>
             </Button>
             <Button onClick={() => navigate('/invoices/new')}>
               <Plus className="mr-2 h-4 w-4" />
-              New invoice
+              Nueva factura
             </Button>
           </>
         }
@@ -204,14 +215,14 @@ export default function InvoicesPage() {
           <CardContent className="flex flex-col items-center justify-center py-16 gap-4">
             <FileText className="h-12 w-12 text-muted-foreground/40" />
             <div className="text-center">
-              <p className="font-medium">No invoices yet</p>
+            <p className="font-medium">Todavía no hay facturas</p>
               <p className="text-sm text-muted-foreground">
-                Create your first invoice to get started.
+                Creá tu primera factura para empezar.
               </p>
             </div>
             <Button onClick={() => navigate('/invoices/new')}>
               <Plus className="mr-2 h-4 w-4" />
-              New invoice
+              Nueva factura
             </Button>
           </CardContent>
         </Card>
@@ -221,8 +232,8 @@ export default function InvoicesPage() {
       {!loading && invoices.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">All invoices</CardTitle>
-            <CardDescription>{invoices.length} invoice{invoices.length !== 1 ? 's' : ''}</CardDescription>
+            <CardTitle className="text-base">Todas las facturas</CardTitle>
+            <CardDescription>{invoices.length} {invoices.length === 1 ? 'factura' : 'facturas'}</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y">
@@ -237,7 +248,7 @@ export default function InvoicesPage() {
                     onClick={() => navigate(`/invoices/${inv.id}`)}
                   >
                     <p className="font-medium truncate">
-                      {inv.recipient_name || 'Unnamed recipient'}
+                      {inv.recipient_name || 'Sin nombre de destinatario'}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       <span className="font-mono tabular-nums">
@@ -246,9 +257,9 @@ export default function InvoicesPage() {
                           : `#${inv.id.slice(0, 8).toUpperCase()}`}
                       </span>
                       {' · '}
-                      {inv.issuer === 'platform' ? 'Platform invoice' : 'Tenant invoice'}
+                      {inv.issuer === 'platform' ? 'Factura de BeepBite' : 'Factura del negocio'}
                       {' · '}
-                      <span className="tabular-nums">{fmtDate(inv.created_at)}</span>
+                      <span className="tabular-nums">{fmtDate(inv.created_at, locale)}</span>
                     </p>
                   </div>
 
@@ -259,7 +270,7 @@ export default function InvoicesPage() {
                     </p>
                     {inv.vat_cents > 0 && (
                       <p className="text-xs text-muted-foreground tabular-nums">
-                        incl. VAT {fmtCents(inv.vat_cents, inv.currency)}
+                        IVA incluido {fmtCents(inv.vat_cents, inv.currency)}
                       </p>
                     )}
                   </div>
@@ -275,7 +286,7 @@ export default function InvoicesPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      title="View"
+                      title="Ver factura"
                       onClick={() => navigate(`/invoices/${inv.id}`)}
                     >
                       <Eye className="h-4 w-4" />
@@ -286,7 +297,7 @@ export default function InvoicesPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        title="Issue invoice"
+                        title="Emitir factura"
                         disabled={actionLoading === inv.id}
                         onClick={() => handleIssue(inv.id)}
                       >
@@ -302,7 +313,7 @@ export default function InvoicesPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      title="Download PDF"
+                      title="Descargar PDF"
                       disabled={actionLoading === inv.id}
                       onClick={() => handleDownload(inv.id)}
                     >
@@ -318,7 +329,7 @@ export default function InvoicesPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        title="Delete"
+                        title="Eliminar"
                         className="text-destructive hover:text-destructive"
                         disabled={deletingId === inv.id}
                         onClick={() => setConfirmDeleteId(inv.id)}
@@ -342,19 +353,18 @@ export default function InvoicesPage() {
       <AlertDialog open={!!confirmDeleteId} onOpenChange={(o) => !o && setConfirmDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete invoice?</AlertDialogTitle>
+            <AlertDialogTitle>¿Eliminar la factura?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. The draft invoice will be permanently
-              deleted.
+              Esta acción no se puede deshacer. La factura en borrador se eliminará definitivamente.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Volver</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               onClick={() => handleDelete(confirmDeleteId)}
             >
-              Delete invoice
+              Eliminar factura
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -15,13 +15,13 @@ import type { CashSession, CashMovement } from '../index';
 
 // Movement types with inflow/outflow sign convention
 const MOVEMENT_TYPES: { value: CashMovement['movement_type']; label: string; sign: number }[] = [
-  { value: 'paid_in',    label: 'Paid In',    sign: 1  },
-  { value: 'paid_out',   label: 'Paid Out',   sign: -1 },
-  { value: 'petty_cash', label: 'Petty Cash', sign: 1  },
-  { value: 'tip_out',    label: 'Tip Out',    sign: -1 },
-  { value: 'no_sale',    label: 'No Sale',    sign: 0  },
-  { value: 'drop',       label: 'Drop',       sign: 1  },
-  { value: 'pickup',     label: 'Pickup',     sign: -1 },
+  { value: 'paid_in',    label: 'Ingreso',           sign: 1  },
+  { value: 'paid_out',   label: 'Egreso',            sign: -1 },
+  { value: 'petty_cash', label: 'Caja chica',        sign: 1  },
+  { value: 'tip_out',    label: 'Propinas',          sign: -1 },
+  { value: 'no_sale',    label: 'Sin venta',         sign: 0  },
+  { value: 'drop',       label: 'Retiro de efectivo', sign: 1  },
+  { value: 'pickup',     label: 'Extracción',        sign: -1 },
 ];
 
 function fmtDate(iso?: string | null) {
@@ -77,7 +77,7 @@ export function SessionCard({ session, staffId, onMovementAdded, onSessionClosed
     setMovError(null);
     const absVal = Math.abs(parse(amountMajor) ?? 0);
     if (movType !== 'no_sale' && absVal === 0) {
-      setMovError('Amount must be non-zero');
+      setMovError('El importe debe ser mayor que cero.');
       return;
     }
     // Apply sign convention: outflows are stored as negative
@@ -102,7 +102,7 @@ export function SessionCard({ session, staffId, onMovementAdded, onSessionClosed
       setReason('');
       onMovementAdded?.();
     } catch (err) {
-      setMovError(err instanceof Error ? err.message : 'Failed to record movement');
+      setMovError(err instanceof Error ? err.message : 'No se pudo registrar el movimiento.');
     } finally {
       setMovLoading(false);
     }
@@ -114,8 +114,8 @@ export function SessionCard({ session, staffId, onMovementAdded, onSessionClosed
         <CardHeader className="flex flex-row items-center justify-between gap-4 pb-2">
           <div className="flex items-center gap-2">
             <Wallet className="h-5 w-5 text-primary" />
-            <CardTitle>Current Session</CardTitle>
-            <Badge variant="success">Open</Badge>
+            <CardTitle>Caja abierta</CardTitle>
+            <Badge variant="success">Abierta</Badge>
           </div>
           {canSettle && (
             <Button
@@ -125,7 +125,7 @@ export function SessionCard({ session, staffId, onMovementAdded, onSessionClosed
               className="shrink-0"
             >
               <LockKeyhole className="mr-1.5 h-4 w-4" />
-              Close Session
+              Cerrar caja
             </Button>
           )}
         </CardHeader>
@@ -134,17 +134,17 @@ export function SessionCard({ session, staffId, onMovementAdded, onSessionClosed
           {/* Session summary */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
             <div>
-              <p className="text-muted-foreground">Opened at</p>
+              <p className="text-muted-foreground">Apertura</p>
               <p className="font-medium">{fmtDate(session.opened_at)}</p>
             </div>
             <div>
-              <p className="text-muted-foreground">Opening float</p>
+              <p className="text-muted-foreground">Fondo inicial</p>
               <p className="font-medium tabular-nums">
                 {format(session.opening_float_cents || 0)}
               </p>
             </div>
             <div>
-              <p className="text-muted-foreground">Expected balance</p>
+              <p className="text-muted-foreground">Saldo esperado</p>
               <p className="font-semibold text-primary tabular-nums">
                 {format(expectedCents)}
               </p>
@@ -153,7 +153,7 @@ export function SessionCard({ session, staffId, onMovementAdded, onSessionClosed
 
           {/* Movements list */}
           <div>
-            <h3 className="text-sm font-semibold mb-2">Movements</h3>
+            <h3 className="text-sm font-semibold mb-2">Movimientos</h3>
             <MovementsList movements={movements} />
           </div>
 
@@ -161,12 +161,12 @@ export function SessionCard({ session, staffId, onMovementAdded, onSessionClosed
           <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
             <h3 className="text-sm font-semibold flex items-center gap-2">
               <PlusCircle className="h-4 w-4 text-primary" />
-              Record Movement
+              Registrar movimiento
             </h3>
             <form onSubmit={handleAddMovement} className="space-y-4">
               {/* Movement type radio */}
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Type</Label>
+                <Label className="text-xs text-muted-foreground">Tipo</Label>
                 <RadioGroup
                   value={movType}
                   onValueChange={(v) => setMovType(v as CashMovement['movement_type'])}
@@ -190,7 +190,7 @@ export function SessionCard({ session, staffId, onMovementAdded, onSessionClosed
                 {/* Amount */}
                 <div className="space-y-1">
                   <Label htmlFor="mov-amount" className="text-xs text-muted-foreground">
-                    Amount ({symbol}) {sign < 0 && '— outflow'}
+                    Importe ({symbol}) {sign < 0 && '— egreso'}
                   </Label>
                   <Input
                     id="mov-amount"
@@ -207,11 +207,11 @@ export function SessionCard({ session, staffId, onMovementAdded, onSessionClosed
                 {/* Reason */}
                 <div className="space-y-1">
                   <Label htmlFor="mov-reason" className="text-xs text-muted-foreground">
-                    Reason
+                    Motivo
                   </Label>
                   <Input
                     id="mov-reason"
-                    placeholder="Optional description"
+                    placeholder="Descripción (opcional)"
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
                   />
@@ -226,7 +226,7 @@ export function SessionCard({ session, staffId, onMovementAdded, onSessionClosed
                 disabled={movLoading}
               >
                 {movLoading && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
-                Add Movement
+                Registrar
               </Button>
             </form>
           </div>

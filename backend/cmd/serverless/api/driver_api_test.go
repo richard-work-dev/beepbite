@@ -13,9 +13,12 @@ func TestMatchDriverRoute(t *testing.T) {
 		{"POST", "/driver-invites/inv-1/renew", "renew-invite", true},
 		{"GET", "/drivers", "list-drivers", true},
 		{"DELETE", "/drivers/user-1", "remove-driver", true},
+		{"POST", "/orders/order-1/driver-assignment", "assign-delivery", true},
+		{"GET", "/orders/order-1/driver-assignment", "get-delivery-assignment", true},
 		{"GET", "/driver/assignments", "assignments", true},
 		{"POST", "/driver/assignments/a-1/accept", "transition", true},
 		{"POST", "/driver/shifts/online", "shift", true},
+		{"GET", "/driver/shifts/current", "shift-status", true},
 		{"POST", "/driver/pings", "ping", true},
 		{"GET", "/driver/pings", "", false},
 	}

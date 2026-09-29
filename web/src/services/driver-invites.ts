@@ -26,10 +26,21 @@ export interface DriverInvite {
 
 // Mirrors backend/internal/handlers/driverinvite/store.go ActiveDriver.
 export interface Driver {
+  member_id: string;
   profile_id: string;
   email: string;
   full_name: string;
   joined_at: string;
+}
+
+export interface DriverAssignment {
+  id: string;
+  order_id: string;
+  driver_member_id: string;
+  driver_name?: string;
+  driver_email?: string;
+  status: 'offered' | 'accepted' | 'picked_up';
+  offered_at: string;
 }
 
 interface FetchError extends Error {
@@ -75,4 +86,37 @@ export async function listActiveDrivers(): Promise<Driver[]> {
 export async function removeDriver(profileId: string) {
   const { error } = await api.request('DELETE', `/drivers/${profileId}`);
   if (error) throw new Error(error.message || 'Failed to remove driver');
+}
+
+export async function assignDriverToOrder(orderId: string, driverMemberId: string) {
+  if (!orderId || !driverMemberId) throw new Error('Elegí un repartidor y un pedido.');
+  const { data, error } = await api.request('POST', `/orders/${encodeURIComponent(orderId)}/driver-assignment`, {
+    body: { driver_member_id: driverMemberId },
+  });
+  if (error) {
+    const message = error.status === 403
+      ? 'Solo un encargado puede asignar repartidores.'
+      : error.status === 404
+      ? 'No se encontró el pedido o el repartidor activo.'
+      : error.status === 409
+      ? 'El pedido ya está en reparto o finalizado.'
+      : error.status === 422
+      ? 'Solo se pueden asignar pedidos de entrega.'
+      : error.message || 'No se pudo asignar el repartidor.';
+    throw new Error(message);
+  }
+  return data;
+}
+
+export async function getDriverAssignmentForOrder(orderId: string): Promise<DriverAssignment | null> {
+  const { data, error } = await api.request<DriverAssignment>(
+    'GET',
+    `/orders/${encodeURIComponent(orderId)}/driver-assignment`,
+  );
+  if (error) {
+    throw new Error(error.status === 403
+      ? 'Solo un encargado puede consultar la asignación.'
+      : error.message || 'No se pudo consultar la asignación del pedido.');
+  }
+  return data || null;
 }

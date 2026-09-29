@@ -15,23 +15,19 @@ import type { Reservation } from './reservation-card';
 interface ReservationFormState {
   customer_name: string;
   customer_phone: string;
-  customer_email: string;
   // Start numeric; become strings once the number input is edited (DOM
   // input values are always strings) — parsed back with Number() on submit,
   // same pattern used elsewhere in this codebase.
   party_size: number | string;
   reservation_at: string;
-  duration_minutes: number | string;
   special_requests: string;
 }
 
 const DEFAULT_FORM: ReservationFormState = {
   customer_name: '',
   customer_phone: '',
-  customer_email: '',
   party_size: 2,
   reservation_at: '',
-  duration_minutes: 90,
   special_requests: '',
 };
 
@@ -56,9 +52,9 @@ export default function ReservationForm({ open, onClose, onCreated, organization
     e.preventDefault();
     setError('');
 
-    if (!form.customer_name.trim()) { setError('Customer name is required'); return; }
-    if (!form.reservation_at) { setError('Reservation date/time is required'); return; }
-    if (Number(form.party_size) < 1) { setError('Party size must be at least 1'); return; }
+    if (!form.customer_name.trim()) { setError('Ingresá el nombre de la persona.'); return; }
+    if (!form.reservation_at) { setError('Elegí la fecha y la hora.'); return; }
+    if (Number(form.party_size) < 1) { setError('La cantidad de personas debe ser al menos 1.'); return; }
 
     setBusy(true);
     try {
@@ -68,10 +64,9 @@ export default function ReservationForm({ open, onClose, onCreated, organization
           location_id: locationId,
           customer_name: form.customer_name.trim(),
           customer_phone: form.customer_phone || undefined,
-          customer_email: form.customer_email || undefined,
           party_size: Number(form.party_size),
           reservation_at: form.reservation_at,
-          duration_minutes: Number(form.duration_minutes) || 90,
+          duration_minutes: 90,
           special_requests: form.special_requests || undefined,
         },
       });
@@ -80,7 +75,7 @@ export default function ReservationForm({ open, onClose, onCreated, organization
       if (onCreated && data) onCreated(data);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create reservation');
+      setError(err instanceof Error ? err.message : 'No se pudo crear la reserva.');
     } finally {
       setBusy(false);
     }
@@ -90,45 +85,35 @@ export default function ReservationForm({ open, onClose, onCreated, organization
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>New Reservation</DialogTitle>
+          <DialogTitle>Nueva reserva</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1">
-            <Label htmlFor="res-name">Customer Name *</Label>
+              <Label htmlFor="res-name">Nombre *</Label>
             <Input
               id="res-name"
               value={form.customer_name}
               onChange={handleChange('customer_name')}
-              placeholder="Jane Smith"
+              placeholder="Nombre y apellido"
               required
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label htmlFor="res-phone">Phone</Label>
+              <Label htmlFor="res-phone">Teléfono</Label>
               <Input
                 id="res-phone"
                 value={form.customer_phone}
                 onChange={handleChange('customer_phone')}
-                placeholder="+1 555 000 0000"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="res-email">Email</Label>
-              <Input
-                id="res-email"
-                type="email"
-                value={form.customer_email}
-                onChange={handleChange('customer_email')}
-                placeholder="jane@example.com"
+                placeholder="Ej.: +54 9 11 5555 0000"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label htmlFor="res-party">Party Size *</Label>
+              <Label htmlFor="res-party">Personas *</Label>
               <Input
                 id="res-party"
                 type="number"
@@ -138,21 +123,10 @@ export default function ReservationForm({ open, onClose, onCreated, organization
                 required
               />
             </div>
-            <div className="space-y-1">
-              <Label htmlFor="res-duration">Duration (min)</Label>
-              <Input
-                id="res-duration"
-                type="number"
-                min={15}
-                step={15}
-                value={form.duration_minutes}
-                onChange={handleChange('duration_minutes')}
-              />
-            </div>
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="res-at">Date & Time *</Label>
+            <Label htmlFor="res-at">Fecha y hora *</Label>
             <Input
               id="res-at"
               type="datetime-local"
@@ -163,12 +137,12 @@ export default function ReservationForm({ open, onClose, onCreated, organization
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="res-requests">Special Requests</Label>
+            <Label htmlFor="res-requests">Notas</Label>
             <Textarea
               id="res-requests"
               value={form.special_requests}
               onChange={handleChange('special_requests')}
-              placeholder="Allergies, seating preferences…"
+              placeholder="Alergias o preferencias de ubicación"
               rows={2}
             />
           </div>
@@ -177,10 +151,10 @@ export default function ReservationForm({ open, onClose, onCreated, organization
 
           <div className="flex justify-end gap-2 pt-1">
             <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
-              Cancel
+              Volver
             </Button>
             <Button type="submit" disabled={busy}>
-              {busy ? 'Saving…' : 'Create Reservation'}
+              {busy ? 'Guardando…' : 'Crear reserva'}
             </Button>
           </div>
         </form>

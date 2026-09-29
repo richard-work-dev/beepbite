@@ -35,13 +35,17 @@ interface WaitlistEntryProps {
 
 export default function WaitlistEntry({ entry, onRefresh }: WaitlistEntryProps) {
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSeat = async () => {
     setBusy(true);
+    setError('');
     try {
       const { error } = await api.request('POST', `/waitlist/${entry.id}/seat`, { body: {} });
       if (error) throw new Error(error.message);
       if (onRefresh) onRefresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo asignar una mesa.');
     } finally {
       setBusy(false);
     }
@@ -49,10 +53,13 @@ export default function WaitlistEntry({ entry, onRefresh }: WaitlistEntryProps) 
 
   const handleRemove = async (reason: string) => {
     setBusy(true);
+    setError('');
     try {
       const { error } = await api.request('DELETE', `/waitlist/${entry.id}`, { body: { reason } });
       if (error) throw new Error(error.message);
       if (onRefresh) onRefresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo quitar de la lista.');
     } finally {
       setBusy(false);
     }
@@ -73,7 +80,7 @@ export default function WaitlistEntry({ entry, onRefresh }: WaitlistEntryProps) 
             <div className="flex items-center gap-3 text-sm text-muted-foreground mt-0.5">
               <span className="flex items-center gap-1">
                 <Users className="h-3.5 w-3.5" />
-                <span className="tabular-nums">{entry.party_size}</span> guests
+                <span className="tabular-nums">{entry.party_size}</span> personas
               </span>
               {entry.customer_phone && (
                 <span className="flex items-center gap-1">
@@ -92,8 +99,8 @@ export default function WaitlistEntry({ entry, onRefresh }: WaitlistEntryProps) 
         {/* Quoted wait */}
         {entry.quoted_wait_minutes && (
           <p className="text-xs text-muted-foreground">
-            Quoted: <span className="tabular-nums">{entry.quoted_wait_minutes}</span> min
-            {overdue && <span className="text-warning font-medium ml-1">(overdue)</span>}
+            Espera estimada: <span className="tabular-nums">{entry.quoted_wait_minutes}</span> min
+            {overdue && <span className="text-warning font-medium ml-1">(superada)</span>}
           </p>
         )}
 
@@ -103,18 +110,16 @@ export default function WaitlistEntry({ entry, onRefresh }: WaitlistEntryProps) 
         )}
 
         {/* Actions */}
+        {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
         <div className="flex flex-wrap gap-2 pt-1">
           <Button size="sm" variant="success" disabled={busy} onClick={handleSeat}>
-            Seat Now
+            Asignar mesa
           </Button>
-          {/* "Left" / "No Show" both permanently remove the guest from the
-              queue — the cheat sheet's "remove from waitlist" case, so they
-              get the destructive signal rather than a neutral outline. */}
           <Button size="sm" variant="destructive" disabled={busy} onClick={() => handleRemove('left')}>
-            Left
+            Se retiró
           </Button>
           <Button size="sm" variant="destructive" disabled={busy} onClick={() => handleRemove('no_show')}>
-            No Show
+            No se presentó
           </Button>
         </div>
       </CardContent>

@@ -45,6 +45,8 @@ func NewHandler(pool *pgxpool.Pool) *Handler {
 //	POST   /driver-invites/{id}/revoke  — revoke a pending driver invite
 //	GET    /drivers                     — list active driver members for the org
 //	DELETE /drivers/{profile_id}        — remove a driver's access
+//	GET    /orders/{order_id}/driver-assignment — current delivery assignment
+//	POST   /orders/{order_id}/driver-assignment — assign a delivery order
 func (h *Handler) Mount(r chi.Router) {
 	r.Route("/driver-invites", func(r chi.Router) {
 		r.Post("/", h.createInvite)
@@ -55,12 +57,20 @@ func (h *Handler) Mount(r chi.Router) {
 		r.Get("/", h.listDrivers)
 		r.Delete("/{profile_id}", h.removeDriver)
 	})
+	r.Route("/orders", func(r chi.Router) {
+		r.Get("/{order_id}/driver-assignment", h.getDeliveryAssignment)
+		r.Post("/{order_id}/driver-assignment", h.assignDeliveryOrder)
+	})
 }
 
 // ---- request / response types ------------------------------------------------
 
 type createInviteReq struct {
 	Email string `json:"email"`
+}
+
+type assignDeliveryReq struct {
+	DriverMemberID string `json:"driver_member_id"`
 }
 
 // ---- handlers ----------------------------------------------------------------
@@ -228,6 +238,72 @@ func (h *Handler) removeDriver(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) assignDeliveryOrder(w http.ResponseWriter, r *http.Request) {
+	if !callerIsOwnerOrManager(r) {
+		writeErr(w, http.StatusForbidden, "requires owner or manager role")
+		return
+	}
+	orderID := chi.URLParam(r, "order_id")
+	if orderID == "" {
+		writeErr(w, http.StatusBadRequest, "order_id required")
+		return
+	}
+	var req assignDeliveryReq
+	if err := decodeJSON(r, &req); err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if req.DriverMemberID == "" {
+		writeErr(w, http.StatusBadRequest, "driver_member_id required")
+		return
+	}
+	orgID := db.ScopeFromContext(r.Context()).OrgID
+	if orgID == "" {
+		writeErr(w, http.StatusBadRequest, "no org scope resolved")
+		return
+	}
+	assignment, err := h.store.AssignDeliveryOrder(r.Context(), orgID, orderID, req.DriverMemberID)
+	switch {
+	case errors.Is(err, ErrOrderNotFound), errors.Is(err, ErrDriverNotFound):
+		writeErr(w, http.StatusNotFound, err.Error())
+	case errors.Is(err, ErrNotDeliveryOrder):
+		writeErr(w, http.StatusUnprocessableEntity, err.Error())
+	case errors.Is(err, ErrOrderNotAssignable), errors.Is(err, ErrAssignmentInProgress):
+		writeErr(w, http.StatusConflict, err.Error())
+	case err != nil:
+		writeErr(w, http.StatusInternalServerError, err.Error())
+	default:
+		writeJSON(w, http.StatusOK, assignment)
+	}
+}
+
+func (h *Handler) getDeliveryAssignment(w http.ResponseWriter, r *http.Request) {
+	if !callerIsOwnerOrManager(r) {
+		writeErr(w, http.StatusForbidden, "requires owner or manager role")
+		return
+	}
+	orderID := chi.URLParam(r, "order_id")
+	if orderID == "" {
+		writeErr(w, http.StatusBadRequest, "order_id required")
+		return
+	}
+	orgID := db.ScopeFromContext(r.Context()).OrgID
+	if orgID == "" {
+		writeErr(w, http.StatusBadRequest, "no org scope resolved")
+		return
+	}
+	assignment, err := h.store.GetDeliveryAssignment(r.Context(), orgID, orderID)
+	if errors.Is(err, ErrAssignmentNotFound) {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, assignment)
 }
 
 // ---- authorization helper ----------------------------------------------------

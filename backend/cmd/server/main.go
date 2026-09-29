@@ -92,6 +92,7 @@ import (
 	"github.com/beepbite/backend/internal/integrations/whatsapp"
 	"github.com/beepbite/backend/internal/jobs/activityalerts"
 	"github.com/beepbite/backend/internal/jobs/auditretention"
+	"github.com/beepbite/backend/internal/jobs/dispatch"
 	"github.com/beepbite/backend/internal/jobs/eodemail"
 	"github.com/beepbite/backend/internal/jobs/kdsfanout"
 	"github.com/beepbite/backend/internal/jobs/llmsync"
@@ -217,6 +218,7 @@ func main() {
 	recipeCostRunner := recipecost.NewRunner(database.Pool)
 	kdsFanoutRunner := kdsfanout.NewRunner(database.Pool, kds.NewStore(database.Pool))
 	auditRetentionRunner := auditretention.NewRunner(database.Pool, 90)
+	dispatchRunner := dispatch.NewRunner(database.Pool)
 
 	aiSvc := ai.New(database.Pool, cfg.GeminiAPIKey)
 	aiFloorH := aifloor.NewHandler(aiSvc) // AI floor-plan generator
@@ -531,6 +533,7 @@ func main() {
 	go recipeCostRunner.Start(ctx)
 	go kdsFanoutRunner.Start(ctx)
 	go auditRetentionRunner.Start(ctx)
+	go dispatchRunner.Start(ctx)
 	go llmsync.NewRunner(database.Pool).Start(ctx)
 	go webhookdelivery.NewRunner(database.Pool).Start(ctx) // Wave 22 — outbound webhook delivery
 	go softdelete.NewRunner(database.Pool).Start(ctx)      // Wave 31 — GDPR purge of soft-deleted orgs

@@ -5,6 +5,24 @@ import (
 	"net/http"
 )
 
+func (h *Handler) getCurrentShift(w http.ResponseWriter, r *http.Request) {
+	driverMemberID, ok := h.resolveDriverMemberID(w, r)
+	if !ok {
+		return
+	}
+
+	shift, err := h.store.CurrentShift(r.Context(), driverMemberID)
+	if errors.Is(err, ErrShiftNotFound) {
+		writeJSON(w, http.StatusOK, map[string]string{"status": "offline"})
+		return
+	}
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, shift)
+}
+
 // POST /driver/shifts/online
 // Opens a new shift (status=online). Fails with 409 if a shift is already open.
 func (h *Handler) goOnline(w http.ResponseWriter, r *http.Request) {

@@ -29,6 +29,13 @@ interface StaffOption {
   last_name: string | null;
 }
 
+function isStaffOption(value: unknown): value is StaffOption {
+  return typeof value === 'object' && value !== null &&
+    'id' in value && typeof value.id === 'string' &&
+    'first_name' in value && (typeof value.first_name === 'string' || value.first_name === null) &&
+    'last_name' in value && (typeof value.last_name === 'string' || value.last_name === null);
+}
+
 // Shape returned by pos/components/customer-search.jsx's onSelect (that
 // component is still untyped JS, so this is asserted from usage, not
 // imported).
@@ -48,7 +55,7 @@ interface SelectedCustomer {
 export function IssueForm() {
   const { activeOrganization, activeLocation } = useAuth();
   const { currency } = useLocale();
-  const { parse: parseAmount } = useMoney();
+  const { parse: parseAmount, scale, decimals } = useMoney({ currency });
   const { today } = useDateTime();
 
   const [balanceInput, setBalanceInput] = useState('');
@@ -86,7 +93,7 @@ export function IssueForm() {
           console.error('Failed to fetch staff for gift-card form:', staffErr);
           return;
         }
-        setStaffList(data || []);
+        setStaffList(Array.isArray(data) ? data.filter(isStaffOption) : []);
       })
       .catch((err: unknown) => {
         // A network-level failure (fetch() itself rejecting) previously
@@ -117,12 +124,12 @@ export function IssueForm() {
     // *100 would produce.
     const balanceCents = parseAmount(balanceInput);
     if (balanceCents === null || balanceCents <= 0) {
-      setError('Enter a valid initial balance.');
+      setError('Ingresá un saldo inicial válido.');
       return;
     }
 
     if (pin && (pin.length < 4 || pin.length > 6)) {
-      setError('PIN must be 4–6 digits.');
+      setError('El PIN debe tener entre 4 y 6 dígitos.');
       return;
     }
 
@@ -145,15 +152,16 @@ export function IssueForm() {
     };
 
     setLoading(true);
-    const { data, error: err } = await api.request<IssueResult>('POST', '/gift-cards/issue', { body });
-    setLoading(false);
-
-    if (err) {
-      setError(err.message || 'Failed to issue card.');
-      return;
+    try {
+      const { data, error: err } = await api.request<IssueResult>('POST', '/gift-cards/issue', { body });
+      if (err) throw new Error(err.message || 'No se pudo emitir la tarjeta.');
+      if (!data) throw new Error('No se recibió la tarjeta emitida.');
+      setResult(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo emitir la tarjeta.');
+    } finally {
+      setLoading(false);
     }
-
-    setResult(data);
   }
 
   // After issue, show the result card until user dismisses.
@@ -168,8 +176,7 @@ export function IssueForm() {
         <CardContent className="py-10 flex flex-col items-center gap-3 text-center">
           <AlertCircle className="h-8 w-8 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
-            No organisation is active. Please select an organisation from the top
-            navigation before issuing a gift card.
+            No hay una organización activa. Seleccioná una organización antes de emitir una tarjeta.
           </p>
         </CardContent>
       </Card>
@@ -179,20 +186,20 @@ export function IssueForm() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Issue a New Gift Card</CardTitle>
-        <CardDescription>Fields marked * are required.</CardDescription>
+        <CardTitle className="text-base">Emitir tarjeta de regalo</CardTitle>
+        <CardDescription>Los campos con * son obligatorios.</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Initial balance */}
           <div className="space-y-1.5">
-            <Label htmlFor="balance">Initial Balance{currency ? ` (${currency})` : ''} *</Label>
+            <Label htmlFor="balance">Saldo inicial{currency ? ` (${currency})` : ''} *</Label>
             <Input
               id="balance"
               type="number"
-              min="0"
-              step="0.01"
-              placeholder="0.00"
+              min={(1 / scale).toFixed(decimals)}
+              step={(1 / scale).toFixed(decimals)}
+              placeholder={(0).toFixed(decimals)}
               value={balanceInput}
               onChange={(e) => setBalanceInput(e.target.value)}
               required
@@ -201,7 +208,7 @@ export function IssueForm() {
 
           {/* Card type */}
           <div className="space-y-2">
-            <Label>Card Type *</Label>
+            <Label>Tipo de tarjeta *</Label>
             <RadioGroup
               value={cardType}
               onValueChange={setCardType}
@@ -216,7 +223,7 @@ export function IssueForm() {
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="physical" id="type-physical" />
                 <Label htmlFor="type-physical" className="cursor-pointer font-normal">
-                  Physical
+                  Física
                 </Label>
               </div>
             </RadioGroup>
@@ -224,7 +231,7 @@ export function IssueForm() {
 
           {/* Expiry */}
           <div className="space-y-1.5">
-            <Label htmlFor="expires">Expiry Date (optional)</Label>
+            <Label htmlFor="expires">Vencimiento (opcional)</Label>
             <Input
               id="expires"
               type="date"
@@ -236,7 +243,7 @@ export function IssueForm() {
 
           {/* PIN */}
           <div className="space-y-1.5">
-            <Label htmlFor="pin">PIN (optional, 4–6 digits)</Label>
+            <Label htmlFor="pin">PIN (opcional, 4–6 dígitos)</Label>
             <Input
               id="pin"
               type="password"
@@ -250,7 +257,7 @@ export function IssueForm() {
 
           {/* Customer picker */}
           <div className="space-y-1.5">
-            <Label>Customer (optional)</Label>
+            <Label>Cliente (opcional)</Label>
             {selectedCustomer ? (
               /* Show the selected customer as a dismissible chip */
               <div className="flex items-center justify-between rounded-md border border-input bg-muted/40 px-3 py-2 text-sm">
@@ -268,7 +275,7 @@ export function IssueForm() {
                   size="icon"
                   className="h-7 w-7 shrink-0 ml-2"
                   onClick={() => setSelectedCustomer(null)}
-                  aria-label="Clear customer selection"
+                  aria-label="Quitar cliente seleccionado"
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -277,7 +284,7 @@ export function IssueForm() {
               /* Typeahead search — reuses the POS customer-search widget */
               <CustomerSearch
                 onSelect={setSelectedCustomer}
-                placeholder="Search by name or phone…"
+                placeholder="Buscar por nombre o teléfono…"
                 className={undefined}
               />
             )}
@@ -285,16 +292,16 @@ export function IssueForm() {
 
           {/* Staff picker */}
           <div className="space-y-1.5">
-            <Label htmlFor="staff-select">Issued By (optional)</Label>
+            <Label htmlFor="staff-select">Emitida por (opcional)</Label>
             <Select
               value={issuedByStaffId || STAFF_NONE}
               onValueChange={(v) => setIssuedByStaffId(v === STAFF_NONE ? '' : v)}
             >
               <SelectTrigger id="staff-select">
-                <SelectValue placeholder="Select staff member…" />
+                <SelectValue placeholder="Seleccionar personal…" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={STAFF_NONE}>— Unassigned —</SelectItem>
+                <SelectItem value={STAFF_NONE}>— Sin asignar —</SelectItem>
                 {staffList.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
                     {s.first_name} {s.last_name}
@@ -310,7 +317,7 @@ export function IssueForm() {
 
           <Button type="submit" disabled={loading} className="w-full sm:w-auto">
             {loading && <RefreshCw className="h-4 w-4 animate-spin mr-2" />}
-            Issue Card
+            Emitir tarjeta
           </Button>
         </form>
       </CardContent>

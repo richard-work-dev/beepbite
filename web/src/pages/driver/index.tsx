@@ -8,9 +8,11 @@ import { OfflineBanner } from '@/components/ui/sync-status';
 
 import {
   fetchAssignments,
+  fetchCurrentShift,
   transitionAssignment,
   setShiftStatus,
   type Assignment,
+  type DriverShiftStatus,
 } from '@/services/driver';
 
 import AssignmentCard from './components/assignment-card';
@@ -20,13 +22,15 @@ import { useLocationPing } from './hooks/use-location-ping';
 
 // Statuses that count as "active" for the ping gate
 const ACTIVE_STATUSES = new Set(['accepted', 'picked_up']);
+const ASSIGNMENTS_REFRESH_MS = 20_000;
 
 export default function DriverPortal() {
   const { user } = useAuth();
   const { toast } = useToast();
 
   // ── Shift state ──────────────────────────────────────────────────────────
-  const [isOnline, setIsOnline] = useState(false);
+  const [shiftStatus, setShiftStatusState] = useState<DriverShiftStatus>('offline');
+  const isOnline = shiftStatus === 'online';
   const [shiftLoading, setShiftLoading] = useState(false);
 
   // ── Assignments state ─────────────────────────────────────────────────────
@@ -53,13 +57,14 @@ export default function DriverPortal() {
   });
 
   // ── Load assignments ───────────────────────────────────────────────────────
-  const loadAssignments = useCallback(async () => {
-    setLoadingAssignments(true);
+  const loadAssignments = useCallback(async (showLoading = true) => {
+    if (showLoading) setLoadingAssignments(true);
     setAssignmentsError(null);
     setIsNotDriver(false);
     try {
-      const data = await fetchAssignments();
+      const [data, shift] = await Promise.all([fetchAssignments(), fetchCurrentShift()]);
       setAssignments(data);
+      setShiftStatusState(shift.status);
       if (data.length === 0) {
         // Empty array = no current deliveries — not the same as "not a driver";
         // we optimistically treat empty as "driver, just no work right now".
@@ -74,13 +79,14 @@ export default function DriverPortal() {
         setAssignmentsError(err instanceof Error ? err.message : 'No se pudieron cargar las entregas');
       }
     } finally {
-      setLoadingAssignments(false);
+      if (showLoading) setLoadingAssignments(false);
     }
   }, []);
 
   useEffect(() => {
-    // loadAssignments() is fully try/catch/finally-wrapped above.
     void loadAssignments();
+    const interval = window.setInterval(() => { void loadAssignments(false); }, ASSIGNMENTS_REFRESH_MS);
+    return () => window.clearInterval(interval);
   }, [loadAssignments]);
 
   // ── Handle shift toggle ───────────────────────────────────────────────────
@@ -89,7 +95,7 @@ export default function DriverPortal() {
     const targetStatus = newValue ? 'online' : 'offline';
     try {
       await setShiftStatus(targetStatus);
-      setIsOnline(newValue);
+      setShiftStatusState(newValue ? 'online' : 'offline');
       if (!newValue) setGeoError(null); // clear geo banner when going offline
     } catch (err) {
       toast({
@@ -164,7 +170,7 @@ export default function DriverPortal() {
           <Button
             variant="outline"
             size="sm"
-            onClick={loadAssignments}
+            onClick={() => void loadAssignments()}
             className="mt-1"
           >
             <RefreshCw className="w-4 h-4" />
@@ -182,7 +188,11 @@ export default function DriverPortal() {
           </div>
           <p className="text-sm text-muted-foreground">No hay entregas activas en este momento.</p>
           <p className="text-xs text-muted-foreground/70">
-            {isOnline ? 'Las nuevas entregas aparecerán aquí.' : 'Iniciá tu turno para comenzar a recibir entregas.'}
+            {isOnline
+              ? 'Consultá con el encargado del local para que te asigne una entrega.'
+              : shiftStatus === 'paused'
+              ? 'Reanudá tu turno para volver a recibir entregas.'
+              : 'Iniciá tu turno y pedí al encargado que te asigne una entrega.'}
           </p>
         </div>
       );
@@ -209,7 +219,7 @@ export default function DriverPortal() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={loadAssignments}
+          onClick={() => void loadAssignments()}
           disabled={loadingAssignments}
           className="h-8 w-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
           title="Actualizar"
@@ -240,6 +250,7 @@ export default function DriverPortal() {
         {!isNotDriver && (
           <ShiftToggle
             isOnline={isOnline}
+            isPaused={shiftStatus === 'paused'}
             loading={shiftLoading}
             onChange={handleShiftToggle}
           />
@@ -249,7 +260,7 @@ export default function DriverPortal() {
         <div className="space-y-2">
           {!isNotDriver && assignments.length > 0 && (
             <h2 className="text-sm font-semibold text-foreground px-0.5">
-              Active assignments ({assignments.length})
+              Entregas asignadas ({assignments.length})
             </h2>
           )}
           {renderAssignmentsList()}

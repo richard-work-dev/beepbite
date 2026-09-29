@@ -11,13 +11,13 @@ import type { CashMovement } from '../index';
 // since outflows are routine till operations, not errors. `no_sale` moves no
 // cash at all, so it stays neutral.
 const TYPE_LABELS: Record<string, { label: string; color: string }> = {
-  paid_in:    { label: 'Paid In',    color: 'bg-success/15 text-success border-success/30' },
-  paid_out:   { label: 'Paid Out',   color: 'bg-warning/15 text-warning border-warning/30' },
-  petty_cash: { label: 'Petty Cash', color: 'bg-success/15 text-success border-success/30' },
-  tip_out:    { label: 'Tip Out',    color: 'bg-warning/15 text-warning border-warning/30' },
-  no_sale:    { label: 'No Sale',    color: 'bg-muted text-muted-foreground border-border' },
-  drop:       { label: 'Drop',       color: 'bg-success/15 text-success border-success/30' },
-  pickup:     { label: 'Pickup',     color: 'bg-warning/15 text-warning border-warning/30' },
+  paid_in:    { label: 'Ingreso',            color: 'bg-success/15 text-success border-success/30' },
+  paid_out:   { label: 'Egreso',             color: 'bg-warning/15 text-warning border-warning/30' },
+  petty_cash: { label: 'Caja chica',         color: 'bg-success/15 text-success border-success/30' },
+  tip_out:    { label: 'Propinas',           color: 'bg-warning/15 text-warning border-warning/30' },
+  no_sale:    { label: 'Sin venta',          color: 'bg-muted text-muted-foreground border-border' },
+  drop:       { label: 'Retiro de efectivo', color: 'bg-success/15 text-success border-success/30' },
+  pickup:     { label: 'Extracción',         color: 'bg-warning/15 text-warning border-warning/30' },
 };
 
 const PAGE_SIZE = 10;
@@ -56,7 +56,7 @@ export function MovementsList({ movements = [] }: MovementsListProps) {
   if (movements.length === 0) {
     return (
       <p className="text-sm text-muted-foreground py-4 text-center">
-        No movements recorded yet.
+        Todavía no hay movimientos registrados.
       </p>
     );
   }
@@ -93,7 +93,7 @@ export function MovementsList({ movements = [] }: MovementsListProps) {
       {totalPages > 1 && (
         <div className="flex items-center justify-between pt-2">
           <span className="text-xs text-muted-foreground">
-            Page {page} of {totalPages}
+            Página {page} de {totalPages}
           </span>
           <div className="flex gap-1">
             <Button

@@ -22,6 +22,15 @@ export interface Assignment {
   store_name: string;
 }
 
+export type DriverShiftStatus = 'online' | 'paused' | 'offline';
+
+export interface DriverShift {
+  id?: string;
+  status: DriverShiftStatus;
+  started_at?: string;
+  ended_at?: string | null;
+}
+
 interface FetchError extends Error {
   status?: number;
 }
@@ -43,6 +52,16 @@ export async function fetchAssignments(): Promise<Assignment[]> {
     throw e;
   }
   return Array.isArray(data) ? data : [];
+}
+
+export async function fetchCurrentShift(): Promise<DriverShift> {
+  const { data, error } = await api.request<DriverShift>('GET', '/driver/shifts/current');
+  if (error) {
+    const e: FetchError = new Error(error.message || 'No se pudo consultar el turno');
+    e.status = error.status;
+    throw e;
+  }
+  return data || { status: 'offline' };
 }
 
 /**

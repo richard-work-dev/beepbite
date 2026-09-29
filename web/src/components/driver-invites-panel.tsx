@@ -20,8 +20,10 @@ interface StatusMessage {
 export default function DriverInvitesPanel() {
   const [invites, setInvites] = useState<DriverInvite[]>([]);
   const [loading, setLoading] = useState(true);
+  const [inviteLoadError, setInviteLoadError] = useState('');
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loadingDrivers, setLoadingDrivers] = useState(true);
+  const [driverLoadError, setDriverLoadError] = useState('');
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -48,11 +50,11 @@ export default function DriverInvitesPanel() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setInviteLoadError('');
     try {
       setInvites(await listDriverInvites());
-    } catch {
-      // a non-owner/manager gets 403; just show an empty list
-      setInvites([]);
+    } catch (err) {
+      setInviteLoadError(err instanceof Error ? err.message : 'No se pudieron cargar las invitaciones.');
     } finally {
       setLoading(false);
     }
@@ -60,10 +62,11 @@ export default function DriverInvitesPanel() {
 
   const loadDrivers = useCallback(async () => {
     setLoadingDrivers(true);
+    setDriverLoadError('');
     try {
       setDrivers(await listActiveDrivers());
-    } catch {
-      setDrivers([]);
+    } catch (err) {
+      setDriverLoadError(err instanceof Error ? err.message : 'No se pudieron cargar los repartidores.');
     } finally {
       setLoadingDrivers(false);
     }
@@ -95,8 +98,16 @@ export default function DriverInvitesPanel() {
     setMsg(null);
     try {
 		const invite = await inviteDriver(value);
-		setShareUrl(buildRegistrationUrl(invite));
-		setMsg({ kind: 'ok', text: invite.status === 'accepted' ? `${value} ya tenía una cuenta y recibió acceso de repartidor.` : `Invitación creada para ${value}. Copiá y compartí el enlace seguro.` });
+    const registrationUrl = buildRegistrationUrl(invite);
+    setShareUrl(registrationUrl);
+    setMsg({
+      kind: 'ok',
+      text: invite.status === 'accepted'
+        ? `${value} ya tenía una cuenta y recibió acceso de repartidor.`
+        : registrationUrl
+          ? `Invitación creada para ${value}. Compartí el enlace seguro.`
+          : `Invitación creada para ${value}. Debe registrarse con este mismo correo para recibir acceso.`,
+    });
       setEmail('');
       await load();
     } catch (err) {
@@ -111,7 +122,9 @@ export default function DriverInvitesPanel() {
 		setMsg(null);
 		try {
 			const renewed = await renewDriverInvite(invite.id);
-			setShareUrl(buildRegistrationUrl(renewed));
+      const registrationUrl = buildRegistrationUrl(renewed);
+      if (!registrationUrl) throw new Error('Este servidor no generó un enlace de registro nuevo.');
+      setShareUrl(registrationUrl);
 			setMsg({ kind: 'ok', text: `Se generó un enlace nuevo para ${invite.email}. El anterior dejó de funcionar.` });
 			await load();
 		} catch (err) {
@@ -138,7 +151,7 @@ export default function DriverInvitesPanel() {
           Repartidores
         </CardTitle>
         <CardDescription>
-          Invitá a un repartidor por correo. Obtendrá acceso al portal de repartidores al registrarse con la dirección invitada.
+          Invitá a una persona por correo. Al registrarse con esa misma dirección, aparecerá como repartidor activo y podrá entrar al portal.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -182,6 +195,11 @@ export default function DriverInvitesPanel() {
           <h4 className="text-sm font-semibold text-foreground mb-2">Invitaciones pendientes</h4>
           {loading ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin" /> Cargando…</div>
+          ) : inviteLoadError ? (
+            <div className="flex items-center justify-between gap-3 text-sm text-destructive">
+              <span>{inviteLoadError}</span>
+              <Button variant="outline" size="sm" onClick={() => void load()}>Reintentar</Button>
+            </div>
           ) : invites.length === 0 ? (
             <p className="text-sm text-muted-foreground">No hay invitaciones pendientes para repartidores.</p>
           ) : (
@@ -220,6 +238,11 @@ export default function DriverInvitesPanel() {
           <h4 className="text-sm font-semibold text-foreground mb-2">Repartidores activos</h4>
           {loadingDrivers ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin" /> Cargando…</div>
+          ) : driverLoadError ? (
+            <div className="flex items-center justify-between gap-3 text-sm text-destructive">
+              <span>{driverLoadError}</span>
+              <Button variant="outline" size="sm" onClick={() => void loadDrivers()}>Reintentar</Button>
+            </div>
           ) : drivers.length === 0 ? (
             <p className="text-sm text-muted-foreground">Todavía no hay repartidores activos. Las personas invitadas aparecerán aquí cuando se registren.</p>
           ) : (

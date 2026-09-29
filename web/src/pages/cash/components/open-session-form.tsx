@@ -53,8 +53,8 @@ export function OpenSessionForm({ drawerId, staffId, onOpened }: OpenSessionForm
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
-    if (!drawerId) { setError('No drawer selected'); return; }
-    if (openingFloatCents < 0) { setError('Opening float must be zero or positive'); return; }
+    if (!drawerId) { setError('Seleccioná una caja.'); return; }
+    if (openingFloatCents < 0) { setError('El fondo inicial no puede ser negativo.'); return; }
 
     setSubmitting(true);
     try {
@@ -73,7 +73,7 @@ export function OpenSessionForm({ drawerId, staffId, onOpened }: OpenSessionForm
       if (apiErr) throw new Error(apiErr.message);
       onOpened?.(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to open session');
+      setError(err instanceof Error ? err.message : 'No se pudo abrir la caja.');
     } finally {
       setSubmitting(false);
     }
@@ -84,7 +84,7 @@ export function OpenSessionForm({ drawerId, staffId, onOpened }: OpenSessionForm
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Unlock className="h-5 w-5 text-primary" />
-          Open Cash Drawer Session
+          Abrir caja
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -97,7 +97,7 @@ export function OpenSessionForm({ drawerId, staffId, onOpened }: OpenSessionForm
               size="sm"
               onClick={() => setUseFloat('manual')}
             >
-              Enter amount
+              Ingresar importe
             </Button>
             <Button
               type="button"
@@ -105,13 +105,13 @@ export function OpenSessionForm({ drawerId, staffId, onOpened }: OpenSessionForm
               size="sm"
               onClick={() => setUseFloat('denominations')}
             >
-              Count denominations
+              Contar billetes y monedas
             </Button>
           </div>
 
           {useFloat === 'manual' ? (
             <div className="space-y-1">
-              <Label htmlFor="opening-float">Opening float ({symbol})</Label>
+              <Label htmlFor="opening-float">Fondo inicial ({symbol})</Label>
               <Input
                 id="opening-float"
                 type="number"
@@ -127,7 +127,7 @@ export function OpenSessionForm({ drawerId, staffId, onOpened }: OpenSessionForm
             </div>
           ) : (
             <div className="space-y-2">
-              <Label>Count opening float by denomination</Label>
+              <Label>Contar el fondo inicial</Label>
               <DenominationGrid
                 counts={denomCounts}
                 onChange={handleDenomChange}
@@ -145,12 +145,12 @@ export function OpenSessionForm({ drawerId, staffId, onOpened }: OpenSessionForm
               className="h-4 w-4 rounded border-input text-primary focus:ring-primary"
             />
             <Label htmlFor="blind-close" className="cursor-pointer">
-              Blind close — staff won&apos;t see the expected balance at closing
+              Cierre ciego: el personal no verá el saldo esperado al cerrar
             </Label>
           </div>
 
           <div className="flex items-center gap-3 pt-1">
-            <span className="text-sm text-muted-foreground">Opening float:</span>
+            <span className="text-sm text-muted-foreground">Fondo inicial:</span>
             <span className="font-semibold tabular-nums">{format(openingFloatCents)}</span>
           </div>
 
@@ -163,7 +163,7 @@ export function OpenSessionForm({ drawerId, staffId, onOpened }: OpenSessionForm
             disabled={submitting}
           >
             {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Open Session
+            Abrir caja
           </Button>
         </form>
       </CardContent>

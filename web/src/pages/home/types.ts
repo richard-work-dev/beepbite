@@ -27,6 +27,7 @@ export interface HomeOrder {
   customer_name?: string | null;
   customer_phone?: string | null;
   order_type?: string | null;
+  fulfillment_type?: string | null;
   delivery_address?: string | null;
   delivery_instructions?: string | null;
   notes?: string | null;

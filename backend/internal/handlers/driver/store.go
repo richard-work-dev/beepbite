@@ -201,6 +201,27 @@ func (s *Store) TransitionAssignment(
 ) (*Assignment, error) {
 	var out Assignment
 	err := db.Scoped(ctx, s.pool, db.ServiceRoleScope(), func(tx pgx.Tx) error {
+		var orderID string
+		if err := tx.QueryRow(ctx, `
+SELECT order_id
+FROM driver_assignments
+WHERE id = $1
+`, assignmentID).Scan(&orderID); errors.Is(err, pgx.ErrNoRows) {
+			return ErrAssignmentNotFound
+		} else if err != nil {
+			return err
+		}
+
+		// Serialize accepts for all offers on the same order.
+		var lockedOrderID string
+		if err := tx.QueryRow(ctx, `
+SELECT id FROM orders WHERE id = $1 FOR UPDATE
+`, orderID).Scan(&lockedOrderID); errors.Is(err, pgx.ErrNoRows) {
+			return ErrAssignmentNotFound
+		} else if err != nil {
+			return err
+		}
+
 		// Lock the row and verify it belongs to this driver.
 		var currentStatus string
 		var driverMemberID string
@@ -280,6 +301,15 @@ FOR UPDATE
 		if _, err := tx.Exec(ctx, q, args...); err != nil {
 			return err
 		}
+		if newStatus == "accepted" {
+			if _, err := tx.Exec(ctx, `
+UPDATE driver_assignments
+SET status = 'canceled', canceled_reason = 'Another driver accepted', updated_at = now()
+WHERE order_id = $1 AND id <> $2 AND status = 'offered'
+`, orderID, assignmentID); err != nil {
+				return err
+			}
+		}
 
 		return scanAssignment(tx.QueryRow(ctx, `
 SELECT `+assignmentCols+`
@@ -308,13 +338,54 @@ func scanShift(row pgx.Row, s *Shift) error {
 	)
 }
 
+func (s *Store) CurrentShift(ctx context.Context, driverMemberID string) (*Shift, error) {
+	var out Shift
+	err := db.Scoped(ctx, s.pool, db.ServiceRoleScope(), func(tx pgx.Tx) error {
+		return scanShift(tx.QueryRow(ctx, `
+SELECT `+shiftCols+`
+FROM driver_shifts
+WHERE driver_member_id = $1 AND status IN ('online', 'paused')
+ORDER BY started_at DESC
+LIMIT 1
+`, driverMemberID), &out)
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrShiftNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // GoOnline opens a new shift (status=online) for the driver. The partial unique
 // index `one_open_driver_shift` enforces at most one open/paused shift; a
 // 23505 unique-violation is translated to ErrShiftConflict.
 func (s *Store) GoOnline(ctx context.Context, driverMemberID string) (*Shift, error) {
 	var out Shift
 	err := db.Scoped(ctx, s.pool, db.ServiceRoleScope(), func(tx pgx.Tx) error {
-		err := scanShift(tx.QueryRow(ctx, `
+		var currentID, currentStatus string
+		err := tx.QueryRow(ctx, `
+SELECT id, status
+FROM driver_shifts
+WHERE driver_member_id = $1 AND status IN ('online', 'paused')
+FOR UPDATE
+`, driverMemberID).Scan(&currentID, &currentStatus)
+		if err == nil {
+			if currentStatus != "paused" {
+				return ErrShiftConflict
+			}
+			return scanShift(tx.QueryRow(ctx, `
+UPDATE driver_shifts
+SET status = 'online', updated_at = now()
+WHERE id = $1
+RETURNING `+shiftCols, currentID), &out)
+		}
+		if !errors.Is(err, pgx.ErrNoRows) {
+			return err
+		}
+
+		err = scanShift(tx.QueryRow(ctx, `
 INSERT INTO driver_shifts (driver_member_id, status)
 VALUES ($1, 'online')
 RETURNING `+shiftCols, driverMemberID), &out)

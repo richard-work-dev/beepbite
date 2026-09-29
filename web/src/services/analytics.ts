@@ -4,8 +4,15 @@ import { format, subDays, eachDayOfInterval } from 'date-fns';
 export interface DailySalesSummaryRow {
   location_id: string;
   sale_date: string;
+  order_type: string;
   order_count: number;
-  net_sales: number;
+  gross_subtotal_cents: number;
+  tax_total_cents: number;
+  discount_total_cents: number;
+  tip_total_cents: number;
+  delivery_fee_total_cents: number;
+  net_sales_cents: number;
+  gross_profit_cents: number;
   [key: string]: unknown;
 }
 
@@ -13,7 +20,7 @@ export interface HourlySalesHeatmapRow {
   location_id: string;
   hour_of_day: number;
   order_count: number;
-  total_revenue: number;
+  total_revenue_cents: number;
   [key: string]: unknown;
 }
 
@@ -66,9 +73,14 @@ class AnalyticsService {
     try {
       const stored = localStorage.getItem('activeLocation');
       if (stored) {
-        const loc = JSON.parse(stored);
-        if (loc?.id) {
-          this._locationId = loc.id;
+        const location: unknown = JSON.parse(stored);
+        if (
+          typeof location === 'object' &&
+          location !== null &&
+          'id' in location &&
+          typeof location.id === 'string'
+        ) {
+          this._locationId = location.id;
           return this._locationId;
         }
       }
@@ -107,7 +119,7 @@ class AnalyticsService {
       return await this._fetchByPeriod(locationId, timeRangeOrDates as string);
     } catch (error) {
       console.error('Error fetching analytics data:', error);
-      throw error;
+      throw error instanceof Error ? error : new Error(String(error));
     }
   }
 
@@ -145,8 +157,8 @@ class AnalyticsService {
       ),
     ]);
 
-    if (dailyRes.error)  throw dailyRes.error;
-    if (hourlyRes.error) throw hourlyRes.error;
+    if (dailyRes.error)  throw new Error(dailyRes.error.message);
+    if (hourlyRes.error) throw new Error(hourlyRes.error.message);
 
     const dailyRows  = dailyRes.data  || [];
     const hourlyRows = hourlyRes.data || [];
@@ -161,9 +173,7 @@ class AnalyticsService {
   _transform(dailyRows: DailySalesSummaryRow[], hourlyRows: HourlySalesHeatmapRow[], { from, to }: { from: Date; to: Date }): AnalyticsData {
     // ---- summary metrics from daily_sales_summary ----
     const totalOrders = dailyRows.reduce((s, r) => s + Number(r.order_count || 0), 0);
-    const totalNetSales = dailyRows.reduce((s, r) => s + Number(r.net_sales || 0), 0);
     // Use net_sales as a proxy for "revenue"; avg ticket approximated.
-    const avgTicket = totalOrders > 0 ? (totalNetSales / totalOrders) : 0;
 
     // ---- responseTimeTrend: one entry per day in the range ----
     // daily_sales_summary has no response-time column — we produce order counts
@@ -175,7 +185,7 @@ class AnalyticsService {
       const key = r.sale_date;
       const cur = dailyByDate.get(key) || { orders: 0, net: 0 };
       cur.orders += Number(r.order_count || 0);
-      cur.net    += Number(r.net_sales   || 0);
+      cur.net    += Number(r.net_sales_cents || 0);
       dailyByDate.set(key, cur);
     }
 
@@ -196,7 +206,7 @@ class AnalyticsService {
       return {
         day:     format(d, 'MMM d'),
         orders:  row.orders,
-        revenue: Math.round(row.net * 100) / 100,
+        revenue: row.net,
       };
     });
 
@@ -207,7 +217,7 @@ class AnalyticsService {
       const h = Number(r.hour_of_day);
       const cur = hourMap.get(h) || { orders: 0, revenue: 0 };
       cur.orders  += Number(r.order_count   || 0);
-      cur.revenue += Number(r.total_revenue || 0);
+      cur.revenue += Number(r.total_revenue_cents || 0);
       hourMap.set(h, cur);
     }
     const performanceByHour = Array.from({ length: 24 }, (_, h) => {
@@ -269,6 +279,22 @@ class AnalyticsService {
   // Individual named fetchers kept for any direct callers
   // ------------------------------------------------------------------
 
+  async getDailySalesSummary(
+    { from, to }: { from: Date; to: Date },
+    locationId?: string,
+  ): Promise<DailySalesSummaryRow[]> {
+    const resolvedLocationId = locationId || await this.getLocationId();
+    if (!resolvedLocationId) throw new Error('No se encontró un local para consultar los reportes.');
+    const startDate = format(from, 'yyyy-MM-dd');
+    const endDate = format(to, 'yyyy-MM-dd');
+    const { data, error } = await api.request<DailySalesSummaryRow[]>(
+      'GET',
+      `/data/daily_sales_summary?eq=location_id,${encodeURIComponent(resolvedLocationId)}&gte=sale_date,${startDate}&lte=sale_date,${endDate}&order=sale_date.asc`,
+    );
+    if (error) throw new Error(error.message);
+    return data || [];
+  }
+
   async getAnalyticsSummary(timeRange = '7d'): Promise<DailySalesSummaryRow[]> {
     const locationId = await this.getLocationId();
     if (!locationId) throw new Error('No location found for user');
@@ -279,7 +305,7 @@ class AnalyticsService {
       'GET',
       `/data/daily_sales_summary?eq=location_id,${locationId}&gte=sale_date,${startDate}&lte=sale_date,${endDate}`
     );
-    if (error) throw error;
+    if (error) throw new Error(error.message);
     return data || [];
   }
 
@@ -290,7 +316,7 @@ class AnalyticsService {
       'GET',
       `/data/hourly_sales_heatmap?eq=location_id,${locationId}`
     );
-    if (error) throw error;
+    if (error) throw new Error(error.message);
     return data || [];
   }
 
@@ -304,7 +330,7 @@ class AnalyticsService {
       'GET',
       `/data/daily_sales_summary?eq=location_id,${locationId}&gte=sale_date,${startDate}&lte=sale_date,${endDate}&order=sale_date.asc`
     );
-    if (error) throw error;
+    if (error) throw new Error(error.message);
     return data || [];
   }
 

@@ -54,9 +54,9 @@ type InvoiceDetail = Invoice & { lines: InvoiceLine[] };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function fmtDate(iso: string | null | undefined) {
+function fmtDate(iso: string | null | undefined, locale: string) {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString(undefined, {
+  return new Date(iso).toLocaleDateString(locale, {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -73,12 +73,12 @@ const STATUS_VARIANT: Record<string, 'secondary' | 'default' | 'success' | 'warn
 };
 
 const STATUS_LABEL: Record<string, string> = {
-  draft:     'Draft',
-  sent:      'Sent',
-  paid:      'Paid',
-  overdue:   'Overdue',
-  cancelled: 'Cancelled',
-  void:      'Void',
+  draft:     'Borrador',
+  sent:      'Emitida',
+  paid:      'Pagada',
+  overdue:   'Vencida',
+  cancelled: 'Cancelada',
+  void:      'Anulada',
 };
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -111,13 +111,13 @@ export default function InvoiceDetailPage() {
     try {
       const { data, error: err } = await getInvoice(id);
       if (err) {
-        setError(err.message || 'Failed to load invoice.');
+        setError(err.message || 'No se pudo cargar la factura.');
       } else {
         setInvoice(data ?? null);
       }
     } catch (err) {
       console.error('Error loading invoice:', err);
-      setError('Failed to load invoice.');
+      setError('No se pudo cargar la factura.');
     } finally {
       setLoading(false);
     }
@@ -130,29 +130,44 @@ export default function InvoiceDetailPage() {
   async function handleIssue() {
     if (!id) return;
     setActionLoading('issue');
-    const { data, error: err } = await issueInvoice(id);
-    if (err) setError(err.message || 'Failed to issue invoice.');
-    else if (data) setInvoice((prev) => prev ? { ...prev, ...data } : prev);
-    setActionLoading(null);
+    try {
+      const { data, error: err } = await issueInvoice(id);
+      if (err) setError(err.message || 'No se pudo emitir la factura.');
+      else if (data) setInvoice((prev) => prev ? { ...prev, ...data } : prev);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo emitir la factura.');
+    } finally {
+      setActionLoading(null);
+    }
   }
 
   async function handlePay() {
     if (!id) return;
     setActionLoading('pay');
-    const { data, error: err } = await markInvoicePaid(id);
-    if (err) setError(err.message || 'Failed to mark as paid.');
-    else if (data) setInvoice((prev) => prev ? { ...prev, ...data } : prev);
-    setActionLoading(null);
+    try {
+      const { data, error: err } = await markInvoicePaid(id);
+      if (err) setError(err.message || 'No se pudo registrar el pago.');
+      else if (data) setInvoice((prev) => prev ? { ...prev, ...data } : prev);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo registrar el pago.');
+    } finally {
+      setActionLoading(null);
+    }
   }
 
   async function handleVoid() {
     if (!id) return;
     setActionLoading('void');
     setConfirmVoid(false);
-    const { data, error: err } = await voidInvoice(id);
-    if (err) setError(err.message || 'Failed to void invoice.');
-    else if (data) setInvoice((prev) => prev ? { ...prev, ...data } : prev);
-    setActionLoading(null);
+    try {
+      const { data, error: err } = await voidInvoice(id);
+      if (err) setError(err.message || 'No se pudo anular la factura.');
+      else if (data) setInvoice((prev) => prev ? { ...prev, ...data } : prev);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo anular la factura.');
+    } finally {
+      setActionLoading(null);
+    }
   }
 
   async function handleDownload() {
@@ -161,9 +176,10 @@ export default function InvoiceDetailPage() {
     try {
       await downloadInvoicePDF(id);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'PDF download failed.');
+      setError(e instanceof Error ? e.message : 'No se pudo descargar el PDF.');
+    } finally {
+      setActionLoading(null);
     }
-    setActionLoading(null);
   }
 
   // ── Render ───────────────────────────────────────────────────────────────
@@ -181,10 +197,10 @@ export default function InvoiceDetailPage() {
       <div className="max-w-3xl mx-auto px-4 py-6">
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error || 'Invoice not found.'}</AlertDescription>
+          <AlertDescription>{error || 'No se encontró la factura.'}</AlertDescription>
         </Alert>
         <Button variant="ghost" className="mt-4" onClick={() => navigate('/invoices')}>
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back to invoices
+            <ArrowLeft className="mr-2 h-4 w-4" /> Volver a facturas
         </Button>
       </div>
     );
@@ -207,7 +223,7 @@ export default function InvoiceDetailPage() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-semibold">
-                Invoice {inv.invoice_number
+                Factura {inv.invoice_number
                   ? `#${inv.invoice_number}`
                   : `#${inv.id.slice(0, 8).toUpperCase()}`}
               </h1>
@@ -216,11 +232,11 @@ export default function InvoiceDetailPage() {
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {inv.issuer === 'platform' ? 'Platform invoice' : 'Tenant invoice'}
+              {inv.issuer === 'platform' ? 'Factura de BeepBite' : 'Factura del negocio'}
               {' · '}
-              Created {fmtDate(inv.created_at)}
+              Creada el {fmtDate(inv.created_at, locale)}
               {inv.updated_at && inv.updated_at !== inv.created_at
-                ? ` · Updated ${fmtDate(inv.updated_at)}`
+                ? ` · Actualizada el ${fmtDate(inv.updated_at, locale)}`
                 : ''}
             </p>
           </div>
@@ -235,7 +251,7 @@ export default function InvoiceDetailPage() {
               onClick={() => navigate(`/invoices/${id}/edit`)}
             >
               <Pencil className="mr-1 h-4 w-4" />
-              Edit
+              Editar
             </Button>
           )}
           {isDraft && (
@@ -249,7 +265,7 @@ export default function InvoiceDetailPage() {
               ) : (
                 <Send className="mr-1 h-4 w-4" />
               )}
-              Issue
+              Emitir
             </Button>
           )}
           {isIssued && (
@@ -263,7 +279,7 @@ export default function InvoiceDetailPage() {
               ) : (
                 <CheckCircle className="mr-1 h-4 w-4" />
               )}
-              Mark paid
+              Marcar como pagada
             </Button>
           )}
           {(isDraft || isIssued) && (
@@ -278,7 +294,7 @@ export default function InvoiceDetailPage() {
               ) : (
                 <XCircle className="mr-1 h-4 w-4" />
               )}
-              Void
+              Anular
             </Button>
           )}
           <Button
@@ -309,7 +325,7 @@ export default function InvoiceDetailPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-sm font-medium text-muted-foreground">
-            Bill To
+            Facturar a
           </CardTitle>
         </CardHeader>
         <CardContent className="-mt-2">
@@ -326,19 +342,19 @@ export default function InvoiceDetailPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-sm font-medium text-muted-foreground">
-            Line Items
+            Conceptos
           </CardTitle>
         </CardHeader>
         <CardContent className="-mt-2">
           {lines.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No line items.</p>
+            <p className="text-sm text-muted-foreground">No hay conceptos.</p>
           ) : (
             <div className="space-y-0">
               {/* Table header */}
               <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 text-xs text-muted-foreground pb-1 border-b">
-                <span>Description</span>
-                <span className="text-center">Qty</span>
-                <span className="text-right">Unit price</span>
+                <span>Descripción</span>
+                <span className="text-center">Cant.</span>
+                <span className="text-right">Precio unitario</span>
                 <span className="text-right">Total</span>
               </div>
               {lines.map((line, idx) => (
@@ -369,7 +385,7 @@ export default function InvoiceDetailPage() {
             {inv.vat_applied && inv.vat_cents > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">
-                  VAT{inv.vat_rate_percent ? ` (${inv.vat_rate_percent}%)` : ''}
+                  IVA{inv.vat_rate_percent ? ` (${inv.vat_rate_percent}%)` : ''}
                 </span>
                 <span className="tabular-nums">{fmtCents(inv.vat_cents, currency)}</span>
               </div>
@@ -388,7 +404,7 @@ export default function InvoiceDetailPage() {
       {/* Issued at */}
       {inv.issued_at && (
         <p className="text-xs text-muted-foreground text-right">
-          Issued on {fmtDate(inv.issued_at)}
+          Emitida el {fmtDate(inv.issued_at, locale)}
         </p>
       )}
 
@@ -396,19 +412,18 @@ export default function InvoiceDetailPage() {
       <AlertDialog open={confirmVoid} onOpenChange={setConfirmVoid}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Void this invoice?</AlertDialogTitle>
+            <AlertDialogTitle>¿Anular esta factura?</AlertDialogTitle>
             <AlertDialogDescription>
-              Voiding an invoice cannot be undone. The invoice will be marked
-              as void and can no longer be issued or paid.
+              Esta acción no se puede deshacer. La factura quedará anulada y no podrá emitirse ni pagarse.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Volver</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               onClick={handleVoid}
             >
-              Void invoice
+              Anular factura
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

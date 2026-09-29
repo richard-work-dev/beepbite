@@ -38,7 +38,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { getInvoice, createInvoice, updateInvoice } from '@/services/invoicing';
-import { useLocale } from '@/context/locale-context';
+import { useLocale, useMoney } from '@/context/locale-context';
 import { formatMoney, currencySymbol } from '@/lib/currency';
 import { currencyOptions } from '@/lib/locale-data';
 
@@ -82,15 +82,9 @@ const EMPTY_FORM: InvoiceFormState = {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function centsFromInput(val: string) {
-  const n = parseFloat(val);
-  if (isNaN(n)) return 0;
-  return Math.round(n * 100);
-}
-
-function inputFromCents(cents: number | null | undefined) {
+function inputFromCents(cents: number | null | undefined, scale: number, decimals: number) {
   if (!cents) return '';
-  return (cents / 100).toFixed(2);
+  return (cents / scale).toFixed(decimals);
 }
 
 function subtotal(lines: FormLine[]) {
@@ -108,7 +102,7 @@ export default function InvoiceFormPage() {
   // The tax is called VAT in the EU/UK/ZA, GST elsewhere, IVA in Spain/Italy/
   // Latin America, Consumption Tax in Japan and Sales Tax in the US — the
   // label must come from the location's own configured name, not a hardcode.
-  const tax = taxLabel || 'Tax';
+  const tax = taxLabel || 'impuesto';
   // The full option list is rebuilt from Intl.DisplayNames, so it is memoised
   // against the locale that names it rather than recomputed every render.
   const currencyChoices = useMemo(() => currencyOptions(locale), [locale]);
@@ -117,6 +111,7 @@ export default function InvoiceFormPage() {
   const fmtCents = (cents: number | null | undefined, currency: string) => formatMoney(cents ?? 0, { currency, locale });
 
   const [form, setForm] = useState<InvoiceFormState>(() => ({ ...EMPTY_FORM, currency: activeCurrency || '' }));
+  const { parse: parseMoney, scale, decimals } = useMoney({ currency: form.currency || activeCurrency || '' });
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -133,7 +128,7 @@ export default function InvoiceFormPage() {
     try {
       const { data, error: err } = await getInvoice(id);
       if (err) {
-        setError(err.message || 'Failed to load invoice.');
+        setError(err.message || 'No se pudo cargar la factura.');
       } else if (data) {
         const existingLines = data.lines;
         setForm({
@@ -155,7 +150,7 @@ export default function InvoiceFormPage() {
       }
     } catch (err) {
       console.error('Error loading invoice:', err);
-      setError('Failed to load invoice.');
+      setError('No se pudo cargar la factura.');
     } finally {
       setLoading(false);
     }
@@ -194,7 +189,7 @@ export default function InvoiceFormPage() {
   async function handleSave(e: FormEvent) {
     e.preventDefault();
     if (form.lines.length === 0) {
-      setError('Add at least one line item.');
+      setError('Agregá al menos un concepto.');
       return;
     }
     setSaving(true);
@@ -210,20 +205,20 @@ export default function InvoiceFormPage() {
       vat_rate_pct: parseFloat(String(vat_rate_pct)) || 0,
     };
 
-    let result;
-    if (isEdit && id) {
-      result = await updateInvoice(id, body);
-    } else {
-      result = await createInvoice(body);
-    }
-
-    if (result.error || !result.data) {
-      setError(result.error?.message || 'Failed to save invoice.');
+    try {
+      const result = isEdit && id
+        ? await updateInvoice(id, body)
+        : await createInvoice(body);
+      if (result.error || !result.data) {
+        setError(result.error?.message || 'No se pudo guardar la factura.');
+        return;
+      }
+      void navigate(`/invoices/${result.data.id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo guardar la factura.');
+    } finally {
       setSaving(false);
-      return;
     }
-    // Navigate to the detail page on success.
-    void navigate(`/invoices/${result.data.id}`);
   }
 
   // ── Computed ──────────────────────────────────────────────────────────────
@@ -253,7 +248,7 @@ export default function InvoiceFormPage() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <h1 className="text-xl font-semibold">
-          {isEdit ? 'Edit invoice' : 'New invoice'}
+            {isEdit ? 'Editar factura' : 'Nueva factura'}
         </h1>
       </div>
 
@@ -269,12 +264,12 @@ export default function InvoiceFormPage() {
         {/* Header fields */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Invoice details</CardTitle>
+            <CardTitle className="text-base">Datos de la factura</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Issuer */}
             <div className="space-y-1">
-              <Label>Issuer</Label>
+              <Label>Emisor</Label>
               <Select
                 value={form.issuer}
                 onValueChange={(v) => setField('issuer', v as 'platform' | 'tenant')}
@@ -284,19 +279,19 @@ export default function InvoiceFormPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="tenant">My business (tenant)</SelectItem>
-                  <SelectItem value="platform">BeepBite platform</SelectItem>
+                  <SelectItem value="tenant">Mi negocio</SelectItem>
+                  <SelectItem value="platform">Plataforma BeepBite</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Choose "My business" to invoice your customers. {tax} is applied
-                automatically if your {tax} number is set in Business Info.
+                Elegí «Mi negocio» para facturar a tus clientes. El {tax} se aplica
+                automáticamente si configuraste tu número fiscal en los datos del negocio.
               </p>
             </div>
 
             {/* Currency */}
             <div className="space-y-1">
-              <Label>Currency</Label>
+              <Label>Moneda</Label>
               <Select
                 value={form.currency}
                 onValueChange={(v) => setField('currency', v)}
@@ -317,9 +312,9 @@ export default function InvoiceFormPage() {
             {/* Tax rate */}
             <div className="space-y-1">
               <Label htmlFor="vat_rate_pct">
-                {tax} rate %{' '}
+                Tasa de {tax} (%)
                 <span className="text-muted-foreground text-xs">
-                  (applied automatically when {tax} number is set in Business Info)
+                  (se aplica automáticamente si configuraste tu número fiscal)
                 </span>
               </Label>
               <Input
@@ -340,19 +335,19 @@ export default function InvoiceFormPage() {
         {/* Recipient */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Bill To</CardTitle>
-            <CardDescription>Your customer's billing details.</CardDescription>
+            <CardTitle className="text-base">Destinatario</CardTitle>
+            <CardDescription>Datos de facturación del cliente.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Recipient org ID — required for tenant-issued invoices */}
             {form.issuer === 'tenant' && (
               <div className="space-y-1">
                 <Label htmlFor="recipient_org_id">
-                  Recipient org ID{' '}
+                  ID de la organización destinataria{' '}
                   <span className="text-destructive text-xs">*</span>
                   {' '}
                   <span className="text-muted-foreground text-xs">
-                    (required — the organisation being billed)
+                    (obligatorio: organización a la que se factura)
                   </span>
                 </Label>
                 <Input
@@ -365,22 +360,22 @@ export default function InvoiceFormPage() {
               </div>
             )}
             <div className="space-y-1">
-              <Label htmlFor="recipient_name">Recipient name</Label>
+              <Label htmlFor="recipient_name">Nombre del destinatario</Label>
               <Input
                 id="recipient_name"
                 value={form.recipient_name}
                 onChange={(e) => setField('recipient_name', e.target.value)}
-                placeholder="Acme Corp"
+                placeholder="Comercial Ejemplo"
                 required
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="recipient_address">Recipient address</Label>
+              <Label htmlFor="recipient_address">Dirección</Label>
               <Input
                 id="recipient_address"
                 value={form.recipient_address}
                 onChange={(e) => setField('recipient_address', e.target.value)}
-                placeholder="456 Business Ave, Johannesburg, 2000"
+                placeholder="Calle, número, ciudad y código postal"
               />
             </div>
           </CardContent>
@@ -389,14 +384,14 @@ export default function InvoiceFormPage() {
         {/* Line items */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Line Items</CardTitle>
+            <CardTitle className="text-base">Conceptos</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {/* Header row */}
             <div className="grid grid-cols-[1fr_80px_110px_32px] gap-2 text-xs text-muted-foreground">
-              <span>Description</span>
-              <span className="text-center">Qty</span>
-              <span className="text-right">Unit price</span>
+              <span>Descripción</span>
+              <span className="text-center">Cant.</span>
+              <span className="text-right">Precio unitario</span>
               <span />
             </div>
 
@@ -405,7 +400,7 @@ export default function InvoiceFormPage() {
                 <Input
                   value={line.description}
                   onChange={(e) => setLine(idx, 'description', e.target.value)}
-                  placeholder="Service description"
+                  placeholder="Descripción del servicio"
                   required
                 />
                 <Input
@@ -419,10 +414,10 @@ export default function InvoiceFormPage() {
                 <Input
                   type="number"
                   min="0"
-                  step="0.01"
-                  value={inputFromCents(line.unit_cents)}
-                  onChange={(e) => setLine(idx, 'unit_cents', centsFromInput(e.target.value))}
-                  placeholder="0.00"
+                  value={inputFromCents(line.unit_cents, scale, decimals)}
+                  onChange={(e) => setLine(idx, 'unit_cents', parseMoney(e.target.value) ?? 0)}
+                  placeholder={(0).toFixed(decimals)}
+                  step={(1 / scale).toFixed(decimals)}
                   className="text-right"
                 />
                 <Button
@@ -440,13 +435,13 @@ export default function InvoiceFormPage() {
 
             <Button type="button" variant="outline" size="sm" onClick={addLine}>
               <Plus className="mr-1 h-4 w-4" />
-              Add line
+              Agregar concepto
             </Button>
 
             {/* Totals summary */}
             <div className="border-t pt-3 space-y-1 text-sm">
               <div className="flex justify-between text-muted-foreground">
-                <span>Subtotal</span>
+                                <span>Subtotal</span>
                 <span className="tabular-nums">{fmtCents(sub, currency)}</span>
               </div>
               {vatCents > 0 && (
@@ -466,18 +461,18 @@ export default function InvoiceFormPage() {
         {/* Submit */}
         <div className="flex justify-end gap-3">
           <Button type="button" variant="outline" onClick={() => navigate('/invoices')}>
-            Cancel
+            Volver
           </Button>
           <Button type="submit" disabled={saving}>
             {saving ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving…
+                Guardando…
               </>
             ) : (
               <>
                 <Save className="mr-2 h-4 w-4" />
-                {isEdit ? 'Save changes' : 'Create invoice'}
+                {isEdit ? 'Guardar cambios' : 'Crear factura'}
               </>
             )}
           </Button>

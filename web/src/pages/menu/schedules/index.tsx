@@ -45,8 +45,8 @@ export default function MenuSchedules() {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
         <AlertCircle className="h-12 w-12 mb-3 text-muted-foreground/40" />
-        <p className="font-medium text-foreground">No location selected</p>
-        <p className="text-sm">Please select a location to manage menu schedules.</p>
+        <p className="font-medium text-foreground">No hay un local seleccionado</p>
+        <p className="text-sm">Seleccioná un local para administrar los horarios del menú.</p>
       </div>
     );
   }
@@ -72,8 +72,8 @@ export default function MenuSchedules() {
     <PageContainer>
       <PageHeader
         icon={Calendar}
-        title="Menu Schedules"
-        description={`Configure daypart windows and happy-hour pricing for ${activeLocation.name}.`}
+        title="Horarios del menú"
+        description={`Configurá las franjas horarias y los precios promocionales de ${activeLocation.name}.`}
       />
 
       {error && (
@@ -102,13 +102,13 @@ export default function MenuSchedules() {
           {loading && !selected ? (
             <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
               <Loader2 className="h-8 w-8 mb-3 animate-spin" />
-              <p className="text-sm">Loading schedules…</p>
+              <p className="text-sm">Cargando horarios…</p>
             </div>
           ) : !selected ? (
             <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
               <Calendar className="h-14 w-14 mb-3 text-muted-foreground/30" />
-              <p className="font-medium text-foreground">Select a schedule</p>
-              <p className="text-sm">Choose a schedule from the left or create a new one.</p>
+              <p className="font-medium text-foreground">Elegí un horario</p>
+              <p className="text-sm">Seleccioná un horario de la izquierda o creá uno nuevo.</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -124,9 +124,9 @@ export default function MenuSchedules() {
 
               <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <TabsList>
-                  <TabsTrigger value="hours">Hours</TabsTrigger>
-                  <TabsTrigger value="items">Items</TabsTrigger>
-                  <TabsTrigger value="prices">Happy-Hour Prices</TabsTrigger>
+                  <TabsTrigger value="hours">Horarios</TabsTrigger>
+                  <TabsTrigger value="items">Productos</TabsTrigger>
+                  <TabsTrigger value="prices">Precios promocionales</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="hours" className="mt-4">

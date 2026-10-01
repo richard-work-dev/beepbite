@@ -628,7 +628,6 @@ interface ActiveTicketPanelProps {
   onCharge?: () => void;
   onAdjustGuests?: () => void;
 	onEditDetails?: () => void;
-  onAdjust?: (payload: { orderId: string; type: string }) => void; // back-compat (workspace modal), unused here
   onAdjustSuccess?: (data: unknown) => void;
   locationId?: string;
   sending?: boolean;
@@ -647,7 +646,6 @@ export default function ActiveTicketPanel({
   onCharge,              // () => void
   onAdjustGuests,        // optional () => void
 	onEditDetails,
-  onAdjust: _onAdjust,   // optional ({ orderId, type }) => void — kept for back-compat (workspace modal), unused here
   onAdjustSuccess,       // optional (data) => void — called after inline adjustment success
   locationId = '',       // location_id for scoping adjustment reasons + manager list
   sending = false,
@@ -677,9 +675,10 @@ export default function ActiveTicketPanel({
       aria-label="Comanda del pedido"
       className={cn(
         'flex flex-col bg-muted/40 border-l-2 border-border',
-        // Desktop: fixed-width sidebar; mobile: full-width drawer fixed to bottom
-        'w-full sm:max-w-[380px] md:max-w-[420px]',
-        'h-full',
+        // Desktop: fixed-width sidebar. On phones it becomes a bottom panel
+        // with its own scroll area so menu tiles keep a usable width.
+        'w-full shrink-0 max-h-[46dvh] min-h-[17rem] border-l-0 border-t-2 lg:h-full lg:max-h-none lg:min-h-0 lg:w-[min(420px,38vw)] lg:border-l-2 lg:border-t-0',
+        'order-2 lg:order-none',
       )}
     >
 		<TicketHeader ticket={ticket} onAdjustGuests={onAdjustGuests} onEditDetails={onEditDetails} />

@@ -72,6 +72,7 @@ export default function FloorEditor() {
     refresh,
     patchTableLocal,
     addTableLocal,
+    addSectionLocal,
   } = useTables(locationId);
 
   const [activeSection, setActiveSection] = useState('all');
@@ -79,6 +80,7 @@ export default function FloorEditor() {
   const [savingIds, setSavingIds] = useState<Set<string>>(() => new Set());
   const [flash, setFlash] = useState<Flash | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [addSectionOpen, setAddSectionOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
 
   // Per-table debounce timers for PATCH calls.
@@ -113,9 +115,9 @@ export default function FloorEditor() {
     markSaving(id, true);
     try {
       const { error: err } = await api.request('PATCH', `/tables/${id}`, { body });
-      if (err) throw new Error(err.message || 'PATCH failed');
+      if (err) throw new Error(err.message || 'No se pudo guardar la ubicación de la mesa');
     } catch (e) {
-      setFlash({ type: 'err', message: `Save failed: ${e instanceof Error ? e.message : String(e)}` });
+      setFlash({ type: 'err', message: `No se pudo guardar: ${e instanceof Error ? e.message : String(e)}` });
     } finally {
       markSaving(id, false);
     }
@@ -154,8 +156,8 @@ export default function FloorEditor() {
     return (
       <div className="flex flex-col items-center justify-center py-16">
         <AlertCircle className="w-12 h-12 text-muted-foreground mb-3" />
-        <h2 className="text-xl font-semibold">No location selected</h2>
-        <p className="text-muted-foreground mt-1">Pick a location to edit its floor layout.</p>
+        <h2 className="text-xl font-semibold">No hay un local seleccionado</h2>
+        <p className="text-muted-foreground mt-1">Elegí un local para editar su plano.</p>
       </div>
     );
   }
@@ -165,24 +167,24 @@ export default function FloorEditor() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Button asChild variant="ghost" size="icon">
-            <Link to="/floor" aria-label="Back to live floor">
+            <Link to="/floor" aria-label="Volver al salón en vivo">
               <ArrowLeft className="h-5 w-5" />
             </Link>
           </Button>
           <div>
             <h1 className="font-display text-3xl font-extrabold flex items-center gap-2">
               <LayoutGrid className="w-7 h-7 text-primary" />
-              Floor Editor
+              Editor del salón
             </h1>
             <p className="text-muted-foreground mt-1 text-sm">
-              Drag to reposition; changes save automatically. Snap is 16px.
+              Arrastrá las mesas para ubicarlas. Los cambios se guardan automáticamente.
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={handleUndo} disabled={!undoStack.length}>
             <Undo2 className="h-4 w-4 mr-2" />
-            Undo {undoStack.length ? `(${undoStack.length})` : ''}
+            Deshacer {undoStack.length ? `(${undoStack.length})` : ''}
           </Button>
           <Button
             variant="outline"
@@ -191,21 +193,25 @@ export default function FloorEditor() {
             className="border-primary/30 text-primary hover:bg-primary/10 hover:border-primary/50 hover:text-primary"
           >
             <Sparkles className="h-4 w-4 mr-2" />
-            AI floor plan
+            Crear con IA
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setAddSectionOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nueva sección
           </Button>
           <Button
             size="sm"
             onClick={() => setAddOpen(true)}
             disabled={sections.length === 0}
-            title={sections.length === 0 ? 'Create a section first' : ''}
+            title={sections.length === 0 ? 'Creá una sección primero' : ''}
           >
             <Plus className="h-4 w-4 mr-2" />
-            Add Table
+            Agregar mesa
           </Button>
           <Button asChild variant="ghost" size="sm">
             <Link to="/floor">
               <Eye className="h-4 w-4 mr-2" />
-              Live view
+              Ver salón
             </Link>
           </Button>
         </div>
@@ -227,9 +233,9 @@ export default function FloorEditor() {
         <Card>
           <CardContent className="p-6 text-center">
             <AlertCircle className="h-8 w-8 text-destructive mx-auto mb-2" />
-            <h3 className="font-medium text-foreground mb-1">Couldn&apos;t load floor</h3>
+            <h3 className="font-medium text-foreground mb-1">No se pudo cargar el salón</h3>
             <p className="text-sm text-muted-foreground mb-4">{error}</p>
-            <Button size="sm" variant="outline" onClick={refresh}>Try again</Button>
+            <Button size="sm" variant="outline" onClick={refresh}>Reintentar</Button>
           </CardContent>
         </Card>
       ) : (
@@ -245,24 +251,27 @@ export default function FloorEditor() {
             <Card>
               <CardContent className="p-12 text-center text-muted-foreground">
                 <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
-                Loading…
+                Cargando…
               </CardContent>
             </Card>
           ) : sections.length === 0 ? (
             <Card>
               <CardContent className="p-10 text-center">
                 <LayoutGrid className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                <h3 className="font-medium text-foreground mb-1">No sections yet</h3>
+                <h3 className="font-medium text-foreground mb-1">Todavía no hay secciones</h3>
                 <p className="text-sm text-muted-foreground">
-                  Create a floor section (e.g. &quot;Main Room&quot;, &quot;Patio&quot;) before adding tables.
-                  Section management lives in Settings.
+                  Creá una sección como “Salón” o “Patio” y después agregá las mesas.
                 </p>
+                <Button className="mt-4" onClick={() => setAddSectionOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Crear primera sección
+                </Button>
               </CardContent>
             </Card>
           ) : visibleTables.length === 0 ? (
             <Card>
               <CardContent className="p-8 text-center text-muted-foreground text-sm">
-                No tables in this section yet. Click &quot;Add Table&quot; to drop one in.
+                No hay mesas en esta sección. Elegí “Agregar mesa” para crear una.
               </CardContent>
             </Card>
           ) : (
@@ -284,7 +293,19 @@ export default function FloorEditor() {
         locationId={locationId}
         onCreated={(row) => {
           addTableLocal(row);
-          setFlash({ type: 'ok', message: `Added ${row.label}` });
+          setFlash({ type: 'ok', message: `Se agregó la mesa ${row.label}` });
+        }}
+      />
+
+      <AddSectionDialog
+        open={addSectionOpen}
+        onOpenChange={setAddSectionOpen}
+        locationId={locationId}
+        nextSortOrder={sections.length}
+        onCreated={(row) => {
+          addSectionLocal(row);
+          setActiveSection(row.id);
+          setFlash({ type: 'ok', message: `Se creó la sección ${row.name}` });
         }}
       />
 
@@ -295,7 +316,7 @@ export default function FloorEditor() {
         onApplied={() => {
           // refresh() (useTables' fetchAll) is fully try/catch/finally-wrapped.
           void refresh();
-          setFlash({ type: 'ok', message: 'AI floor plan applied — new sections & tables added.' });
+          setFlash({ type: 'ok', message: 'Se aplicó el plano: se agregaron nuevas secciones y mesas.' });
         }}
       />
     </div>
@@ -329,10 +350,10 @@ function AddTableDialog({ open, onOpenChange, sections, defaultSectionId, locati
 
   const submit = async () => {
     setErr(null);
-    if (!label.trim()) return setErr('Label is required');
+    if (!label.trim()) return setErr('Ingresá un nombre para la mesa');
     const cap = parseInt(String(capacity), 10);
-    if (!cap || cap < 1) return setErr('Capacity must be at least 1');
-    if (!sectionId) return setErr('Pick a section');
+    if (!cap || cap < 1) return setErr('La capacidad debe ser de al menos 1 persona');
+    if (!sectionId) return setErr('Elegí una sección');
     setSaving(true);
     try {
       const body = {
@@ -345,7 +366,7 @@ function AddTableDialog({ open, onOpenChange, sections, defaultSectionId, locati
         pos_y: DEFAULT_DROP.pos_y,
       };
       const { data, error } = await api.request<FloorTable | FloorTable[]>('POST', '/data/tables', { body });
-      if (error) throw new Error(error.message || 'create failed');
+      if (error) throw new Error(error.message || 'No se pudo crear la mesa');
       const row = Array.isArray(data) ? data[0] : data;
       if (row) onCreated(row);
       onOpenChange(false);
@@ -362,25 +383,25 @@ function AddTableDialog({ open, onOpenChange, sections, defaultSectionId, locati
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Plus className="h-5 w-5 text-primary" />
-            Add Table
+            Agregar mesa
           </DialogTitle>
           <DialogDescription>
-            New tables drop at the top-left of the canvas — drag to reposition.
+            La mesa aparecerá en el plano. Después podés arrastrarla para ubicarla.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
           <div>
-            <Label htmlFor="tbl-label">Label *</Label>
+            <Label htmlFor="tbl-label">Nombre o número *</Label>
             <Input
               id="tbl-label"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
-              placeholder="e.g. T1, Booth 3"
+              placeholder="Ej.: Mesa 1, Box 3"
             />
           </div>
           <div>
-            <Label htmlFor="tbl-cap">Capacity *</Label>
+            <Label htmlFor="tbl-cap">Capacidad *</Label>
             <Input
               id="tbl-cap"
               type="number"
@@ -390,10 +411,10 @@ function AddTableDialog({ open, onOpenChange, sections, defaultSectionId, locati
             />
           </div>
           <div>
-            <Label>Section *</Label>
+            <Label>Sección *</Label>
             <Select value={sectionId} onValueChange={setSectionId}>
               <SelectTrigger>
-                <SelectValue placeholder="Pick a section" />
+                <SelectValue placeholder="Elegí una sección" />
               </SelectTrigger>
               <SelectContent>
                 {sections.map((s) => (
@@ -407,11 +428,99 @@ function AddTableDialog({ open, onOpenChange, sections, defaultSectionId, locati
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Cancel
+            Cancelar
           </Button>
           <Button onClick={submit} disabled={saving}>
             {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
-            Add
+            Agregar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+interface AddSectionDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  locationId?: string;
+  nextSortOrder: number;
+  onCreated: (row: FloorSection) => void;
+}
+
+function AddSectionDialog({ open, onOpenChange, locationId, nextSortOrder, onCreated }: AddSectionDialogProps) {
+  const [name, setName] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setName('');
+      setErr(null);
+    }
+  }, [open]);
+
+  const submit = async () => {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      setErr('Ingresá un nombre para la sección');
+      return;
+    }
+    setSaving(true);
+    setErr(null);
+    try {
+      const { data, error } = await api.request<FloorSection | FloorSection[]>('POST', '/data/sections', {
+        body: {
+          location_id: locationId,
+          name: trimmed,
+          sort_order: nextSortOrder,
+          is_active: true,
+        },
+      });
+      if (error) throw new Error(error.message || 'No se pudo crear la sección');
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row) throw new Error('El servidor no devolvió la sección creada');
+      onCreated(row);
+      onOpenChange(false);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <LayoutGrid className="h-5 w-5 text-primary" />
+            Nueva sección
+          </DialogTitle>
+          <DialogDescription>
+            Creá un sector del local para organizar sus mesas, por ejemplo “Salón” o “Patio”.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2">
+          <Label htmlFor="floor-section-name">Nombre de la sección</Label>
+          <Input
+            id="floor-section-name"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="Ej.: Salón principal"
+            autoFocus
+            disabled={saving}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') void submit();
+            }}
+          />
+          {err && <p className="text-sm text-destructive" role="alert">{err}</p>}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancelar</Button>
+          <Button onClick={() => void submit()} disabled={saving || !name.trim()}>
+            {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
+            Crear sección
           </Button>
         </DialogFooter>
       </DialogContent>

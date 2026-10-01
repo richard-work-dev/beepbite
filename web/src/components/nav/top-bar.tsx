@@ -278,6 +278,18 @@ const TopBar = () => {
                       </Link>
                     );
                   })}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={(event) => toggleSideNav(event.currentTarget)}
+                    aria-expanded={isSideNavOpen}
+                    aria-haspopup="dialog"
+                    className="ml-1 gap-2"
+                  >
+                    <Menu className="h-4 w-4" aria-hidden="true" />
+                    Módulos
+                  </Button>
                 </nav>
               )}
 
@@ -292,21 +304,23 @@ const TopBar = () => {
                       real (src/offline/queue.js) and staff need to see it. */}
                   {!isLandingPage && <SyncStatusBadge className="hidden lg:inline-flex" />}
 
-                  {/* Location Selector - Desktop */}
+                  {/* Location Selector — also visible on tablets so the
+                      current operating location is never hidden in a menu. */}
                   {!isLandingPage && (
-                    <div className="hidden lg:block">
+                    <div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
                             variant="outline"
                             size="sm"
-                            className="text-sm font-medium flex items-center gap-2"
+                            className="h-10 w-10 justify-center p-0 text-sm font-medium flex items-center gap-2 sm:h-9 sm:w-auto sm:justify-start sm:px-3"
+                            title={activeLocation?.name || t('nav.topBar.selectLocation')}
                           >
                             <MapPin className="h-4 w-4" aria-hidden="true" />
-                            <span className="max-w-[120px] truncate">
+                            <span className="hidden max-w-[120px] truncate sm:inline">
                               {activeLocation?.name || t('nav.topBar.selectLocation')}
                             </span>
-                            <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                            <ChevronDown className="hidden h-4 w-4 sm:block" aria-hidden="true" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-56">

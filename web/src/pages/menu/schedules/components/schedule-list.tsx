@@ -47,11 +47,11 @@ export default function ScheduleList({ schedules, selectedId, onSelect, onDelete
 
   const handleCreate = async () => {
     if (!form.name.trim()) {
-      setFormError('Name is required.');
+      setFormError('El nombre es obligatorio.');
       return;
     }
     if (!form.code.trim()) {
-      setFormError('Code/slug is required.');
+      setFormError('El código o slug es obligatorio.');
       return;
     }
     setSaving(true);
@@ -60,7 +60,7 @@ export default function ScheduleList({ schedules, selectedId, onSelect, onDelete
       await onCreate(form);
       setOpen(false);
     } catch (e) {
-      setFormError(e instanceof Error ? e.message : 'Failed to create schedule');
+      setFormError(e instanceof Error ? e.message : 'No se pudo crear el horario.');
     } finally {
       setSaving(false);
     }
@@ -68,11 +68,11 @@ export default function ScheduleList({ schedules, selectedId, onSelect, onDelete
 
   const handleDelete = async (e: MouseEvent, id: string) => {
     e.stopPropagation();
-    if (!confirm('Delete this schedule and all its slots?')) return;
+    if (!confirm('¿Eliminar este horario y todas sus franjas?')) return;
     try {
       await onDelete(id);
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Failed to delete schedule');
+      alert(e instanceof Error ? e.message : 'No se pudo eliminar el horario.');
     }
   };
 
@@ -80,7 +80,7 @@ export default function ScheduleList({ schedules, selectedId, onSelect, onDelete
     <div className="flex flex-col h-full">
       {/* header */}
       <div className="flex items-center justify-between px-4 py-3 border-b">
-        <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">Schedules</h2>
+        <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">Horarios</h2>
         <Button size="sm" variant="ghost" onClick={handleOpen} className="h-7 w-7 p-0">
           <Plus className="h-4 w-4" />
         </Button>
@@ -97,7 +97,7 @@ export default function ScheduleList({ schedules, selectedId, onSelect, onDelete
         ) : schedules.length === 0 ? (
           <div className="p-4 text-center text-sm text-muted-foreground">
             <Clock className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-            No schedules yet.
+            Todavía no hay horarios.
           </div>
         ) : (
           <ul className="py-1">
@@ -114,7 +114,7 @@ export default function ScheduleList({ schedules, selectedId, onSelect, onDelete
                   <span className="truncate">{s.name}</span>
                   {!s.is_active && (
                     <Badge variant="outline" className="text-xs text-muted-foreground border-border shrink-0">
-                      inactive
+                      inactivo
                     </Badge>
                   )}
                 </div>
@@ -138,42 +138,42 @@ export default function ScheduleList({ schedules, selectedId, onSelect, onDelete
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Plus className="h-4 w-4 text-orange-500" />
-              New Schedule
+              Nuevo horario
             </DialogTitle>
             <DialogDescription>
-              Create a named daypart (e.g. Breakfast, Happy Hour).
+              Creá una franja con nombre (por ejemplo, Desayuno o Promoción).
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 pt-2">
             <div>
-              <Label htmlFor="sched-name">Name *</Label>
+              <Label htmlFor="sched-name">Nombre *</Label>
               <Input
                 id="sched-name"
                 value={form.name}
                 onChange={handleNameChange}
-                placeholder="e.g. Breakfast"
+                placeholder="Ej. Desayuno"
               />
             </div>
 
             <div>
-              <Label htmlFor="sched-code">Code / Slug *</Label>
+              <Label htmlFor="sched-code">Código / slug *</Label>
               <Input
                 id="sched-code"
                 value={form.code}
                 onChange={(e) => setForm((p) => ({ ...p, code: e.target.value }))}
-                placeholder="e.g. breakfast"
+                placeholder="Ej. desayuno"
               />
-              <p className="text-xs text-muted-foreground mt-1">Lowercase letters, digits and underscores only. Must be unique per location.</p>
+              <p className="text-xs text-muted-foreground mt-1">Usá minúsculas, números y guiones bajos. Debe ser único en el local.</p>
             </div>
 
             <div>
-              <Label htmlFor="sched-desc">Description</Label>
+              <Label htmlFor="sched-desc">Descripción</Label>
               <Input
                 id="sched-desc"
                 value={form.description}
                 onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-                placeholder="Optional description"
+                placeholder="Descripción opcional"
               />
             </div>
 
@@ -186,10 +186,10 @@ export default function ScheduleList({ schedules, selectedId, onSelect, onDelete
 
             <div className="flex gap-3 pt-2">
               <Button variant="outline" onClick={() => setOpen(false)} disabled={saving} className="flex-1">
-                Cancel
+                Cancelar
               </Button>
               <Button onClick={handleCreate} disabled={saving} className="flex-1">
-                {saving ? 'Creating…' : 'Create'}
+                {saving ? 'Creando…' : 'Crear'}
               </Button>
             </div>
           </div>

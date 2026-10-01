@@ -50,7 +50,7 @@ export default function ItemsPicker({
       setItems(allItems);
       setLinked(schedLinks);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load items');
+      setError(e instanceof Error ? e.message : 'No se pudieron cargar los productos.');
     } finally {
       setLoading(false);
     }
@@ -82,7 +82,7 @@ export default function ItemsPicker({
         }
       }
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Failed to update item schedule');
+      alert(e instanceof Error ? e.message : 'No se pudo actualizar el horario del producto.');
     } finally {
       setToggling(null);
     }
@@ -120,7 +120,7 @@ export default function ItemsPicker({
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search items…"
+          placeholder="Buscar productos…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-9"
@@ -129,15 +129,15 @@ export default function ItemsPicker({
 
       {/* count summary */}
       <p className="text-xs text-muted-foreground">
-        {linked.length} of {items.length} items linked to this schedule.
-        {items.length === 0 && ' Items not linked to any schedule are available at all times.'}
+        {linked.length} de {items.length} productos vinculados a este horario.
+        {items.length === 0 && ' Los productos sin horario quedan disponibles todo el tiempo.'}
       </p>
 
       {/* list */}
       {filtered.length === 0 ? (
         <div className="text-center text-sm text-muted-foreground py-8">
           <Utensils className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-          {search ? 'No items match your search.' : 'No items found for this location.'}
+          {search ? 'No hay productos que coincidan con tu búsqueda.' : 'No hay productos en este local.'}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -174,7 +174,7 @@ export default function ItemsPicker({
                   <div className="h-3 w-3 rounded-full border-2 border-orange-500 border-t-transparent animate-spin shrink-0" />
                 )}
                 {isLinked && !isToggling && (
-                  <Badge className="text-xs shrink-0">On</Badge>
+                  <Badge className="text-xs shrink-0">Activo</Badge>
                 )}
               </div>
             );

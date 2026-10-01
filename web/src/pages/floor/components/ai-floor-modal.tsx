@@ -26,7 +26,7 @@ import {
 import { generateFloor, applyFloor } from '@/services/ai-floor';
 
 const PLACEHOLDER =
-  '20 tables total: 8 for two, 8 for four, 4 for six; a bar with 6 stools; an outdoor patio with 4 tables';
+  '20 mesas en total: 8 para dos, 8 para cuatro y 4 para seis; una barra con 6 banquetas y un patio con 4 mesas';
 
 // Mirrors backend/internal/ai/floor.go FloorTable/FloorSection/FloorPlan.
 interface AIFloorTable {
@@ -87,7 +87,7 @@ export default function AIFloorModal({ open, onOpenChange, locationId, onApplied
   const handleGenerate = async () => {
     setError(null);
     if (!description.trim()) {
-      setError('Describe your space first.');
+      setError('Describí primero el espacio del local.');
       return;
     }
     setGenerating(true);
@@ -96,7 +96,7 @@ export default function AIFloorModal({ open, onOpenChange, locationId, onApplied
       const nextPlan = (next as AIFloorPlan) || null;
       setPlan(nextPlan);
       if (!nextPlan?.sections?.length) {
-        setError('No sections were proposed. Try adding more detail to your description.');
+        setError('No se propusieron secciones. Agregá más detalles a la descripción.');
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -127,17 +127,17 @@ export default function AIFloorModal({ open, onOpenChange, locationId, onApplied
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
-            AI floor plan
+            Crear plano con IA
           </DialogTitle>
           <DialogDescription>
-            Describe your space and we&apos;ll draft sections &amp; tables. This only
-            adds sections &amp; tables — your existing layout is kept.
+            Describí el espacio y vamos a proponer sectores y mesas. Solo se
+            agregan elementos nuevos: tu plano actual se conserva.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
           <div>
-            <Label htmlFor="ai-floor-desc">Describe your space</Label>
+            <Label htmlFor="ai-floor-desc">Describí el espacio</Label>
             <Textarea
               id="ai-floor-desc"
               value={description}
@@ -148,7 +148,7 @@ export default function AIFloorModal({ open, onOpenChange, locationId, onApplied
               aria-describedby="ai-floor-hint"
             />
             <p id="ai-floor-hint" className="mt-1 text-xs text-muted-foreground">
-              Mention how many tables, their seat counts, and any areas like a bar or patio.
+              Indicá cuántas mesas hay, cuántas personas admite cada una y si tenés barra, patio u otro sector.
             </p>
           </div>
 
@@ -159,9 +159,8 @@ export default function AIFloorModal({ open, onOpenChange, locationId, onApplied
             >
               <p className="text-sm font-medium text-foreground flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-primary" />
-                Preview — {totals.sectionCount} section{totals.sectionCount === 1 ? '' : 's'},{' '}
-                {totals.tables} table{totals.tables === 1 ? '' : 's'}, {totals.seats} seat
-                {totals.seats === 1 ? '' : 's'}
+                Vista previa — {totals.sectionCount} {totals.sectionCount === 1 ? 'sección' : 'secciones'},{' '}
+                {totals.tables} {totals.tables === 1 ? 'mesa' : 'mesas'}, {totals.seats} {totals.seats === 1 ? 'lugar' : 'lugares'}
               </p>
               <ul className="mt-2 space-y-1">
                 {(plan.sections || []).map((s, i) => {
@@ -172,17 +171,16 @@ export default function AIFloorModal({ open, onOpenChange, locationId, onApplied
                       key={`${s.name || 'section'}-${i}`}
                       className="flex items-center justify-between text-sm text-foreground/80"
                     >
-                      <span className="font-medium">{s.name || `Section ${i + 1}`}</span>
+                      <span className="font-medium">{s.name || `Sección ${i + 1}`}</span>
                       <span className="text-muted-foreground">
-                        {ts.length} table{ts.length === 1 ? '' : 's'} · {seats} seat
-                        {seats === 1 ? '' : 's'}
+                        {ts.length} {ts.length === 1 ? 'mesa' : 'mesas'} · {seats} {seats === 1 ? 'lugar' : 'lugares'}
                       </span>
                     </li>
                   );
                 })}
               </ul>
               <p className="mt-2 text-xs text-muted-foreground">
-                Review the layout above, then apply it. Existing tables stay put.
+                Revisá la propuesta y aplicala cuando estés conforme. Las mesas existentes no se mueven.
               </p>
             </div>
           )}
@@ -197,7 +195,7 @@ export default function AIFloorModal({ open, onOpenChange, locationId, onApplied
 
         <DialogFooter className="gap-2 sm:gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
-            Cancel
+            Cancelar
           </Button>
           {!plan ? (
             <Button
@@ -209,20 +207,20 @@ export default function AIFloorModal({ open, onOpenChange, locationId, onApplied
               ) : (
                 <Sparkles className="h-4 w-4 mr-2" />
               )}
-              Generate
+              Generar propuesta
             </Button>
           ) : (
             <>
               <Button variant="outline" onClick={handleGenerate} disabled={busy}>
                 {generating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                Regenerate
+                Regenerar
               </Button>
               <Button
                 onClick={handleApply}
                 disabled={busy}
               >
                 {applying ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                Apply to floor
+                Aplicar al salón
               </Button>
             </>
           )}

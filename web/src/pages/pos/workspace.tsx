@@ -73,7 +73,6 @@ import type { Course } from './components/course-select';
 import CashTenderModal from './components/cash-tender-modal';
 import { CardTenderModal } from './components/card-tender-modal';
 import { TablePickerDialog } from './components/table-picker-dialog';
-import AdjustmentModal, { type AdjustmentType } from '@/components/order-adjustments/adjustment-modal';
 import TenderModal from './components/tender-modal';
 import SplitBySeat from './components/split-by-seat';
 import ModifierPicker, { useItemHasModifiers, type Modifier } from './components/modifier-picker';
@@ -468,13 +467,6 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
   // ----- modifier picker state --------------------------------------------
   const [modifierPickerItem, setModifierPickerItem] = useState<MenuItem | null>(null); // item being customised
   const { check: checkHasModifiers } = useItemHasModifiers();
-
-  // ----- adjustment modal state -------------------------------------------
-  const [adjustmentModal, setAdjustmentModal] = useState<{ orderId: string; type: string } | null>(null);
-
-  const handleOpenAdjustment = useCallback(({ orderId, type }: { orderId: string; type: string }) => {
-    setAdjustmentModal({ orderId, type });
-  }, []);
 
   // Eat-in entry point. A dine-in order needs a table; if no floor plan has
   // been designed (zero tables for this location) there is nothing to pick, so
@@ -1463,9 +1455,9 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
       <OfflineBanner />
 
       {/* ============================== MAIN ============================== */}
-      <main className="flex-1 flex overflow-hidden">
+      <main className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
         {/* Menu */}
-        <section className="flex-1 flex flex-col min-w-0 bg-card">
+        <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-card">
           <div className="px-4 py-3 border-b border-border">
             <div className="relative">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
@@ -1675,7 +1667,6 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
           onSend={handleSend}
           onCharge={handleOpenCharge}
 			onEditDetails={() => setShowOrderDetails(true)}
-          onAdjust={handleOpenAdjustment}
           onAdjustSuccess={() => {
             // Inline adjustment succeeded — refresh sent orders for the active ticket.
             toast({ title: 'Ajuste aplicado' });
@@ -1818,27 +1809,6 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
           setModifierPickerItem(null);
         }}
       />
-
-      {/* Adjustment modal — Void / Comp / Discount / Refund */}
-      {adjustmentModal && (
-        <AdjustmentModal
-          open={Boolean(adjustmentModal)}
-          onClose={() => setAdjustmentModal(null)}
-          orderId={adjustmentModal.orderId}
-          itemId={null}
-          // handleOpenAdjustment/adjustmentModal match ActiveTicketPanel's
-          // onAdjust contract ({orderId, type: string}) — a dead/back-compat
-          // prop that component never actually calls (see
-          // active-ticket-panel.tsx). Cast to AdjustmentModal's stricter
-          // union since this path is unreachable in practice.
-          type={adjustmentModal.type as AdjustmentType}
-          locationId={activeLocation?.id || ''}
-          onSuccess={() => {
-            setAdjustmentModal(null);
-            toast({ title: 'Ajuste aplicado' });
-          }}
-        />
-      )}
 
       {/* Split Tender modal — pay one ticket across multiple methods */}
       <TenderModal

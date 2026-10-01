@@ -6,6 +6,7 @@
 //   sections, tables, loading, error, refresh()
 //   patchTableLocal(id, changes) — optimistic update of in-memory cache
 //   addTableLocal(row)          — append a freshly created table
+//   addSectionLocal(row)        — append a freshly created section
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '@/lib/api-client';
@@ -104,6 +105,10 @@ export function useTables(locationId: string | undefined, { pollMs = 0 }: { poll
     setTables((prev) => [...prev, row]);
   }, []);
 
+  const addSectionLocal = useCallback((row: FloorSection) => {
+    setSections((prev) => [...prev, row].sort((a, b) => a.sort_order - b.sort_order));
+  }, []);
+
   return {
     sections,
     tables,
@@ -112,6 +117,7 @@ export function useTables(locationId: string | undefined, { pollMs = 0 }: { poll
     refresh: fetchAll,
     patchTableLocal,
     addTableLocal,
+    addSectionLocal,
   };
 }
 

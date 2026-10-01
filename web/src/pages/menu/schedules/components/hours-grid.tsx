@@ -8,13 +8,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { MenuSchedule, MenuScheduleSlot, AddSlotInput } from '../hooks/use-schedules';
 
 const DAYS = [
-  { label: 'Monday',    iso: 1 },
-  { label: 'Tuesday',   iso: 2 },
-  { label: 'Wednesday', iso: 3 },
-  { label: 'Thursday',  iso: 4 },
-  { label: 'Friday',    iso: 5 },
-  { label: 'Saturday',  iso: 6 },
-  { label: 'Sunday',    iso: 7 },
+  { label: 'Lunes',      iso: 1 },
+  { label: 'Martes',     iso: 2 },
+  { label: 'Miércoles',  iso: 3 },
+  { label: 'Jueves',     iso: 4 },
+  { label: 'Viernes',    iso: 5 },
+  { label: 'Sábado',     iso: 6 },
+  { label: 'Domingo',    iso: 7 },
 ];
 
 interface SlotRowProps {
@@ -30,7 +30,7 @@ function SlotRow({ slot, onDelete, deleting }: SlotRowProps) {
       <span className="text-muted-foreground text-xs">–</span>
       <span className="text-sm tabular-nums text-foreground w-20">{slot.end_time}</span>
       {slot.end_time < slot.start_time && (
-        <span className="text-xs text-amber-600 italic">+1 day</span>
+        <span className="text-xs text-amber-600 italic">+1 día</span>
       )}
       <Button
         size="sm"
@@ -58,14 +58,14 @@ function AddSlotInline({ dayIso, onAdd }: AddSlotInlineProps) {
   const [err, setErr] = useState('');
 
   const handleSave = async () => {
-    if (!start || !end) { setErr('Both times are required.'); return; }
+    if (!start || !end) { setErr('Ambos horarios son obligatorios.'); return; }
     setSaving(true);
     setErr('');
     try {
       await onAdd({ dayOfWeek: dayIso, startTime: start, endTime: end });
       setOpen(false);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Failed to add slot');
+      setErr(e instanceof Error ? e.message : 'No se pudo agregar la franja.');
     } finally {
       setSaving(false);
     }
@@ -80,7 +80,7 @@ function AddSlotInline({ dayIso, onAdd }: AddSlotInlineProps) {
         className="h-6 text-xs text-muted-foreground hover:text-orange-600 px-1 gap-1"
       >
         <Plus className="h-3 w-3" />
-        Add slot
+        Agregar franja
       </Button>
     );
   }
@@ -89,7 +89,7 @@ function AddSlotInline({ dayIso, onAdd }: AddSlotInlineProps) {
     <div className="flex flex-col gap-1 mt-1 p-2 bg-muted rounded border border-border">
       <div className="flex items-center gap-2 flex-wrap">
         <div className="flex items-center gap-1">
-          <label className="text-xs text-muted-foreground w-10">From</label>
+          <label className="text-xs text-muted-foreground w-10">Desde</label>
           <input
             type="time"
             value={start}
@@ -98,7 +98,7 @@ function AddSlotInline({ dayIso, onAdd }: AddSlotInlineProps) {
           />
         </div>
         <div className="flex items-center gap-1">
-          <label className="text-xs text-muted-foreground w-10">To</label>
+          <label className="text-xs text-muted-foreground w-10">Hasta</label>
           <input
             type="time"
             value={end}
@@ -113,7 +113,7 @@ function AddSlotInline({ dayIso, onAdd }: AddSlotInlineProps) {
             disabled={saving}
             className="h-6 text-xs px-2"
           >
-            {saving ? '…' : 'Save'}
+            {saving ? '…' : 'Guardar'}
           </Button>
           <Button
             size="sm"
@@ -121,7 +121,7 @@ function AddSlotInline({ dayIso, onAdd }: AddSlotInlineProps) {
             onClick={() => { setOpen(false); setErr(''); }}
             className="h-6 text-xs px-2"
           >
-            Cancel
+            Cancelar
           </Button>
         </div>
       </div>
@@ -155,7 +155,7 @@ export default function HoursGrid({ schedule, fetchSlots, addSlot, deleteSlot }:
       const data = await fetchSlots(schedule.id);
       setSlots(data);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load slots');
+      setError(e instanceof Error ? e.message : 'No se pudieron cargar las franjas.');
     } finally {
       setLoading(false);
     }
@@ -175,7 +175,7 @@ export default function HoursGrid({ schedule, fetchSlots, addSlot, deleteSlot }:
       await deleteSlot(id);
       setSlots((prev) => prev.filter((s) => s.id !== id));
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Failed to delete slot');
+      alert(e instanceof Error ? e.message : 'No se pudo eliminar la franja.');
     } finally {
       setDeleting(null);
     }
@@ -213,8 +213,8 @@ export default function HoursGrid({ schedule, fetchSlots, addSlot, deleteSlot }:
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b">
-            <th className="text-left py-2 pr-6 font-medium text-muted-foreground w-32">Day</th>
-            <th className="text-left py-2 font-medium text-muted-foreground">Time Windows</th>
+            <th className="text-left py-2 pr-6 font-medium text-muted-foreground w-32">Día</th>
+            <th className="text-left py-2 font-medium text-muted-foreground">Franjas horarias</th>
           </tr>
         </thead>
         <tbody>
@@ -223,7 +223,7 @@ export default function HoursGrid({ schedule, fetchSlots, addSlot, deleteSlot }:
               <td className="py-3 pr-6 font-medium text-foreground">{d.label}</td>
               <td className="py-3">
                 {slotsByDay[d.iso].length === 0 && (
-                  <span className="text-xs text-muted-foreground italic">No windows</span>
+                  <span className="text-xs text-muted-foreground italic">Sin franjas</span>
                 )}
                 {slotsByDay[d.iso].map((slot) => (
                   <SlotRow key={slot.id} slot={slot} onDelete={handleDelete} deleting={deleting} />

@@ -64,7 +64,7 @@ function PriceRow({ item, priceRow, onSave, onDelete }: PriceRowProps) {
             setTimeout(() => setStatus('idle'), 1200);
           } catch (e) {
             setStatus('error');
-            setErrorMsg(e instanceof Error ? e.message : 'Save failed');
+            setErrorMsg(e instanceof Error ? e.message : 'No se pudo guardar.');
           }
         }, DEBOUNCE_MS);
       }
@@ -85,7 +85,7 @@ function PriceRow({ item, priceRow, onSave, onDelete }: PriceRowProps) {
         setTimeout(() => setStatus('idle'), 1200);
       } catch (e) {
         setStatus('error');
-        setErrorMsg(e instanceof Error ? e.message : 'Save failed');
+        setErrorMsg(e instanceof Error ? e.message : 'No se pudo guardar.');
       }
     }, DEBOUNCE_MS);
   }, [item.id, priceRow, onSave, onDelete]);
@@ -185,7 +185,7 @@ export default function HappyHourPrices({
       setItems(allItems);
       setPriceRows(existingPrices);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load data');
+      setError(e instanceof Error ? e.message : 'No se pudieron cargar los datos.');
     } finally {
       setLoading(false);
     }
@@ -243,7 +243,7 @@ export default function HappyHourPrices({
     return (
       <div className="text-center text-sm text-muted-foreground py-12">
         <Utensils className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-        No items found for this location.
+        No hay productos en este local.
       </div>
     );
   }
@@ -251,22 +251,22 @@ export default function HappyHourPrices({
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
-        Enter an override price for items during this schedule window. Leave blank to use the
-        regular price. Changes are saved automatically after 500 ms.
+        Ingresá un precio promocional para los productos de este horario. Dejalo vacío para usar
+        el precio habitual. Los cambios se guardan automáticamente después de 500 ms.
       </p>
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Item</TableHead>
-            <TableHead>Regular Price</TableHead>
+            <TableHead>Producto</TableHead>
+            <TableHead>Precio habitual</TableHead>
             <TableHead>
               <span className="flex items-center gap-1">
                 <DollarSign className="h-3.5 w-3.5 text-orange-500" />
-                Happy-Hour Price
+                Precio promocional
               </span>
             </TableHead>
             <TableHead className="w-8" />
-            <TableHead>Discount</TableHead>
+            <TableHead>Descuento</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

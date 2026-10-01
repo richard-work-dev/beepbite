@@ -98,7 +98,7 @@ export function useSchedules(locationId: string | undefined) {
         `/data/menu_schedules?eq=location_id,${locationId}&order=created_at.asc`,
       );
       if (!mounted.current) return;
-      if (res.error) throw new Error(res.error.message || 'Failed to load schedules');
+      if (res.error) throw new Error(res.error.message || 'No se pudieron cargar los horarios.');
       setSchedules(Array.isArray(res.data) ? res.data : []);
       setError(null);
     } catch (e) {
@@ -153,7 +153,7 @@ export function useSchedules(locationId: string | undefined) {
         end_time: endTime,
       },
     });
-    if (res.error) throw new Error(res.error.message || 'Failed to add slot');
+    if (res.error) throw new Error(res.error.message || 'No se pudo agregar la franja.');
     return res.data;
   }, []);
 
@@ -169,7 +169,7 @@ export function useSchedules(locationId: string | undefined) {
       'GET',
       `/data/item_menu_schedules?eq=menu_schedule_id,${scheduleId}`,
     );
-    if (res.error) throw new Error(res.error.message || 'Failed to load item schedules');
+    if (res.error) throw new Error(res.error.message || 'No se pudieron cargar los horarios de productos.');
     return Array.isArray(res.data) ? res.data : [];
   }, []);
 

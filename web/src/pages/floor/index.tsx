@@ -89,7 +89,7 @@ export default function FloorLive() {
       const { data, error: err } = await api.request<{ id?: string }>(
         'POST',
         `/tables/${table.id}/open-session`,
-        { body: { party_size: 1 } }
+        { body: { location_id: locationId, party_size: 1 } }
       );
       if (err) throw new Error(err.message || 'No se pudo abrir la mesa');
       // Optimistically mark occupied and stash the new session id.

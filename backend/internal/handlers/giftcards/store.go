@@ -94,6 +94,7 @@ type GiftCardTransaction struct {
 // IssueResult is what POST /gift-cards/issue returns to the caller.
 type IssueResult struct {
 	ID         string `json:"id"`
+	Code       string `json:"code"`
 	MaskedCode string `json:"masked_code"`
 }
 
@@ -239,7 +240,7 @@ VALUES ($1, 'issue', $2, $2, $3, $4)`,
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
-	return &IssueResult{ID: cardID, MaskedCode: maskCode(code)}, nil
+	return &IssueResult{ID: cardID, Code: code, MaskedCode: maskCode(code)}, nil
 }
 
 // TxnParams carries the shared fields for redeem / reload / refund.

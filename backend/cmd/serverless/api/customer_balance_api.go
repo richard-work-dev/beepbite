@@ -192,7 +192,9 @@ func (a *application) issueGiftCard(ctx context.Context, userID, orgID, body str
 		_ = a.deleteStoredRow(ctx, orgID, "gift_cards", displayString(card["id"]))
 		return dataAccessError(err)
 	}
-	return mustJSONResponse(201, map[string]any{"id": card["id"], "masked_code": maskGiftCardCode(code)})
+	return mustJSONResponse(201, map[string]any{
+		"id": card["id"], "code": code, "masked_code": maskGiftCardCode(code),
+	})
 }
 
 func (a *application) mutateGiftCard(ctx context.Context, orgID, transactionType, body string) events.APIGatewayV2HTTPResponse {

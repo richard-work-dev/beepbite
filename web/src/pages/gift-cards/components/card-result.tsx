@@ -6,6 +6,7 @@ import { Copy, Check, Printer } from 'lucide-react';
 
 export interface IssueResult {
   id: string;
+  code?: string;
   masked_code: string;
 }
 
@@ -19,16 +20,19 @@ interface CardResultProps {
  */
 export function CardResult({ result, onDismiss }: CardResultProps) {
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState(false);
 
   function handleCopy() {
     // Only confirm "copied" once the write actually succeeds — a failed
     // clipboard write (e.g. permission denied) previously left the
     // rejection unhandled and never confirmed either way.
-    navigator.clipboard.writeText(result.masked_code).then(() => {
+    navigator.clipboard.writeText(result.code || result.masked_code).then(() => {
       setCopied(true);
+      setCopyError(false);
       setTimeout(() => setCopied(false), 2000);
     }).catch((err: unknown) => {
       console.error('Failed to copy gift card code:', err);
+      setCopyError(true);
     });
   }
 
@@ -40,25 +44,26 @@ export function CardResult({ result, onDismiss }: CardResultProps) {
     <Card className="border-green-200 bg-green-50">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-green-800 text-base">Gift Card Issued</CardTitle>
+          <CardTitle className="text-green-800 text-base">Tarjeta emitida</CardTitle>
           <Badge variant="outline" className="border-green-400 text-green-700">
-            Active
+            Activa
           </Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
-          <p className="text-xs text-muted-foreground mb-1">Card Code</p>
+          <p className="text-xs text-muted-foreground mb-1">Código canjeable</p>
           <div className="flex items-center gap-2">
             <span className="font-mono text-xl font-bold tracking-widest text-green-900">
-              {result.masked_code}
+              {result.code || result.masked_code}
             </span>
             <Button
               type="button"
               variant="ghost"
               size="icon"
               onClick={handleCopy}
-              title="Copy code"
+              title="Copiar código"
+              aria-label="Copiar código"
             >
               {copied ? (
                 <Check className="h-4 w-4 text-green-600" />
@@ -69,17 +74,19 @@ export function CardResult({ result, onDismiss }: CardResultProps) {
           </div>
         </div>
 
+        {copyError && <p role="alert" className="text-sm text-destructive">No se pudo copiar el código.</p>}
+        <p className="text-xs text-muted-foreground">Guardá o entregá este código: el código completo solo se muestra al emitir la tarjeta.</p>
         <p className="text-xs text-muted-foreground">
-          Card ID: <span className="font-mono">{result.id}</span>
+          ID de tarjeta: <span className="font-mono">{result.id}</span>
         </p>
 
         <div className="flex gap-2 pt-1">
           <Button type="button" variant="outline" size="sm" onClick={handlePrint}>
             <Printer className="h-4 w-4 mr-1" />
-            Print
+            Imprimir
           </Button>
           <Button type="button" size="sm" onClick={onDismiss}>
-            Issue Another
+            Emitir otra
           </Button>
         </div>
       </CardContent>

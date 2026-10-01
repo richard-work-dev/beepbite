@@ -488,7 +488,7 @@ func (a *application) getCashOutReport(ctx context.Context, orgID, sessionID str
 	isBalanced := false
 	if counted != nil {
 		variance = counted.(int64) - expected
-		isBalanced = variance.(int64) >= 0
+		isBalanced = variance.(int64) == 0
 	}
 	var staff any
 	shifts, err := a.queryDataRows(ctx, orgID, "pos_shifts")

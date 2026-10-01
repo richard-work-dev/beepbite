@@ -50,6 +50,15 @@ const STATUS_STYLES: Record<string, string> = {
   no_show:   'bg-destructive/10 text-destructive border-destructive/30',
 };
 
+const STATUS_LABELS: Record<ReservationStatus, string> = {
+  pending: 'Pendiente',
+  confirmed: 'Confirmada',
+  seated: 'En mesa',
+  completed: 'Finalizada',
+  cancelled: 'Cancelada',
+  no_show: 'No se presentó',
+};
+
 // A confirmed/pending reservation whose time has passed is a no-show risk —
 // reversible (they may still walk in), so it gets the warning signal, never
 // the destructive one.
@@ -63,13 +72,17 @@ interface ReservationCardProps {
 export default function ReservationCard({ reservation, onRefresh }: ReservationCardProps) {
   const [busy, setBusy] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [error, setError] = useState('');
 
   const act = async (path: string) => {
     setBusy(true);
+    setError('');
     try {
       const { error } = await api.request('POST', `/reservations/${reservation.id}/${path}`, { body: {} });
       if (error) throw new Error(error.message);
       if (onRefresh) onRefresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo actualizar la reserva.');
     } finally {
       setBusy(false);
     }
@@ -102,7 +115,7 @@ export default function ReservationCard({ reservation, onRefresh }: ReservationC
               </span>
               <span className="flex items-center gap-1">
                 <Users className="h-3.5 w-3.5" />
-                <span className="tabular-nums">{reservation.party_size}</span> guests
+                <span className="tabular-nums">{reservation.party_size}</span> personas
               </span>
               {reservation.duration_minutes && (
                 <span className="tabular-nums">{reservation.duration_minutes} min</span>
@@ -111,12 +124,12 @@ export default function ReservationCard({ reservation, onRefresh }: ReservationC
           </div>
           <div className="flex flex-col items-end gap-1">
             <Badge className={STATUS_STYLES[status] || 'bg-muted text-muted-foreground border-transparent'}>
-              {status.replace('_', ' ')}
+              {STATUS_LABELS[status] || status}
             </Badge>
             {isRunningLate && (
               <Badge className="bg-warning/15 text-warning border-warning/30">
                 <AlertTriangle className="h-3 w-3" />
-                Running late
+                Llegada demorada
               </Badge>
             )}
           </div>
@@ -145,35 +158,36 @@ export default function ReservationCard({ reservation, onRefresh }: ReservationC
             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
           >
             {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-            {expanded ? 'Less' : 'Details'}
+            {expanded ? 'Menos' : 'Ver detalles'}
           </button>
         )}
         {expanded && (
           <div className="text-sm text-muted-foreground space-y-1 bg-muted rounded-md p-2">
             {reservation.special_requests && (
-              <p><span className="font-medium">Requests:</span> {reservation.special_requests}</p>
+              <p><span className="font-medium">Notas:</span> {reservation.special_requests}</p>
             )}
             {reservation.table_id && (
-              <p><span className="font-medium">Table ID:</span> {reservation.table_id}</p>
+              <p><span className="font-medium">Mesa:</span> {reservation.table_id}</p>
             )}
           </div>
         )}
 
         {/* Actions */}
+        {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
         <div className="flex flex-wrap gap-2 pt-1">
           {canConfirm && (
             <Button size="sm" variant="outline" disabled={busy} onClick={() => act('confirm')}>
-              Confirm
+              Confirmar
             </Button>
           )}
           {canSeat && (
             <Button size="sm" variant="success" disabled={busy} onClick={() => act('seat')}>
-              Seat
+              Sentar
             </Button>
           )}
           {canCancel && (
             <Button size="sm" variant="destructive" disabled={busy} onClick={() => act('cancel')}>
-              Cancel
+              Cancelar
             </Button>
           )}
         </div>

@@ -75,7 +75,7 @@ export function DenominationGrid({ counts = {}, onChange, readOnly = false }: De
         })}
       </div>
       <div className="flex justify-between items-center rounded-md bg-muted px-3 py-2">
-        <span className="text-sm font-medium">Total counted</span>
+        <span className="text-sm font-medium">Total contado</span>
         <span className="text-sm font-semibold">{format(totalCents)}</span>
       </div>
     </div>

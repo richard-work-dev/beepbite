@@ -55,7 +55,7 @@ export default function WaitlistPage() {
       if (apiErr) throw new Error(apiErr.message);
       setEntries(Array.isArray(data) ? data : []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load waitlist');
+      setError(e instanceof Error ? e.message : 'No se pudo cargar la lista de espera.');
     } finally {
       setLoading(false);
     }
@@ -75,8 +75,8 @@ export default function WaitlistPage() {
   const handleAddSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setAddError('');
-    if (!addForm.customer_name.trim()) { setAddError('Name required'); return; }
-    if (Number(addForm.party_size) < 1) { setAddError('Party size must be at least 1'); return; }
+    if (!addForm.customer_name.trim()) { setAddError('Ingresá el nombre.'); return; }
+    if (Number(addForm.party_size) < 1) { setAddError('La cantidad de personas debe ser al menos 1.'); return; }
 
     setAddBusy(true);
     try {
@@ -96,7 +96,7 @@ export default function WaitlistPage() {
       setShowAdd(false);
       void load();
     } catch (err) {
-      setAddError(err instanceof Error ? err.message : 'Failed to add to waitlist');
+      setAddError(err instanceof Error ? err.message : 'No se pudo agregar a la lista de espera.');
     } finally {
       setAddBusy(false);
     }
@@ -106,7 +106,7 @@ export default function WaitlistPage() {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-3">
         <AlertCircle className="h-10 w-10 text-muted-foreground" />
-        <p className="text-muted-foreground">Select a location to view the waitlist.</p>
+        <p className="text-muted-foreground">Seleccioná un local para ver la lista de espera.</p>
       </div>
     );
   }
@@ -115,17 +115,17 @@ export default function WaitlistPage() {
     <PageContainer>
       <PageHeader
         icon={ListOrdered}
-        title="Waitlist"
-        description={entries.length > 0 ? `${entries.length} waiting` : undefined}
+        title="Lista de espera"
+        description={entries.length > 0 ? `${entries.length} personas esperando` : undefined}
         actions={
           <>
             <Button variant="outline" size="sm" onClick={load} disabled={loading}>
               <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
+              Actualizar
             </Button>
             <Button size="sm" onClick={() => setShowAdd((v) => !v)}>
               <Plus className="h-4 w-4 mr-2" />
-              Add Guest
+              Agregar persona
             </Button>
           </>
         }
@@ -135,30 +135,30 @@ export default function WaitlistPage() {
       {showAdd && (
         <Card>
           <CardContent className="p-4">
-            <h2 className="font-semibold text-foreground mb-3">Add to Waitlist</h2>
+            <h2 className="font-semibold text-foreground mb-3">Agregar a la lista</h2>
             <form onSubmit={handleAddSubmit} className="space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label htmlFor="wl-name">Name *</Label>
+                  <Label htmlFor="wl-name">Nombre *</Label>
                   <Input
                     id="wl-name"
                     value={addForm.customer_name}
                     onChange={handleAddChange('customer_name')}
-                    placeholder="Guest name"
+                    placeholder="Nombre y apellido"
                     required
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="wl-phone">Phone</Label>
+                  <Label htmlFor="wl-phone">Teléfono</Label>
                   <Input
                     id="wl-phone"
                     value={addForm.customer_phone}
                     onChange={handleAddChange('customer_phone')}
-                    placeholder="+1 555 000 0000"
+                    placeholder="+54 9 11 5555 0000"
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="wl-party">Party Size *</Label>
+                  <Label htmlFor="wl-party">Personas *</Label>
                   <Input
                     id="wl-party"
                     type="number"
@@ -169,34 +169,34 @@ export default function WaitlistPage() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="wl-wait">Quoted Wait (min)</Label>
+                  <Label htmlFor="wl-wait">Espera estimada (min)</Label>
                   <Input
                     id="wl-wait"
                     type="number"
                     min={0}
                     value={addForm.quoted_wait_minutes}
                     onChange={handleAddChange('quoted_wait_minutes')}
-                    placeholder="e.g. 20"
+                    placeholder="Ej.: 20"
                   />
                 </div>
               </div>
               <div className="space-y-1">
-                <Label htmlFor="wl-notes">Notes</Label>
+                <Label htmlFor="wl-notes">Notas</Label>
                 <Input
                   id="wl-notes"
                   value={addForm.notes}
                   onChange={handleAddChange('notes')}
-                  placeholder="High chair needed, etc."
+                  placeholder="Silla para bebé, preferencia de mesa…"
                 />
               </div>
               {addError && <p className="text-sm text-destructive">{addError}</p>}
               <div className="flex gap-2 justify-end">
                 <Button type="button" variant="outline" onClick={() => setShowAdd(false)} disabled={addBusy}>
-                  Cancel
+                  Cancelar
                 </Button>
                 <Button type="submit" disabled={addBusy}>
                   {addBusy ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-                  Add to Waitlist
+                  Agregar
                 </Button>
               </div>
             </form>
@@ -217,7 +217,7 @@ export default function WaitlistPage() {
         <Card>
           <CardContent className="p-10 text-center text-muted-foreground">
             <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-            Loading waitlist…
+            Cargando lista de espera…
           </CardContent>
         </Card>
       )}
@@ -227,7 +227,7 @@ export default function WaitlistPage() {
         <Card>
           <CardContent className="p-10 text-center">
             <ListOrdered className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-            <p className="text-muted-foreground text-sm">Waitlist is empty.</p>
+            <p className="text-muted-foreground text-sm">La lista está vacía.</p>
           </CardContent>
         </Card>
       )}
@@ -242,7 +242,7 @@ export default function WaitlistPage() {
       )}
 
       <p className="text-xs text-muted-foreground text-right">
-        Auto-refreshes every {POLL_MS / 1000}s
+        Se actualiza cada {POLL_MS / 1000} s
       </p>
     </PageContainer>
   );

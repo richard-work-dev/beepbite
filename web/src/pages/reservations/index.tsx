@@ -1,9 +1,8 @@
-// /reservations — calendar/list view of reservations by date.
+// /reservations — list of reservations for the selected date.
 //
 // - Date picker to navigate days.
-// - Optional section filter.
 // - Reservation cards with inline confirm / seat / cancel actions.
-// - "New Reservation" button opens a create form.
+// - "Nueva reserva" opens a compact create form.
 
 import { useState, useEffect, useCallback } from 'react';
 import { CalendarDays, Plus, RefreshCw, AlertCircle } from 'lucide-react';
@@ -43,7 +42,7 @@ export default function ReservationsPage() {
       if (apiErr) throw new Error(apiErr.message);
       setReservations(Array.isArray(data) ? data : []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load reservations');
+      setError(e instanceof Error ? e.message : 'No se pudieron cargar las reservas.');
     } finally {
       setLoading(false);
     }
@@ -56,7 +55,7 @@ export default function ReservationsPage() {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-3">
         <AlertCircle className="h-10 w-10 text-muted-foreground" />
-        <p className="text-muted-foreground">Select a location to view reservations.</p>
+        <p className="text-muted-foreground">Seleccioná un local para ver las reservas.</p>
       </div>
     );
   }
@@ -72,16 +71,17 @@ export default function ReservationsPage() {
     <PageContainer>
       <PageHeader
         icon={CalendarDays}
-        title="Reservations"
+        title="Reservas"
+        description="Organizá las reservas del día."
         actions={
           <>
             <Button variant="outline" size="sm" onClick={load} disabled={loading}>
               <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
+              Actualizar
             </Button>
             <Button size="sm" onClick={() => setShowForm(true)}>
               <Plus className="h-4 w-4 mr-2" />
-              New Reservation
+              Nueva reserva
             </Button>
           </>
         }
@@ -89,7 +89,7 @@ export default function ReservationsPage() {
 
       {/* Date picker */}
       <div className="flex items-center gap-3 max-w-xs">
-        <Label htmlFor="res-date">Date</Label>
+        <Label htmlFor="res-date">Fecha</Label>
         <Input
           id="res-date"
           type="date"
@@ -110,7 +110,7 @@ export default function ReservationsPage() {
       {/* Loading */}
       {loading && reservations.length === 0 && (
         <Card>
-          <CardContent className="p-10 text-center text-muted-foreground">Loading…</CardContent>
+          <CardContent className="p-10 text-center text-muted-foreground">Cargando reservas…</CardContent>
         </Card>
       )}
 
@@ -119,7 +119,7 @@ export default function ReservationsPage() {
         <Card>
           <CardContent className="p-10 text-center">
             <CalendarDays className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-            <p className="text-muted-foreground text-sm">No reservations for this date.</p>
+            <p className="text-muted-foreground text-sm">No hay reservas para esta fecha.</p>
           </CardContent>
         </Card>
       )}
@@ -129,10 +129,10 @@ export default function ReservationsPage() {
         <div className="space-y-6">
           {(
             [
-              { label: 'Pending', key: 'pending', color: 'text-warning' },
-              { label: 'Confirmed', key: 'confirmed', color: 'text-primary' },
-              { label: 'Seated', key: 'seated', color: 'text-success' },
-              { label: 'Past / Cancelled', key: 'other', color: 'text-muted-foreground' },
+              { label: 'Pendientes', key: 'pending', color: 'text-warning' },
+              { label: 'Confirmadas', key: 'confirmed', color: 'text-primary' },
+              { label: 'En mesa', key: 'seated', color: 'text-success' },
+              { label: 'Finalizadas o canceladas', key: 'other', color: 'text-muted-foreground' },
             ] as { label: string; key: 'pending' | 'confirmed' | 'seated' | 'other'; color: string }[]
           ).map(({ label, key, color }) =>
             grouped[key].length > 0 ? (

@@ -30,12 +30,18 @@ func matchDriverRoute(method, path string) (driverRoute, bool) {
 		return driverRoute{name: "list-drivers"}, true
 	case len(p) == 2 && p[0] == "drivers" && method == "DELETE":
 		return driverRoute{name: "remove-driver", id: p[1]}, true
+	case len(p) == 3 && p[0] == "orders" && p[2] == "driver-assignment" && method == "POST":
+		return driverRoute{name: "assign-delivery", id: p[1]}, true
+	case len(p) == 3 && p[0] == "orders" && p[2] == "driver-assignment" && method == "GET":
+		return driverRoute{name: "get-delivery-assignment", id: p[1]}, true
 	case len(p) == 2 && p[0] == "driver" && p[1] == "assignments" && method == "GET":
 		return driverRoute{name: "assignments"}, true
 	case len(p) == 4 && p[0] == "driver" && p[1] == "assignments" && method == "POST":
 		return driverRoute{name: "transition", id: p[2], action: p[3]}, true
 	case len(p) == 3 && p[0] == "driver" && p[1] == "shifts" && method == "POST":
 		return driverRoute{name: "shift", action: p[2]}, true
+	case len(p) == 3 && p[0] == "driver" && p[1] == "shifts" && p[2] == "current" && method == "GET":
+		return driverRoute{name: "shift-status"}, true
 	case len(p) == 2 && p[0] == "driver" && p[1] == "pings" && method == "POST":
 		return driverRoute{name: "ping"}, true
 	default:
@@ -66,16 +72,169 @@ func (a *application) handleDriverAPI(ctx context.Context, request events.APIGat
 		response = a.listActiveDrivers(ctx, request, claims.UserID)
 	case "remove-driver":
 		response = a.removeActiveDriver(ctx, request, claims.UserID, route.id)
+	case "assign-delivery":
+		response = a.assignDeliveryOrder(ctx, request, claims.UserID, route.id, request.Body)
+	case "get-delivery-assignment":
+		response = a.getDeliveryAssignment(ctx, request, claims.UserID, route.id)
 	case "assignments":
 		response = a.listDriverAssignments(ctx, claims.UserID)
 	case "transition":
 		response = a.transitionDriverAssignment(ctx, claims.UserID, route.id, route.action, request.Body)
 	case "shift":
 		response = a.changeDriverShift(ctx, claims.UserID, route.action)
+	case "shift-status":
+		response = a.getDriverShiftStatus(ctx, claims.UserID)
 	case "ping":
 		response = a.createDriverPing(ctx, claims.UserID, request.Body)
 	}
 	return response, true, nil
+}
+
+func (a *application) getDeliveryAssignment(ctx context.Context, request events.APIGatewayV2HTTPRequest, userID, orderID string) events.APIGatewayV2HTTPResponse {
+	orgID, response, ok := a.managerOrganization(ctx, request, userID)
+	if !ok {
+		return response
+	}
+	if _, err := a.dataRowByID(ctx, orgID, "orders", orderID); err != nil {
+		return errorResponse(404, "delivery order not found in this organization")
+	}
+	assignments, err := a.queryDataRows(ctx, orgID, "driver_assignments")
+	if err != nil {
+		return dataAccessError(err)
+	}
+	var active map[string]any
+	for _, assignment := range assignments {
+		status := displayString(assignment["status"])
+		if displayString(assignment["order_id"]) == orderID && (status == "offered" || status == "accepted" || status == "picked_up") {
+			active = assignment
+			break
+		}
+	}
+	if active == nil {
+		return events.APIGatewayV2HTTPResponse{StatusCode: 204}
+	}
+	members, err := a.queryJSONRows(ctx, "ORG#"+orgID, "MEMBER#")
+	if err != nil {
+		return dataAccessError(err)
+	}
+	for _, member := range members {
+		if displayString(member["id"]) != displayString(active["driver_member_id"]) {
+			continue
+		}
+		profiles, profileErr := a.profileRows(ctx, displayString(member["profile_id"]))
+		if profileErr != nil {
+			return dataAccessError(profileErr)
+		}
+		if len(profiles) > 0 {
+			active["driver_name"] = valueOr(profiles[0], "full_name", "")
+			active["driver_email"] = valueOr(profiles[0], "email", "")
+		}
+		break
+	}
+	return mustJSONResponse(200, active)
+}
+
+func (a *application) assignDeliveryOrder(ctx context.Context, request events.APIGatewayV2HTTPRequest, userID, orderID, body string) events.APIGatewayV2HTTPResponse {
+	orgID, response, ok := a.managerOrganization(ctx, request, userID)
+	if !ok {
+		return response
+	}
+	var input map[string]any
+	if decodeDataObject(body, &input) != nil {
+		return errorResponse(400, "invalid request body")
+	}
+	driverMemberID := displayString(input["driver_member_id"])
+	if driverMemberID == "" {
+		return errorResponse(400, "driver_member_id required")
+	}
+	order, err := a.dataRowByID(ctx, orgID, "orders", orderID)
+	if err != nil {
+		return errorResponse(404, "delivery order not found in this organization")
+	}
+	if displayString(order["fulfillment_type"]) != "delivery" && displayString(order["order_type"]) != "delivery" {
+		return errorResponse(422, "order is not a delivery order")
+	}
+	status := displayString(order["status"])
+	if status == "cancelled" || status == "delivered" || status == "completed" {
+		return errorResponse(409, "order is already complete or canceled")
+	}
+	members, err := a.queryJSONRows(ctx, "ORG#"+orgID, "MEMBER#")
+	if err != nil {
+		return dataAccessError(err)
+	}
+	validDriver := false
+	for _, member := range members {
+		if displayString(member["id"]) == driverMemberID && displayString(member["role"]) == "driver" {
+			validDriver = true
+			break
+		}
+	}
+	if !validDriver {
+		return errorResponse(404, "driver not found in this organization")
+	}
+	assignments, err := a.queryDataRows(ctx, orgID, "driver_assignments")
+	if err != nil {
+		return dataAccessError(err)
+	}
+	offeredIDs := make([]string, 0)
+	for _, assignment := range assignments {
+		if displayString(assignment["order_id"]) != orderID {
+			continue
+		}
+		assignmentStatus := displayString(assignment["status"])
+		if assignmentStatus == "accepted" || assignmentStatus == "picked_up" {
+			return errorResponse(409, "delivery is already accepted or in progress")
+		}
+		if assignmentStatus != "offered" {
+			continue
+		}
+		if displayString(assignment["driver_member_id"]) == driverMemberID {
+			return mustJSONResponse(200, assignment)
+		}
+		offeredIDs = append(offeredIDs, displayString(assignment["id"]))
+	}
+	for _, assignmentID := range offeredIDs {
+		assignment, getErr := a.dataRowByID(ctx, orgID, "driver_assignments", assignmentID)
+		if getErr != nil {
+			return dataAccessError(getErr)
+		}
+		assignment["status"] = "canceled"
+		assignment["canceled_reason"] = "Reassigned by manager"
+		assignment["updated_at"] = time.Now().UTC().Format(time.RFC3339Nano)
+		if err := a.putDataRow(ctx, orgID, "driver_assignments", assignment, false); err != nil {
+			return dataAccessError(err)
+		}
+	}
+	assignment, err := a.createStoredRow(ctx, orgID, "driver_assignments", map[string]any{
+		"order_id": orderID, "driver_member_id": driverMemberID, "status": "offered",
+		"offered_at": time.Now().UTC().Format(time.RFC3339Nano),
+	})
+	if err != nil {
+		return dataAccessError(err)
+	}
+	return mustJSONResponse(201, assignment)
+}
+
+func (a *application) getDriverShiftStatus(ctx context.Context, userID string) events.APIGatewayV2HTTPResponse {
+	memberships, err := a.driverMemberships(ctx, userID)
+	if err != nil {
+		return dataAccessError(err)
+	}
+	if len(memberships) == 0 {
+		return errorResponse(404, "driver member not found")
+	}
+	orgID, memberID := displayString(memberships[0]["organization_id"]), displayString(memberships[0]["id"])
+	shifts, err := a.queryDataRows(ctx, orgID, "driver_shifts")
+	if err != nil {
+		return dataAccessError(err)
+	}
+	for _, shift := range shifts {
+		status := displayString(shift["status"])
+		if displayString(shift["driver_member_id"]) == memberID && (status == "online" || status == "paused") {
+			return mustJSONResponse(200, shift)
+		}
+	}
+	return mustJSONResponse(200, map[string]string{"status": "offline"})
 }
 
 func (a *application) managerOrganization(ctx context.Context, request events.APIGatewayV2HTTPRequest, userID string) (string, events.APIGatewayV2HTTPResponse, bool) {
@@ -216,7 +375,7 @@ func (a *application) listActiveDrivers(ctx context.Context, request events.APIG
 		profileID := displayString(member["profile_id"])
 		profiles, profileErr := a.profileRows(ctx, profileID)
 		if profileErr == nil && len(profiles) > 0 {
-			drivers = append(drivers, map[string]any{"profile_id": profileID, "email": profiles[0]["email"], "full_name": valueOr(profiles[0], "full_name", ""), "joined_at": valueOr(member, "created_at", nil)})
+			drivers = append(drivers, map[string]any{"member_id": member["id"], "profile_id": profileID, "email": profiles[0]["email"], "full_name": valueOr(profiles[0], "full_name", ""), "joined_at": valueOr(member, "created_at", nil)})
 		}
 	}
 	sort.Slice(drivers, func(i, j int) bool { return displayString(drivers[i]["email"]) < displayString(drivers[j]["email"]) })
@@ -395,6 +554,13 @@ func (a *application) changeDriverShift(ctx context.Context, userID, action stri
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	if action == "online" {
 		if open != nil {
+			if displayString(open["status"]) == "paused" {
+				open["status"], open["updated_at"] = "online", now
+				if err := a.putDataRow(ctx, orgID, "driver_shifts", open, false); err != nil {
+					return dataAccessError(err)
+				}
+				return mustJSONResponse(200, open)
+			}
 			return errorResponse(409, "driver already has an open shift")
 		}
 		shift, createErr := a.createStoredRow(ctx, orgID, "driver_shifts", map[string]any{"driver_member_id": memberID, "started_at": now, "ended_at": nil, "status": "online", "notes": nil})

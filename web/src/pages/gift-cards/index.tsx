@@ -5,7 +5,7 @@ import { LookupCard } from './components/lookup-card';
 import { IssueForm } from './components/issue-form';
 
 /**
- * Gift Cards admin page — mounted at /gift-cards.
+ * Gestión de tarjetas de regalo — ruta /gift-cards.
  *
  * Add to src/routes.jsx:
  *   { path: '/gift-cards', element: <GiftCardsPage /> }
@@ -15,14 +15,14 @@ export default function GiftCardsPage() {
     <PageContainer className="max-w-3xl">
       <PageHeader
         icon={Gift}
-        title="Gift Cards"
-        description="Look up, reload, refund, or issue gift cards."
+        title="Tarjetas de regalo"
+        description="Consultá saldos, recargá, devolvé o emití tarjetas."
       />
 
       <Tabs defaultValue="lookup">
         <TabsList>
-          <TabsTrigger value="lookup">Lookup</TabsTrigger>
-          <TabsTrigger value="issue">Issue</TabsTrigger>
+          <TabsTrigger value="lookup">Consultar</TabsTrigger>
+          <TabsTrigger value="issue">Emitir</TabsTrigger>
         </TabsList>
 
         <TabsContent value="lookup" className="mt-4">

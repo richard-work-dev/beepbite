@@ -23,14 +23,23 @@ import {
   Utensils,
   AlertCircle,
   ChevronRight,
+  Truck,
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { markPaidOnDelivery } from '@/services/payments';
+import { assignDriverToOrder, getDriverAssignmentForOrder, listActiveDrivers, type Driver } from '@/services/driver-invites';
 import { hasCapability } from '@/services/pos';
 import { useMoney } from '@/context/locale-context';
 import type { HomeOrder, HomeOrderDetails, HomeOrderEditFormData } from '../types';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 // ── Status colour helpers (kept in this file so they stay co-located) ───────
 
@@ -145,6 +154,14 @@ interface OrderDetailsViewProps {
   getStatusColor: (status: string) => string;
   getNextStatus: (status: string) => string | undefined;
   getStatusLabel: (status: string) => string;
+  drivers: Driver[];
+  loadingDrivers: boolean;
+  selectedDriverId: string;
+  assignedDriverId: string | null;
+  assignmentError: string | null;
+  assigningDriver: boolean;
+  onDriverChange: (driverMemberId: string) => void;
+  onAssignDriver: () => void;
 }
 
 function OrderDetailsView({
@@ -157,6 +174,14 @@ function OrderDetailsView({
   getStatusColor,
   getNextStatus,
   getStatusLabel,
+  drivers,
+  loadingDrivers,
+  selectedDriverId,
+  assignedDriverId,
+  assignmentError,
+  assigningDriver,
+  onDriverChange,
+  onAssignDriver,
 }: OrderDetailsViewProps) {
   // Line prices arrive as major-unit floats; `scale` is 1 in JPY and 1000 in
   // KWD, so a literal 100 would misplace the decimal point.
@@ -323,6 +348,46 @@ function OrderDetailsView({
                       </span>
                     </InfoRow>
                   )}
+                </div>
+              </section>
+            )}
+
+            {(order.fulfillment_type === 'delivery' || order.order_type === 'delivery') && (
+              <section aria-label="Asignar repartidor">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <Truck className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Repartidor</h3>
+                </div>
+                <div className="rounded-xl border border-border bg-card p-3 space-y-2">
+                  {loadingDrivers ? (
+                    <p className="text-sm text-muted-foreground">Cargando repartidores…</p>
+                  ) : drivers.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No hay repartidores activos para este local.</p>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Select value={selectedDriverId} onValueChange={onDriverChange}>
+                        <SelectTrigger aria-label="Elegir repartidor" className="min-w-0 flex-1">
+                          <SelectValue placeholder="Elegir repartidor" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {drivers.map((driver) => (
+                            <SelectItem key={driver.member_id} value={driver.member_id}>
+                              {driver.full_name || driver.email}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button onClick={onAssignDriver} disabled={assigningDriver || !selectedDriverId || selectedDriverId === assignedDriverId}>
+                        {assigningDriver ? 'Asignando…' : selectedDriverId === assignedDriverId ? 'Asignado' : assignedDriverId ? 'Reasignar' : 'Asignar'}
+                      </Button>
+                    </div>
+                  )}
+                  {assignedDriverId && !assignmentError && (
+                    <p className="text-xs text-success">
+                      Repartidor asignado: {drivers.find((driver) => driver.member_id === assignedDriverId)?.full_name || drivers.find((driver) => driver.member_id === assignedDriverId)?.email || 'confirmado'}.
+                    </p>
+                  )}
+                  {assignmentError && <p role="alert" className="text-sm text-destructive">{assignmentError}</p>}
                 </div>
               </section>
             )}
@@ -746,6 +811,12 @@ const OrdersSection = ({
   const [markPaidError, setMarkPaidError] = useState<string | null>(null);
 
   const canSettle = hasCapability('can_settle');
+  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [loadingDrivers, setLoadingDrivers] = useState(false);
+  const [selectedDriverId, setSelectedDriverId] = useState('');
+  const [assignedDriverId, setAssignedDriverId] = useState<string | null>(null);
+  const [assignmentError, setAssignmentError] = useState<string | null>(null);
+  const [assigningDriver, setAssigningDriver] = useState(false);
 
   const handleMarkPaid = async (orderId: string, method: MarkPaidMethod) => {
     if (!canSettle) {
@@ -777,6 +848,21 @@ const OrdersSection = ({
     setSelectedOrder(order);
     setCurrentView('details');
     setLoadingOrderDetails(true);
+    setDrivers([]);
+    setSelectedDriverId('');
+    setAssignedDriverId(null);
+    setAssignmentError(null);
+    if (order.fulfillment_type === 'delivery' || order.order_type === 'delivery') {
+      setLoadingDrivers(true);
+      void Promise.all([listActiveDrivers(), getDriverAssignmentForOrder(order.id)]).then(([data, assignment]) => {
+        setDrivers(data);
+        const assignedId = assignment?.driver_member_id || null;
+        setAssignedDriverId(assignedId);
+        setSelectedDriverId(assignedId || data[0]?.member_id || '');
+      }).catch((error: unknown) => {
+        setAssignmentError(error instanceof Error ? error.message : 'No se pudieron cargar los repartidores.');
+      }).finally(() => setLoadingDrivers(false));
+    }
     try {
       const { supabase } = await import('@/services/supabase-client');
       const { data: orderDetails, error: orderError } = await supabase
@@ -821,6 +907,20 @@ const OrdersSection = ({
       handleBackToList();
     } finally {
       setLoadingOrderDetails(false);
+    }
+  };
+
+  const handleAssignDriver = async () => {
+    if (!selectedOrder || !selectedDriverId) return;
+    setAssigningDriver(true);
+    setAssignmentError(null);
+    try {
+      await assignDriverToOrder(selectedOrder.id, selectedDriverId);
+      setAssignedDriverId(selectedDriverId);
+    } catch (error) {
+      setAssignmentError(error instanceof Error ? error.message : 'No se pudo asignar el repartidor.');
+    } finally {
+      setAssigningDriver(false);
     }
   };
 
@@ -870,6 +970,16 @@ const OrdersSection = ({
         getStatusColor={getStatusColor}
         getNextStatus={getNextStatus}
         getStatusLabel={getStatusLabel}
+        drivers={drivers}
+        loadingDrivers={loadingDrivers}
+        selectedDriverId={selectedDriverId}
+        assignedDriverId={assignedDriverId}
+        assignmentError={assignmentError}
+        assigningDriver={assigningDriver}
+        onDriverChange={(driverMemberId) => {
+          setSelectedDriverId(driverMemberId);
+        }}
+        onAssignDriver={() => { void handleAssignDriver(); }}
       />
     );
   }

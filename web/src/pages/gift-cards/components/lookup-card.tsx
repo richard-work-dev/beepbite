@@ -44,6 +44,14 @@ const STATUS_VARIANT: Record<string, BadgeProps['variant']> = {
   fraud_hold: 'destructive',
 };
 
+const STATUS_LABEL: Record<string, string> = {
+  active: 'Activa',
+  redeemed: 'Canjeada',
+  expired: 'Vencida',
+  disabled: 'Deshabilitada',
+  fraud_hold: 'En revisión',
+};
+
 /**
  * LookupCard — the "Lookup" tab content.
  * Handles lookup, reload, and refund actions for a found card.
@@ -58,12 +66,12 @@ export function LookupCard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [card, setCard] = useState<LookupResult | null>(null);
-  const { format: formatCurrency, parse: parseAmount } = useMoney({
+  const { format: formatCurrency, parse: parseAmount, scale, decimals } = useMoney({
     currency: card?.currency,
   });
   const { formatDate } = useDateTime();
   const fmtExpiry = (iso?: string | null) =>
-    iso ? formatDate(iso, { year: 'numeric', month: 'short', day: 'numeric' }) : 'Never';
+    iso ? formatDate(iso, { year: 'numeric', month: 'short', day: 'numeric' }) : 'Sin vencimiento';
 
   // Reload sub-form state
   const [reloadAmount, setReloadAmount] = useState('');
@@ -90,13 +98,16 @@ export function LookupCard() {
     const qs = new URLSearchParams({ code: code.trim() });
     if (pin.trim()) qs.set('pin', pin.trim());
 
-    const { data, error: err } = await api.request<LookupResult>('GET', `/gift-cards/lookup?${qs}`);
-    setLoading(false);
-    if (err) {
-      setError(err.message || 'Lookup failed.');
-      return;
+    try {
+      const { data, error: err } = await api.request<LookupResult>('GET', `/gift-cards/lookup?${qs}`);
+      if (err) throw new Error(err.message || 'No se encontró la tarjeta.');
+      if (!data) throw new Error('No se encontró la tarjeta.');
+      setCard(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo consultar la tarjeta.');
+    } finally {
+      setLoading(false);
     }
-    setCard(data);
   }
 
   async function handleReload(e: React.FormEvent<HTMLFormElement>) {
@@ -106,74 +117,67 @@ export function LookupCard() {
     // currency rather than silently charging 1234.
     const cents = parseAmount(reloadAmount);
     if (cents === null || cents <= 0) {
-      setReloadError('Enter a valid amount.');
+      setReloadError('Ingresá un importe válido.');
       return;
     }
     setReloadLoading(true);
     setReloadError('');
     setReloadSuccess('');
 
-    const { data, error: err } = await api.request<GiftCardTransaction>('POST', '/gift-cards/reload', {
-      body: {
-        code: code.trim(),
-        amount_cents: cents,
-        performed_by_staff_id: '',
-        notes: '',
-        order_id: '',
-      },
-    });
-
-    if (err) {
+    try {
+      const { data, error: err } = await api.request<GiftCardTransaction>('POST', '/gift-cards/reload', {
+        body: {
+          code: code.trim(),
+          amount_cents: cents,
+          performed_by_staff_id: '',
+          notes: '',
+          order_id: '',
+        },
+      });
+      if (err) throw new Error(err.message || 'No se pudo recargar la tarjeta.');
+      if (!data) throw new Error('No se recibió la confirmación de la recarga.');
+      setCard((prev) => prev ? { ...prev, current_balance_cents: data.balance_after_cents } : prev);
+      setReloadAmount('');
+      setReloadSuccess(`Recarga de ${formatCurrency(cents)}. Nuevo saldo: ${formatCurrency(data.balance_after_cents)}.`);
+    } catch (err) {
+      setReloadError(err instanceof Error ? err.message : 'No se pudo recargar la tarjeta.');
+    } finally {
       setReloadLoading(false);
-      setReloadError(err.message || 'Reload failed.');
-      return;
     }
-    // Refresh balance using the new balance_after_cents from the transaction.
-    // A card is guaranteed loaded here: this form only renders once `card`
-    // is truthy (see the guard around the reload/refund <Card> below).
-    setCard((prev) => ({
-      ...(prev as LookupResult),
-      current_balance_cents: data!.balance_after_cents,
-    }));
-    setReloadAmount('');
-    setReloadSuccess(`Reloaded ${formatCurrency(cents)}. New balance: ${formatCurrency(data!.balance_after_cents)}`);
-    setReloadLoading(false);
   }
 
   async function handleRefund(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const cents = parseAmount(refundAmount);
     if (cents === null || cents <= 0) {
-      setRefundError('Enter a valid amount.');
+      setRefundError('Ingresá un importe válido.');
       return;
     }
     setRefundLoading(true);
     setRefundError('');
     setRefundSuccess('');
 
-    const { data, error: err } = await api.request<GiftCardTransaction>('POST', '/gift-cards/refund', {
-      body: {
-        code: code.trim(),
-        amount_cents: cents,
-        performed_by_staff_id: '',
-        notes: refundNotes.trim(),
-        order_id: '',
-      },
-    });
-
-    if (err) {
+    try {
+      const { data, error: err } = await api.request<GiftCardTransaction>('POST', '/gift-cards/refund', {
+        body: {
+          code: code.trim(),
+          amount_cents: cents,
+          performed_by_staff_id: '',
+          notes: refundNotes.trim(),
+          order_id: '',
+        },
+      });
+      if (err) throw new Error(err.message || 'No se pudo devolver el importe.');
+      if (!data) throw new Error('No se recibió la confirmación de la devolución.');
+      setCard((prev) => prev ? { ...prev, current_balance_cents: data.balance_after_cents } : prev);
+      setRefundAmount('');
+      setRefundNotes('');
+      setRefundSuccess(`Devolución de ${formatCurrency(cents)}. Nuevo saldo: ${formatCurrency(data.balance_after_cents)}.`);
+    } catch (err) {
+      setRefundError(err instanceof Error ? err.message : 'No se pudo devolver el importe.');
+    } finally {
       setRefundLoading(false);
-      setRefundError(err.message || 'Refund failed.');
-      return;
     }
-    setCard((prev) => ({
-      ...(prev as LookupResult),
-      current_balance_cents: data!.balance_after_cents,
-    }));
-    setRefundAmount('');
-    setRefundNotes('');
-    setRefundSuccess(`Refunded ${formatCurrency(cents)}. New balance: ${formatCurrency(data!.balance_after_cents)}`);
-    setRefundLoading(false);
   }
 
   return (
@@ -181,16 +185,16 @@ export function LookupCard() {
       {/* Search form */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Look Up a Card</CardTitle>
-          <CardDescription>Enter the card code and optional PIN.</CardDescription>
+          <CardTitle className="text-base">Consultar tarjeta</CardTitle>
+          <CardDescription>Ingresá el código y, si corresponde, el PIN.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLookup} className="flex flex-col gap-4 sm:flex-row sm:items-end">
             <div className="flex-1 space-y-1.5">
-              <Label htmlFor="gc-code">Card Code</Label>
+              <Label htmlFor="gc-code">Código</Label>
               <Input
                 id="gc-code"
-                placeholder="e.g. GIFT-XXXX-XXXX"
+                placeholder="Ej.: GIFT-XXXX-XXXX"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 autoComplete="off"
@@ -198,7 +202,7 @@ export function LookupCard() {
               />
             </div>
             <div className="w-32 space-y-1.5">
-              <Label htmlFor="gc-pin">PIN (optional)</Label>
+              <Label htmlFor="gc-pin">PIN (opcional)</Label>
               <Input
                 id="gc-pin"
                 type="password"
@@ -214,7 +218,7 @@ export function LookupCard() {
               ) : (
                 <Search className="h-4 w-4 mr-2" />
               )}
-              Lookup
+              Consultar
             </Button>
           </form>
           {error && (
@@ -232,7 +236,7 @@ export function LookupCard() {
                 {card.masked_code}
               </CardTitle>
               <Badge variant={STATUS_VARIANT[card.status] ?? 'outline'}>
-                {card.status}
+                {STATUS_LABEL[card.status] || card.status}
               </Badge>
             </div>
           </CardHeader>
@@ -240,17 +244,17 @@ export function LookupCard() {
             {/* Summary row */}
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 text-sm">
               <div>
-                <p className="text-muted-foreground text-xs mb-0.5">Balance</p>
+                <p className="text-muted-foreground text-xs mb-0.5">Saldo</p>
                 <p className="font-semibold text-lg">
                   {formatCurrency(card.current_balance_cents)}
                 </p>
               </div>
               <div>
-                <p className="text-muted-foreground text-xs mb-0.5">Currency</p>
+                <p className="text-muted-foreground text-xs mb-0.5">Moneda</p>
                 <p className="font-medium">{card.currency}</p>
               </div>
               <div>
-                <p className="text-muted-foreground text-xs mb-0.5">Expires</p>
+                <p className="text-muted-foreground text-xs mb-0.5">Vence</p>
                 <p className="font-medium">{fmtExpiry(card.expires_at)}</p>
               </div>
             </div>
@@ -259,16 +263,16 @@ export function LookupCard() {
 
             {/* Reload action */}
             <div>
-              <h4 className="text-sm font-semibold mb-2">Reload</h4>
+              <h4 className="text-sm font-semibold mb-2">Recargar saldo</h4>
               <form onSubmit={handleReload} className="flex gap-2 items-end">
                 <div className="w-36 space-y-1.5">
-                  <Label htmlFor="reload-amount">Amount ({card.currency})</Label>
+                  <Label htmlFor="reload-amount">Importe ({card.currency})</Label>
                   <Input
                     id="reload-amount"
                     type="number"
-                    min="0.01"
-                    step="0.01"
-                    placeholder="0.00"
+                    min={(1 / scale).toFixed(decimals)}
+                    step={(1 / scale).toFixed(decimals)}
+                    placeholder={(0).toFixed(decimals)}
                     value={reloadAmount}
                     onChange={(e) => setReloadAmount(e.target.value)}
                   />
@@ -280,7 +284,7 @@ export function LookupCard() {
                   size="sm"
                 >
                   {reloadLoading && <RefreshCw className="h-3 w-3 animate-spin mr-1" />}
-                  Reload
+                  Recargar
                 </Button>
               </form>
               {reloadError && <p className="mt-1.5 text-xs text-destructive">{reloadError}</p>}
@@ -291,25 +295,25 @@ export function LookupCard() {
 
             {/* Refund action */}
             <div>
-              <h4 className="text-sm font-semibold mb-2">Refund to Card</h4>
+              <h4 className="text-sm font-semibold mb-2">Devolver saldo</h4>
               <form onSubmit={handleRefund} className="flex flex-col gap-2 sm:flex-row sm:items-end">
                 <div className="w-36 space-y-1.5">
-                  <Label htmlFor="refund-amount">Amount ({card.currency})</Label>
+                  <Label htmlFor="refund-amount">Importe ({card.currency})</Label>
                   <Input
                     id="refund-amount"
                     type="number"
-                    min="0.01"
-                    step="0.01"
-                    placeholder="0.00"
+                    min={(1 / scale).toFixed(decimals)}
+                    step={(1 / scale).toFixed(decimals)}
+                    placeholder={(0).toFixed(decimals)}
                     value={refundAmount}
                     onChange={(e) => setRefundAmount(e.target.value)}
                   />
                 </div>
                 <div className="flex-1 space-y-1.5">
-                  <Label htmlFor="refund-notes">Reason (optional)</Label>
+                  <Label htmlFor="refund-notes">Motivo (opcional)</Label>
                   <Input
                     id="refund-notes"
-                    placeholder="e.g. Order cancelled"
+                    placeholder="Ej.: pedido cancelado"
                     value={refundNotes}
                     onChange={(e) => setRefundNotes(e.target.value)}
                   />
@@ -321,7 +325,7 @@ export function LookupCard() {
                   size="sm"
                 >
                   {refundLoading && <RefreshCw className="h-3 w-3 animate-spin mr-1" />}
-                  Refund
+                  Devolver
                 </Button>
               </form>
               {refundError && <p className="mt-1.5 text-xs text-destructive">{refundError}</p>}

@@ -59,6 +59,7 @@ func (h *Handler) Mount(r chi.Router) {
 		r.Post("/shifts/online", h.goOnline)
 		r.Post("/shifts/paused", h.goPaused)
 		r.Post("/shifts/offline", h.goOffline)
+		r.Get("/shifts/current", h.getCurrentShift)
 
 		r.Post("/pings", h.postPing)
 	})

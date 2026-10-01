@@ -73,13 +73,13 @@ function fmtDate(iso?: string | null) {
 
 function movementLabel(type: string) {
   const MAP: Record<string, string> = {
-    paid_in:    'Paid In',
-    paid_out:   'Paid Out',
-    petty_cash: 'Petty Cash',
-    tip_out:    'Tip Out',
-    no_sale:    'No Sale',
-    drop:       'Drop',
-    pickup:     'Pickup',
+    paid_in:    'Ingreso',
+    paid_out:   'Egreso',
+    petty_cash: 'Caja chica',
+    tip_out:    'Propinas',
+    no_sale:    'Sin venta',
+    drop:       'Retiro de efectivo',
+    pickup:     'Extracción',
   };
   return MAP[type] ?? type;
 }
@@ -150,7 +150,7 @@ export function CashOutReport({ sessionId }: CashOutReportProps) {
     fetchCashOut(sessionId).then(({ data, error: apiErr }) => {
       if (cancelled) return;
       if (apiErr) {
-        setError(apiErr.message ?? 'Failed to load cash-out report');
+        setError(apiErr.message ?? 'No se pudo cargar el informe de caja.');
       } else {
         setReport(data);
       }
@@ -161,7 +161,7 @@ export function CashOutReport({ sessionId }: CashOutReportProps) {
       // without this, `loading` stayed true forever.
       if (!cancelled) {
         console.error('Error loading cash-out report:', err);
-        setError('Failed to load cash-out report');
+        setError('No se pudo cargar el informe de caja.');
         setLoading(false);
       }
     });
@@ -175,7 +175,7 @@ export function CashOutReport({ sessionId }: CashOutReportProps) {
       <Card>
         <CardContent className="flex items-center gap-2 py-8 text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
-          <span className="text-sm">Loading cash-out report…</span>
+          <span className="text-sm">Cargando informe de caja…</span>
         </CardContent>
       </Card>
     );
@@ -224,39 +224,35 @@ export function CashOutReport({ sessionId }: CashOutReportProps) {
   }[varianceSeverity];
 
   const varianceBadge = isUncounted
-    ? <Badge variant="outline">Not counted yet</Badge>
+    ? <Badge variant="outline">Pendiente de conteo</Badge>
     : (
       <Badge variant={varianceSeverity === 'muted' ? 'outline' : varianceSeverity}>
-        {isBalanced ? 'Balanced' : isOver ? 'Over' : 'Short'}
+        {isBalanced ? 'Cuadra' : isOver ? 'Sobra' : 'Falta'}
       </Badge>
     );
 
   // Movements breakdown: split positives from negatives
-  const paidIn  = report.movements.filter((m) => m.amount_cents > 0);
-  const paidOut = report.movements.filter((m) => m.amount_cents < 0);
-  const noSale  = report.movements.filter((m) => m.amount_cents === 0);
-
   return (
     <div className="space-y-4">
       {/* Header card */}
       <Card>
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between gap-2 flex-wrap">
-            <CardTitle className="text-lg">Cash-Out Report</CardTitle>
+            <CardTitle className="text-lg">Informe de caja</CardTitle>
             <div className="flex items-center gap-2">
               {varianceBadge}
               {report.status === 'open' ? (
-                <Badge variant="success">{report.status}</Badge>
+                <Badge variant="success">Abierta</Badge>
               ) : (
                 <Badge variant="outline" className="text-muted-foreground border-border bg-muted/50">
-                  {report.status}
+                  {report.status === 'closed' ? 'Cerrada' : report.status === 'reconciled' ? 'Conciliada' : report.status}
                 </Badge>
               )}
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            Opened {fmtDate(report.opened_at)}
-            {report.closed_at && ` · Closed ${fmtDate(report.closed_at)}`}
+            Apertura: {fmtDate(report.opened_at)}
+            {report.closed_at && ` · Cierre: ${fmtDate(report.closed_at)}`}
           </p>
         </CardHeader>
 
@@ -265,11 +261,11 @@ export function CashOutReport({ sessionId }: CashOutReportProps) {
           <CardContent className="pt-0">
             <div className="rounded-md border bg-muted/30 px-3 py-2 flex items-center gap-2 text-sm">
               <User className="h-4 w-4 text-muted-foreground shrink-0" />
-              <span className="text-muted-foreground">Staff shift ID:</span>
+              <span className="text-muted-foreground">Turno del personal:</span>
               <span className="font-mono text-xs">{report.staff.staff_id}</span>
               {report.staff.closed_at == null && (
                 <Badge variant="warning" className="ml-auto">
-                  Shift open
+                  Turno abierto
                 </Badge>
               )}
             </div>
@@ -281,37 +277,37 @@ export function CashOutReport({ sessionId }: CashOutReportProps) {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-            Reconciliation
+            Conciliación
           </CardTitle>
         </CardHeader>
         <CardContent className="divide-y divide-border px-4 pb-4">
           <ReportRow
-            label="Opening float"
-            sub="Cash counted when drawer was opened"
+            label="Fondo inicial"
+            sub="Efectivo contado al abrir la caja"
             value={fmt(report.opening_float_cents)}
           />
           <ReportRow
-            label="Cash sales"
-            sub="Payments taken in cash during this session"
+            label="Ventas en efectivo"
+            sub="Pagos en efectivo recibidos durante este turno"
             value={fmt(report.cash_sales_cents)}
           />
           <ReportRow
-            label="Movements net"
-            sub="Paid-in, paid-out, petty cash, drops, pickups"
+            label="Balance de movimientos"
+            sub="Ingresos, egresos, caja chica y retiros"
             value={fmtSigned(report.movements_net_cents)}
           />
           <ReportRow
-            label="Expected in drawer"
-            sub="Opening float + cash sales + movements"
+            label="Efectivo esperado"
+            sub="Fondo inicial + ventas en efectivo + movimientos"
             value={fmt(report.expected_cash_cents)}
             highlight
           />
           <ReportRow
-            label="Counted cash"
+            label="Efectivo contado"
             sub={
               report.is_blind_close
-                ? 'Staff count (blind close — expected hidden at count time)'
-                : 'Staff count recorded at close'
+                ? 'Conteo a ciegas: el saldo esperado no se mostró'
+                : 'Conteo registrado al cerrar'
             }
             value={report.counted_cash_cents != null ? fmt(report.counted_cash_cents) : '—'}
             highlight
@@ -336,7 +332,7 @@ export function CashOutReport({ sessionId }: CashOutReportProps) {
       >
         <CardContent className="py-6 flex flex-col items-center gap-1">
           <p className="text-xs text-muted-foreground uppercase tracking-wide font-semibold">
-            {isUncounted ? 'Variance' : isShort ? 'Short' : isBalanced ? 'Balanced' : 'Over'}
+            {isUncounted ? 'Diferencia' : isShort ? 'Falta' : isBalanced ? 'Cuadra' : 'Sobra'}
           </p>
           <div className={`font-display text-4xl font-bold tabular-nums ${varianceColor}`}>
             {isUncounted
@@ -352,10 +348,10 @@ export function CashOutReport({ sessionId }: CashOutReportProps) {
               {isBalanced && <CheckCircle2 className="h-4 w-4 text-success" />}
               <span className={`text-sm ${varianceColor}`}>
                 {isShort
-                  ? `Drawer is ${fmt(Math.abs(variance))} short of expected`
+                  ? `Faltan ${fmt(Math.abs(variance))} respecto del saldo esperado`
                   : isOver
-                  ? `Drawer is ${fmt(Math.abs(variance))} over expected`
-                  : 'Drawer is exactly balanced'}
+                  ? `Sobran ${fmt(Math.abs(variance))} respecto del saldo esperado`
+                  : 'El efectivo coincide con el saldo esperado'}
               </span>
             </div>
           )}
@@ -363,9 +359,9 @@ export function CashOutReport({ sessionId }: CashOutReportProps) {
           {/* Show server-computed declared / over_short if present (already reconciled) */}
           {report.declared_closing_cents != null && (
             <p className="text-xs text-muted-foreground mt-2">
-              Declared: {fmt(report.declared_closing_cents)}
+              Declarado: {fmt(report.declared_closing_cents)}
               {report.over_short_cents != null && (
-                <> · Recorded variance: {fmtSigned(report.over_short_cents)}</>
+                <> · Diferencia registrada: {fmtSigned(report.over_short_cents)}</>
               )}
             </p>
           )}
@@ -377,7 +373,7 @@ export function CashOutReport({ sessionId }: CashOutReportProps) {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-              Movements ({report.movements.length})
+              Movimientos ({report.movements.length})
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4 space-y-1">
@@ -402,7 +398,7 @@ export function CashOutReport({ sessionId }: CashOutReportProps) {
                       : 'text-muted-foreground'
                   }`}
                 >
-                  {m.amount_cents === 0 ? 'No Sale' : fmtSigned(m.amount_cents)}
+                  {m.amount_cents === 0 ? 'Sin venta' : fmtSigned(m.amount_cents)}
                 </span>
               </div>
             ))}

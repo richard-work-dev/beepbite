@@ -304,7 +304,10 @@ class AnalyticsService {
       'neq=status,cancelled',
       'select=business_date,order_type,status,subtotal_cents,discount_cents,total_cents',
       'order=business_date.asc',
-      'limit=5000',
+      // The serverless data API already reads the complete tenant partition
+      // before applying filters and caps explicit limits at 1000. Omitting
+      // the limit keeps reporting compatible with both the PostgreSQL and
+      // DynamoDB-backed deployments instead of returning "invalid limit".
     ].join('&');
     const fallback = await api.request<Array<{
       business_date?: string;

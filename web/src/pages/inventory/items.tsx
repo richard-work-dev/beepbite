@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
-import { AlertCircle, CookingPot, Edit, PackageOpen, Plus, Search } from 'lucide-react';
+import { AlertCircle, CookingPot, Download, Edit, PackageOpen, Plus, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/context/auth-context';
@@ -148,6 +148,27 @@ export default function InventoryItemsPage() {
     }
   }
 
+  function exportInventory() {
+    if (items.length === 0) return;
+    const escape = (value: string | number) => `"${String(value).replaceAll('"', '""')}"`;
+    const lines = [
+      ['Insumo', 'Unidad', 'Stock actual', 'Stock mínimo', 'Estado'],
+      ...items.map((item) => [
+        item.name,
+        item.unit,
+        item.current_stock,
+        item.minimum_stock,
+        item.is_active === false ? 'Inactivo' : Number(item.current_stock) <= Number(item.minimum_stock || 0) ? 'Stock bajo' : 'Activo',
+      ]),
+    ].map((row) => row.map(escape).join(';')).join('\r\n');
+    const url = URL.createObjectURL(new Blob([`\uFEFF${lines}`], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `beepbite-inventario-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   if (!activeLocation) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -165,6 +186,7 @@ export default function InventoryItemsPage() {
         description={`Productos que se contarán al abrir y cerrar ${activeLocation.name}`}
         actions={(
           <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={exportInventory} disabled={loading || items.length === 0}><Download className="mr-2 size-4" /> Descargar reporte</Button>
             <Button variant="outline" onClick={() => navigate('/inventory/recipes')}><CookingPot className="mr-2 size-4" /> Recetas</Button>
             <Button onClick={openCreate}><Plus className="mr-2 size-4" /> Nuevo insumo</Button>
           </div>

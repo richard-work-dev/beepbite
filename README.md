@@ -192,8 +192,9 @@ to operate.
 | `DATABASE_URL` | — | Postgres connection string. **Required.** |
 | `JWT_SECRET` | — | Signing key for access tokens. **Required.** |
 | `PORT` | `8080` | API listen port |
-| `WHATSAPP_TOKEN` | — | Meta Cloud API token. WhatsApp ordering stays off without it. |
-| `WHATSAPP_PHONE_ID` | — | Meta phone number ID |
+| `WHATSAPP_ACCESS_TOKEN` | — | Meta Cloud API token. WhatsApp ordering stays off without it. |
+| `WHATSAPP_PHONE_NUMBER_ID` | — | Meta phone number ID |
+| `WHATSAPP_ORDER_FLOW_ID` | — | Optional published Meta Flow ID for the native in-WhatsApp order form |
 | `MAPBOX_TOKEN` | — | Delivery-zone geocoding. Optional. |
 
 See [docs/setup.md](docs/setup.md) for the full list.

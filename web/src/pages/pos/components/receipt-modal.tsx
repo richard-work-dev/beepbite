@@ -148,9 +148,9 @@ function ReceiptPaper({ receipt, printId }: ReceiptPaperProps) {
     <div
       id={printId}
       className={cn(
-        'mx-auto w-full max-w-sm',
+        'mx-auto w-full max-w-sm min-w-0',
         'bg-card rounded-xl border border-border shadow-sm',
-        'p-5 font-mono text-xs leading-relaxed',
+        'p-5 font-mono text-xs leading-relaxed break-words',
         // print overrides
         'print:shadow-none print:border-none print:rounded-none print:max-w-full print:p-4',
       )}
@@ -502,7 +502,9 @@ export default function ReceiptModal({ orderId, open, onClose, onNewOrder }: Rec
         conflict. Mirrors the approach in receipt-view.jsx (Wave 24).
       */}
       <style>{`
+        @page { margin: 8mm; size: auto; }
         @media print {
+          html, body { width: 100%; margin: 0 !important; padding: 0 !important; overflow: visible !important; }
           body * { visibility: hidden !important; }
           #${printId},
           #${printId} * { visibility: visible !important; }
@@ -510,7 +512,11 @@ export default function ReceiptModal({ orderId, open, onClose, onNewOrder }: Rec
             position: absolute;
             left: 0;
             top: 0;
-            width: 100%;
+            width: 72mm;
+            max-width: 72mm;
+            margin: 0 auto;
+            box-sizing: border-box;
+            overflow: visible !important;
           }
         }
       `}</style>

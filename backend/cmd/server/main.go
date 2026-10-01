@@ -316,7 +316,14 @@ func main() {
 	// that shipped first; adding another is an adapter beside this one rather
 	// than a second chatbot (internal/channel).
 	waChannel := channelwhatsapp.New(wa)
-	chatSvc := chatbot.NewWithMapbox(database.Pool, waChannel, mbClient)
+	chatSvc := chatbot.NewWithMapboxAndOrderFlow(
+		database.Pool,
+		waChannel,
+		mbClient,
+		cfg.WhatsAppOrderFlowID,
+		cfg.WhatsAppOrderFlowScreen,
+		cfg.WhatsAppOrderFlowCTA,
+	)
 	waWebhookH := whatsappwebhook.NewHandler(chatSvc, cfg.WhatsAppVerifyToken, cfg.WhatsAppAppSecret)
 
 	// Payments: BeepBite records tenders, it does not process cards. The

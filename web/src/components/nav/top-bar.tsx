@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ComponentType } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { LogOut, Users, ChevronDown, UserCircle, BarChart3, MessageSquare, Hash, X, MapPin, ChefHat, CookingPot, Building2, Check, Store, Folder, Receipt, MonitorPlay, Truck, LockKeyhole, LayoutDashboard, PackageSearch, PackageOpen, ClipboardList, ClipboardCheck, PackageCheck, FileCheck2, Zap, Menu, LayoutGrid, CalendarDays, ListChecks, WalletCards, Gift, FileText, Clock3, ContactRound } from 'lucide-react';
+import { LogOut, Users, ChevronDown, UserCircle, BarChart3, Hash, X, MapPin, ChefHat, CookingPot, Building2, Check, Store, Folder, Receipt, MonitorPlay, Truck, LockKeyhole, LayoutDashboard, PackageSearch, PackageOpen, ClipboardList, ClipboardCheck, PackageCheck, FileCheck2, Zap, Menu, LayoutGrid, CalendarDays, ListChecks, WalletCards, Gift, FileText, Clock3, ContactRound } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { useActor } from '@/context/actor-token-context';
 import { hasAnyAccess } from '@/lib/access-control';
@@ -165,7 +165,7 @@ const TopBar = () => {
     { name: t('nav.topBar.home'), path: '/home', icon: Hash, description: t('nav.topBar.homeDesc') },
     { name: t('nav.topBar.pos'), path: '/pos/workspace', icon: Receipt, description: t('nav.topBar.posDesc'), capability: 'can_pos' },
     { name: t('nav.topBar.kitchen'), path: '/kds/expo', icon: MonitorPlay, description: t('nav.topBar.kitchenDesc'), capability: 'can_kds' },
-    { name: t('nav.topBar.reviews'), path: '/reviews', icon: MessageSquare, description: t('nav.topBar.reviewsDesc'), capability: 'can_view_reports' },
+    { name: t('nav.sideBar.reports'), path: '/reports', icon: BarChart3, description: t('nav.sideBar.reportsDesc'), capability: 'can_view_reports' },
   ];
 
   // Side navigation items (organized by category)
@@ -225,7 +225,7 @@ const TopBar = () => {
   ];
 
   const availablePrimaryItems = topNavigationItems.filter((item) => canAccess(item.capability));
-  const mobilePrimaryItems = availablePrimaryItems.filter((item) => item.path !== '/reviews').slice(0, 3);
+  const mobilePrimaryItems = availablePrimaryItems.filter((item) => ['/home', '/pos/workspace', '/reports'].includes(item.path));
   const availableNavItems = [
     ...availablePrimaryItems,
     ...sideNavigationSections.flatMap((section) => section.items.filter((item) => canAccess(item.capability))),

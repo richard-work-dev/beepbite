@@ -3,10 +3,9 @@
 // caller's organisation automatically (session var app.current_org_id).
 //
 // View usage:
-//   - summary endpoint: direct aggregation from orders (status='completed').
-//     daily_sales_summary groups by order_type and uses status<>'cancelled',
-//     which differs from the spec's status='completed' requirement, so we
-//     query orders directly for correctness.
+//   - summary endpoint: direct aggregation from orders, excluding cancelled
+//     orders. This matches daily_sales_summary and keeps unpaid/in-progress
+//     orders visible in the operational dashboard.
 //   - heatmap endpoint: direct aggregation from orders. hourly_sales_heatmap
 //     uses ISO DOW (1=Mon..7=Sun) and a hard-coded 90-day window; the spec
 //     requires EXTRACT(DOW) (0=Sun..6=Sat) and a caller-supplied week count.
@@ -15,9 +14,9 @@
 // pre-tax). We use orders.subtotal_cents directly — it equals total_cents
 // minus tax_cents and matches the "net = gross - tax" instruction cleanly.
 //
-// new_customers definition: customers whose first completed order falls inside
-// the requested window (MIN(created_at) per customer_id within the location
-// and status='completed'). This relies entirely on the orders table and needs
+// new_customers definition: customers whose first non-cancelled order falls
+// inside the requested window (MIN(created_at) per customer_id within the
+// location). This relies entirely on the orders table and needs
 // no JOIN to a customers table, making it robust when customer rows may be
 // absent for walk-in orders with a customer_id.
 package stats
@@ -94,7 +93,7 @@ type HeatmapCell struct {
 
 // kpiQuery aggregates gross_sales_cents, net_sales_cents (= subtotal_cents),
 // order_count, avg_order_value_cents, and new_customers (first order in window)
-// for completed orders in [from, to).
+// for non-cancelled orders in [from, to).
 //
 // new_customers counts distinct customer_ids whose earliest completed order
 // at the given location falls within [from, to). Walk-in orders with a NULL
@@ -111,7 +110,7 @@ SELECT
         SELECT COUNT(DISTINCT o2.customer_id)
         FROM orders o2
         WHERE o2.location_id = $1
-          AND o2.status = 'completed'
+          AND o2.status <> 'cancelled'
           AND o2.customer_id IS NOT NULL
           AND o2.created_at >= $2
           AND o2.created_at <  $3
@@ -119,13 +118,13 @@ SELECT
               SELECT 1 FROM orders o3
               WHERE o3.customer_id = o2.customer_id
                 AND o3.location_id = $1
-                AND o3.status = 'completed'
+                AND o3.status <> 'cancelled'
                 AND o3.created_at < $2
           )
     ), 0)::bigint                                                         AS new_customers
 FROM orders
 WHERE location_id = $1
-  AND status = 'completed'
+  AND status <> 'cancelled'
   AND created_at >= $2
   AND created_at <  $3
 `
@@ -162,7 +161,7 @@ SELECT
     COUNT(*)::bigint                                                                   AS order_count
 FROM orders
 WHERE location_id = $1
-  AND status = 'completed'
+  AND status <> 'cancelled'
   AND created_at >= $2
   AND created_at <  $3
 GROUP BY DATE_TRUNC('hour', created_at AT TIME ZONE $4)
@@ -183,7 +182,7 @@ SELECT
     COUNT(*)::bigint                                                          AS order_count
 FROM orders
 WHERE location_id = $1
-  AND status = 'completed'
+  AND status <> 'cancelled'
   AND created_at >= $2
   AND created_at <  $3
 GROUP BY DATE_TRUNC('day', created_at AT TIME ZONE $4)
@@ -204,7 +203,7 @@ SELECT
     COUNT(*)::bigint                                                         AS order_count
 FROM orders
 WHERE location_id = $1
-  AND status = 'completed'
+  AND status <> 'cancelled'
   AND created_at >= $2
   AND created_at <  $3
 GROUP BY DATE_TRUNC('month', created_at AT TIME ZONE $4)
@@ -243,7 +242,7 @@ func (s *Store) queryBuckets(ctx context.Context, q, locationID string, from, to
 // Heatmap query
 // ---------------------------------------------------------------------------
 
-// QueryHeatmap aggregates completed orders over the last `weeks` weeks by
+// QueryHeatmap aggregates non-cancelled orders over the last `weeks` weeks by
 // (DOW, hour). DOW uses EXTRACT(DOW ...) which gives 0=Sunday … 6=Saturday,
 // matching the spec. Only cells that have at least one order are returned.
 func (s *Store) QueryHeatmap(ctx context.Context, locationID string, weeks int, tz string) ([]HeatmapCell, error) {
@@ -258,7 +257,7 @@ SELECT
     COALESCE(SUM(total_cents), 0)::bigint                  AS sales_cents
 FROM orders
 WHERE location_id = $1
-  AND status = 'completed'
+  AND status <> 'cancelled'
   AND created_at >= NOW() - ($2::int * INTERVAL '1 week')
 GROUP BY
     EXTRACT(DOW  FROM created_at AT TIME ZONE $3),

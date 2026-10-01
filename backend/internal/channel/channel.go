@@ -62,6 +62,8 @@ const (
 	CapReadReceipt
 	// CapReaction — the rail can attach an emoji reaction to a message.
 	CapReaction
+	// CapFlow — the rail can render a multi-screen form natively.
+	CapFlow
 )
 
 // Has reports whether every capability in want is present.
@@ -90,6 +92,18 @@ type Section struct {
 type Button struct {
 	ID    string
 	Title string
+}
+
+// FlowMessage opens a provider-native multi-screen form. Flow IDs and screen
+// names are provider configuration, not business logic; the chatbot only
+// supplies the initial data needed by the form.
+type FlowMessage struct {
+	ID      string
+	Token   string
+	CTA     string
+	Screen  string
+	Version string
+	Data    map[string]any
 }
 
 // Message is one outbound message in rail-independent form.
@@ -134,6 +148,10 @@ type Message struct {
 	Template     string
 	TemplateLang string
 	TemplateVars []string
+
+	// Flow opens a native form when the rail supports it. Rails without native
+	// flows degrade to Body so the customer still receives a usable reply.
+	Flow *FlowMessage
 }
 
 // SendResult identifies the message the rail accepted, so a later reaction or

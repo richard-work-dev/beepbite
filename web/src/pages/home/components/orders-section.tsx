@@ -866,7 +866,7 @@ const OrdersSection = ({
     try {
       const { supabase } = await import('@/services/supabase-client');
       const { data: orderDetails, error: orderError } = await supabase
-        .from('pedidos')
+        .from('orders')
         .select(`
           *,
           customers (

@@ -291,8 +291,60 @@ class AnalyticsService {
       'GET',
       `/data/daily_sales_summary?eq=location_id,${encodeURIComponent(resolvedLocationId)}&gte=sale_date,${startDate}&lte=sale_date,${endDate}&order=sale_date.asc`,
     );
-    if (error) throw new Error(error.message);
-    return data || [];
+    if (!error && data && data.length > 0) return data;
+
+    // Some installations have the reporting views disabled or not refreshed
+    // yet. Keep the report useful by falling back to the transactional orders
+    // table, which is already available to the POS and uses the same location
+    // scope. This also makes newly-created sales visible immediately.
+    const ordersQuery = [
+      `eq=location_id,${encodeURIComponent(resolvedLocationId)}`,
+      `gte=business_date,${startDate}`,
+      `lte=business_date,${endDate}`,
+      'neq=status,cancelled',
+      'select=business_date,order_type,status,subtotal_cents,discount_cents,total_cents',
+      'order=business_date.asc',
+      'limit=5000',
+    ].join('&');
+    const fallback = await api.request<Array<{
+      business_date?: string;
+      order_type?: string;
+      subtotal_cents?: number | string;
+      discount_cents?: number | string;
+      total_cents?: number | string;
+    }>>('GET', `/data/orders?${ordersQuery}`);
+    if (fallback.error) {
+      throw new Error(error?.message || fallback.error.message);
+    }
+
+    const grouped = new Map<string, DailySalesSummaryRow>();
+    for (const order of fallback.data || []) {
+      const date = order.business_date || '';
+      if (!date) continue;
+      const orderType = order.order_type || 'sin_tipo';
+      const key = `${date}:${orderType}`;
+      const row = grouped.get(key) || {
+        location_id: resolvedLocationId,
+        sale_date: date,
+        order_type: orderType,
+        order_count: 0,
+        gross_subtotal_cents: 0,
+        tax_total_cents: 0,
+        discount_total_cents: 0,
+        tip_total_cents: 0,
+        delivery_fee_total_cents: 0,
+        net_sales_cents: 0,
+        gross_profit_cents: 0,
+      };
+      const subtotal = Number(order.subtotal_cents || 0);
+      const discount = Number(order.discount_cents || 0);
+      row.order_count += 1;
+      row.gross_subtotal_cents += subtotal;
+      row.discount_total_cents += discount;
+      row.net_sales_cents += order.total_cents == null ? subtotal - discount : Number(order.total_cents);
+      grouped.set(key, row);
+    }
+    return [...grouped.values()].sort((a, b) => a.sale_date.localeCompare(b.sale_date));
   }
 
   async getAnalyticsSummary(timeRange = '7d'): Promise<DailySalesSummaryRow[]> {

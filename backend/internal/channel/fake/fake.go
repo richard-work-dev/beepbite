@@ -69,6 +69,8 @@ func (c *Channel) Send(ctx context.Context, m channel.Message) (channel.SendResu
 		m = degrade(m)
 	case m.Document != "" && !c.caps.Has(channel.CapDocument):
 		m = degrade(m)
+	case m.Flow != nil && !c.caps.Has(channel.CapFlow):
+		m = degrade(m)
 	}
 
 	c.mu.Lock()

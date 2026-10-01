@@ -432,6 +432,34 @@ func TestSendInteractiveButtons_Payload(t *testing.T) {
 	}
 }
 
+func TestSendFlow_Payload(t *testing.T) {
+	var captured []byte
+	srv, hc := captureServer(t, &captured)
+	c := newTestClient(t, srv, hc)
+
+	_, err := c.SendFlow("+1", "Elegí tus productos", "Hacer pedido", "flow-123", "order-token", "ORDER", map[string]interface{}{"phone": "1555"}, "BeepBite", "", "")
+	if err != nil {
+		t.Fatalf("SendFlow: %v", err)
+	}
+	m := unmarshal(t, captured)
+	interactive := m["interactive"].(map[string]interface{})
+	if got := interactive["type"]; got != "flow" {
+		t.Fatalf("interactive.type: got %v", got)
+	}
+	if got := interactive["header"].(map[string]interface{})["text"]; got != "BeepBite" {
+		t.Errorf("header.text: got %v", got)
+	}
+	params := interactive["action"].(map[string]interface{})["parameters"].(map[string]interface{})
+	for key, want := range map[string]string{"flow_id": "flow-123", "flow_token": "order-token", "flow_cta": "Hacer pedido", "flow_message_version": "3"} {
+		if got := params[key]; got != want {
+			t.Errorf("parameters[%q]: got %v, want %q", key, got, want)
+		}
+	}
+	if got := params["flow_action"]; got != "navigate" {
+		t.Errorf("flow_action: got %v", got)
+	}
+}
+
 // ----- SendImage payload --------------------------------------------------------
 
 func TestSendImage_Payload(t *testing.T) {

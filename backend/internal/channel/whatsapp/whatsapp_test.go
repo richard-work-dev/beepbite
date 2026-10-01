@@ -418,6 +418,27 @@ func TestParse_ButtonReply(t *testing.T) {
 	}
 }
 
+func TestParse_FlowReply(t *testing.T) {
+	a := New(nil)
+	body := []byte(`{
+		"object": "whatsapp_business_account",
+		"entry": [{"changes": [{"field": "messages", "value": {
+			"messages": [{"from": "15551234567", "id": "wamid.flow", "timestamp": "1700000005", "type": "interactive",
+				"interactive": {"type": "nfm_reply", "nfm_reply": {"name": "flow", "response_json": "{\"screen\":\"SUCCESS\",\"data\":{\"items\":[]}}"}}}]
+		}}]}]
+	}`)
+	msgs, err := a.Parse(body)
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	if len(msgs) != 1 || msgs[0].Text == "" || msgs[0].Reply != "" {
+		t.Fatalf("got %+v, want flow response in Text", msgs)
+	}
+	if msgs[0].Text != `{"screen":"SUCCESS","data":{"items":[]}}` {
+		t.Fatalf("flow response = %q", msgs[0].Text)
+	}
+}
+
 func TestParse_StatusOnlyCallbackReturnsEmptyNotError(t *testing.T) {
 	a := New(nil)
 	body := []byte(`{

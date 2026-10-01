@@ -62,7 +62,7 @@ func (a *Adapter) Name() string { return "whatsapp" }
 
 func (a *Adapter) Caps() channel.Capability {
 	return channel.CapText | channel.CapButtons | channel.CapList | channel.CapImage |
-		channel.CapDocument | channel.CapTemplate | channel.CapReadReceipt | channel.CapReaction
+		channel.CapDocument | channel.CapTemplate | channel.CapReadReceipt | channel.CapReaction | channel.CapFlow
 }
 
 func (a *Adapter) Send(ctx context.Context, m channel.Message) (channel.SendResult, error) {
@@ -74,6 +74,10 @@ func (a *Adapter) Send(ctx context.Context, m channel.Message) (channel.SendResu
 	}
 
 	switch {
+	case m.Flow != nil:
+		flow := m.Flow
+		return a.result(a.c.SendFlow(m.To, m.Body, flow.CTA, flow.ID, flow.Token, flow.Screen, flow.Data, m.Header, m.Footer, flow.Version))
+
 	case len(m.Sections) > 0:
 		if rowCount(m.Sections) > metaMaxListRows {
 			return a.sendDegraded(m)
@@ -263,14 +267,34 @@ type waText struct {
 // pick and a button pick. Exactly one of ListReply/ButtonReply is set,
 // matching which widget the customer answered.
 type waInteractive struct {
-	Type        string   `json:"type"`
-	ListReply   *waReply `json:"list_reply,omitempty"`
-	ButtonReply *waReply `json:"button_reply,omitempty"`
+	Type        string       `json:"type"`
+	ListReply   *waReply     `json:"list_reply,omitempty"`
+	ButtonReply *waReply     `json:"button_reply,omitempty"`
+	FlowReply   *waFlowReply `json:"flow_reply,omitempty"`
+	NFMReply    *waFlowReply `json:"nfm_reply,omitempty"`
 }
 
 type waReply struct {
 	ID    string `json:"id"`
 	Title string `json:"title"`
+}
+
+// Meta has used both flow_reply and nfm_reply names across Flow webhook
+// versions. Supporting both keeps the adapter tolerant while the rest of the
+// application receives the same JSON response string.
+type waFlowReply struct {
+	ResponseJSON string `json:"response_json,omitempty"`
+	Body         string `json:"body,omitempty"`
+}
+
+func (r *waFlowReply) responseJSON() string {
+	if r == nil {
+		return ""
+	}
+	if r.ResponseJSON != "" {
+		return r.ResponseJSON
+	}
+	return r.Body
 }
 
 // Parse turns one WhatsApp webhook POST body into normalised inbound
@@ -319,6 +343,10 @@ func (a *Adapter) Parse(body []byte) ([]channel.InboundMessage, error) {
 							im.Reply = m.Interactive.ListReply.ID
 						case m.Interactive.ButtonReply != nil:
 							im.Reply = m.Interactive.ButtonReply.ID
+						case m.Interactive.FlowReply != nil:
+							im.Text = m.Interactive.FlowReply.responseJSON()
+						case m.Interactive.NFMReply != nil:
+							im.Text = m.Interactive.NFMReply.responseJSON()
 						}
 					}
 				}

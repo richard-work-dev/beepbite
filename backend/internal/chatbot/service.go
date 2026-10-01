@@ -26,9 +26,12 @@ const SystemBotID = "46c4426a-9f5d-43d1-914c-d112deaf1d06"
 
 // Service is the chatbot entrypoint.
 type Service struct {
-	pool   *pgxpool.Pool
-	ch     channel.Channel // nil when no ordering rail is configured
-	mapbox *mapbox.Client  // nil when MAPBOX_TOKEN is not set
+	pool            *pgxpool.Pool
+	ch              channel.Channel // nil when no ordering rail is configured
+	mapbox          *mapbox.Client  // nil when MAPBOX_TOKEN is not set
+	orderFlowID     string
+	orderFlowScreen string
+	orderFlowCTA    string
 }
 
 // New constructs the Service on an ordering rail. Pass nil for ch when no rail
@@ -42,6 +45,20 @@ func New(pool *pgxpool.Pool, ch channel.Channel) *Service {
 // Pass nil to fall back to stub geocoding behaviour.
 func NewWithMapbox(pool *pgxpool.Pool, ch channel.Channel, mb *mapbox.Client) *Service {
 	return &Service{pool: pool, ch: ch, mapbox: mb}
+}
+
+// NewWithMapboxAndOrderFlow enables the native WhatsApp order form when a
+// published Flow ID is configured. An empty flowID intentionally preserves the
+// existing text-based ordering conversation.
+func NewWithMapboxAndOrderFlow(pool *pgxpool.Pool, ch channel.Channel, mb *mapbox.Client, flowID, flowScreen, flowCTA string) *Service {
+	return &Service{
+		pool:            pool,
+		ch:              ch,
+		mapbox:          mb,
+		orderFlowID:     flowID,
+		orderFlowScreen: flowScreen,
+		orderFlowCTA:    flowCTA,
+	}
 }
 
 // currencySymbolFor returns the currency symbol configured for a location.

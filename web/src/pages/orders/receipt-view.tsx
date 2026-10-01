@@ -188,7 +188,7 @@ export default function ReceiptView({ orderId, onClose }: { orderId: string; onC
       <div
         id="receipt-printable"
         className="
-          mx-auto max-w-sm
+          mx-auto min-w-0 max-w-sm break-words
           bg-card rounded-xl shadow-md border border-border
           p-6 font-mono text-xs leading-relaxed
           print:shadow-none print:border-none print:rounded-none print:max-w-full print:p-4
@@ -310,11 +310,13 @@ export default function ReceiptView({ orderId, onClose }: { orderId: string; onC
 
       {/* Print-only styles injected inline to ensure they always apply */}
       <style>{`
+        @page { margin: 8mm; size: auto; }
         @media print {
+          html, body { width: 100%; margin: 0 !important; padding: 0 !important; overflow: visible !important; }
           body * { visibility: hidden !important; }
           #receipt-printable,
           #receipt-printable * { visibility: visible !important; }
-          #receipt-printable { position: absolute; left: 0; top: 0; }
+          #receipt-printable { position: absolute; left: 0; top: 0; width: 72mm; max-width: 72mm; margin: 0 auto; box-sizing: border-box; overflow: visible !important; }
         }
       `}</style>
     </div>

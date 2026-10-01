@@ -434,7 +434,9 @@ func (s *Service) getMenuItem(ctx context.Context, itemID string) *Item {
 
 func (s *Service) addToCart(ctx context.Context, customerID, locationID, itemID string, quantity int, variations map[string]string, specialInstructions string) bool {
 	var price float64
-	err := s.pool.QueryRow(ctx, `SELECT price::float8 FROM items WHERE id = $1`, itemID).Scan(&price)
+	err := s.pool.QueryRow(ctx,
+		`SELECT price::float8 FROM items WHERE id = $1 AND location_id = $2 AND is_active = true AND is_86ed = false`,
+		itemID, locationID).Scan(&price)
 	if err != nil {
 		log.Printf("Error getting item for cart: %v", err)
 		return false

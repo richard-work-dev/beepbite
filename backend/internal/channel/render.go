@@ -137,6 +137,9 @@ func Validate(m Message) error {
 	if m.Template != "" {
 		kinds++
 	}
+	if m.Flow != nil {
+		kinds++
+	}
 	if kinds > 1 {
 		return fmt.Errorf("channel: message carries %d payload kinds, want at most 1", kinds)
 	}

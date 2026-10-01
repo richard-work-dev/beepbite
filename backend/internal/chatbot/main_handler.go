@@ -80,6 +80,14 @@ func (s *Service) ProcessMessage(ctx context.Context, phoneNumberID, from, messa
 
 	state := s.getConversationState(ctx, chat.ID)
 
+	// A published native Flow is an optional accelerator. If it is not
+	// configured, or the customer is already inside the legacy conversation,
+	// the established text flow remains the source of truth.
+	if s.shouldOpenOrderFlow(state, messageBody) {
+		s.sendOrderFlow(ctx, normalizedFrom, chat.ID)
+		return nil
+	}
+
 	if strings.HasPrefix(messageBody, "LOCATION:") {
 		log.Printf("=== LOCATION MESSAGE DETECTED === body=%s state.step=%s", messageBody, state.Step)
 	}

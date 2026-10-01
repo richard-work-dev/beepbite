@@ -572,23 +572,23 @@ function TicketFooter({
 					{sending ? <span className="flex items-center gap-1.5"><Loader2 className="h-4 w-4 animate-spin" />Enviando…</span> : <span className="flex items-center gap-1.5"><ChefHat className="h-4 w-4" />Revisar y enviar{newItemsCount > 0 && <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/25 text-[11px] font-bold leading-none">{newItemsCount}</span>}</span>}
 				</Button>
 			</AlertDialogTrigger>
-			<AlertDialogContent className="max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] overflow-y-auto p-4 sm:p-6">
+			<AlertDialogContent className="flex max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] max-w-[42rem] min-w-0 flex-col overflow-y-auto p-4 sm:p-6">
 				<AlertDialogHeader>
 					<AlertDialogTitle>Enviar pedido a cocina</AlertDialogTitle>
 					<AlertDialogDescription>Revisá los datos antes de crear la comanda. Después de que cocina comience a prepararla, los productos ya no se podrán editar.</AlertDialogDescription>
 				</AlertDialogHeader>
-				<div className="space-y-2 rounded-lg border bg-muted/40 p-3 text-sm">
-					<div className="flex justify-between gap-3"><span>Destino</span><strong>{ticket?.kind === 'table' ? `Mesa ${ticket.table_number || ''}` : 'Para llevar'}</strong></div>
-					<div className="flex justify-between gap-3"><span>Cliente</span><strong className="truncate">{ticket?.customerName || 'Mostrador'}</strong></div>
-					<div className="flex justify-between gap-3"><span>Teléfono</span><strong className="truncate">{ticket?.customerPhone || 'Sin teléfono'}</strong></div>
-					<div className="flex justify-between gap-3"><span>Productos</span><strong>{newItemsCount}</strong></div>
-					<div className="flex justify-between gap-3"><span>Subtotal nuevo</span><strong>{format(newSubtotalCents)}</strong></div>
+				<div className="min-w-0 space-y-2 rounded-lg border bg-muted/40 p-3 text-sm">
+					<div className="grid min-w-0 grid-cols-[minmax(5.5rem,auto)_minmax(0,1fr)] gap-x-3 gap-y-2"><span>Destino</span><strong className="min-w-0 break-words text-right">{ticket?.kind === 'table' ? `Mesa ${ticket.table_number || ''}` : 'Para llevar'}</strong></div>
+					<div className="grid min-w-0 grid-cols-[minmax(5.5rem,auto)_minmax(0,1fr)] gap-x-3 gap-y-2"><span>Cliente</span><strong className="min-w-0 break-words text-right">{ticket?.customerName || 'Mostrador'}</strong></div>
+					<div className="grid min-w-0 grid-cols-[minmax(5.5rem,auto)_minmax(0,1fr)] gap-x-3 gap-y-2"><span>Teléfono</span><strong className="min-w-0 break-words text-right">{ticket?.customerPhone || 'Sin teléfono'}</strong></div>
+					<div className="grid min-w-0 grid-cols-[minmax(5.5rem,auto)_minmax(0,1fr)] gap-x-3 gap-y-2"><span>Productos</span><strong className="min-w-0 text-right">{newItemsCount}</strong></div>
+					<div className="grid min-w-0 grid-cols-[minmax(5.5rem,auto)_minmax(0,1fr)] gap-x-3 gap-y-2"><span>Subtotal nuevo</span><strong className="min-w-0 text-right tabular-nums">{format(newSubtotalCents)}</strong></div>
 					{ticket?.notes && <div className="border-t pt-2"><span className="text-muted-foreground">Observaciones:</span><p className="mt-1 font-medium text-foreground">{ticket.notes}</p></div>}
 				</div>
-				<AlertDialogFooter>
-					<AlertDialogCancel>Seguir editando</AlertDialogCancel>
-					{onEditDetails && <AlertDialogCancel onClick={onEditDetails}>Editar datos</AlertDialogCancel>}
-					<AlertDialogAction onClick={() => onSend?.()}><ChefHat className="mr-2 h-4 w-4" />Confirmar y enviar</AlertDialogAction>
+				<AlertDialogFooter className="grid w-full grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_1.35fr]">
+					<AlertDialogCancel className="m-0 w-full">Seguir editando</AlertDialogCancel>
+					{onEditDetails && <Button type="button" variant="outline" className="w-full" onClick={onEditDetails}>Editar datos</Button>}
+					<AlertDialogAction className="m-0 w-full whitespace-normal" onClick={() => onSend?.()}><ChefHat className="mr-2 h-4 w-4 shrink-0" />Confirmar y enviar</AlertDialogAction>
 				</AlertDialogFooter>
 			</AlertDialogContent>
 		</AlertDialog>

@@ -70,6 +70,11 @@ export default function OrderDetailsDialog({
           <DialogDescription>
             {orderLabel} · {orderType === 'dine_in' ? 'Consumo en el local' : 'Para llevar'}. Estos datos aparecerán en la comanda de cocina.
           </DialogDescription>
+          <div className="grid grid-cols-3 gap-2 pt-2 text-center text-[11px]" aria-label="Paso actual del pedido">
+            <div className="rounded-md border border-primary/30 bg-primary/10 px-2 py-1.5 font-semibold text-primary"><span className="mr-1">1</span> Productos</div>
+            <div className="rounded-md border border-primary bg-primary px-2 py-1.5 font-semibold text-primary-foreground"><span className="mr-1">2</span> Datos</div>
+            <div className="rounded-md border border-border bg-muted/40 px-2 py-1.5 text-muted-foreground"><span className="mr-1">3</span> Revisar</div>
+          </div>
         </DialogHeader>
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-5">
           <section className="space-y-3" aria-labelledby="order-customer-heading">

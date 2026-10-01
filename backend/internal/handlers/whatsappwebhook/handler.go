@@ -52,12 +52,13 @@ type profile struct {
 }
 
 type message struct {
-	From      string      `json:"from"`
-	ID        string      `json:"id"`
-	Timestamp string      `json:"timestamp"`
-	Type      string      `json:"type"`
-	Text      *messageTxt `json:"text,omitempty"`
-	Location  *messageLoc `json:"location,omitempty"`
+	From        string              `json:"from"`
+	ID          string              `json:"id"`
+	Timestamp   string              `json:"timestamp"`
+	Type        string              `json:"type"`
+	Text        *messageTxt         `json:"text,omitempty"`
+	Location    *messageLoc         `json:"location,omitempty"`
+	Interactive *messageInteractive `json:"interactive,omitempty"`
 }
 
 type messageTxt struct {
@@ -69,6 +70,34 @@ type messageLoc struct {
 	Longitude float64 `json:"longitude"`
 	Name      string  `json:"name,omitempty"`
 	Address   string  `json:"address,omitempty"`
+}
+
+type messageInteractive struct {
+	Type        string            `json:"type"`
+	ListReply   *messageReply     `json:"list_reply,omitempty"`
+	ButtonReply *messageReply     `json:"button_reply,omitempty"`
+	FlowReply   *messageFlowReply `json:"flow_reply,omitempty"`
+	NFMReply    *messageFlowReply `json:"nfm_reply,omitempty"`
+}
+
+type messageReply struct {
+	ID    string `json:"id"`
+	Title string `json:"title"`
+}
+
+type messageFlowReply struct {
+	ResponseJSON string `json:"response_json,omitempty"`
+	Body         string `json:"body,omitempty"`
+}
+
+func (r *messageFlowReply) responseJSON() string {
+	if r == nil {
+		return ""
+	}
+	if r.ResponseJSON != "" {
+		return r.ResponseJSON
+	}
+	return r.Body
 }
 
 // warnOnce ensures the "no app secret" warning is logged exactly once per
@@ -187,6 +216,7 @@ func NewHandler(svc *chatbot.Service, verifyToken string, appSecret string) http
 							}
 
 							messageBody := ""
+							flowResponse := ""
 							if m.Type == "text" && m.Text != nil {
 								messageBody = m.Text.Body
 							} else if m.Type == "location" && m.Location != nil {
@@ -197,9 +227,20 @@ func NewHandler(svc *chatbot.Service, verifyToken string, appSecret string) http
 								if m.Location.Address != "" {
 									messageBody += ":" + m.Location.Address
 								}
+							} else if m.Type == "interactive" && m.Interactive != nil {
+								switch {
+								case m.Interactive.FlowReply != nil:
+									flowResponse = m.Interactive.FlowReply.responseJSON()
+								case m.Interactive.NFMReply != nil:
+									flowResponse = m.Interactive.NFMReply.responseJSON()
+								case m.Interactive.ListReply != nil:
+									messageBody = m.Interactive.ListReply.ID
+								case m.Interactive.ButtonReply != nil:
+									messageBody = m.Interactive.ButtonReply.ID
+								}
 							}
 
-							if messageBody == "" {
+							if messageBody == "" && flowResponse == "" {
 								continue
 							}
 
@@ -209,11 +250,17 @@ func NewHandler(svc *chatbot.Service, verifyToken string, appSecret string) http
 							// often has minimal log-access controls. Log volume/shape
 							// only; ProcessMessage below is where any content-specific
 							// logging with its own redaction should happen, if needed.
-							log.Printf("Processing message id=%s type=%s bodyLen=%d",
-								messageID, m.Type, len(messageBody))
+							log.Printf("Processing message id=%s type=%s bodyLen=%d flow=%t",
+								messageID, m.Type, len(messageBody), flowResponse != "")
 
-							if err := svc.ProcessMessage(r.Context(), phoneNumberID, from, messageID, messageBody, displayName); err != nil {
-								log.Printf("Error processing message: %v", err)
+							var processErr error
+							if flowResponse != "" {
+								processErr = svc.ProcessFlowResponse(r.Context(), phoneNumberID, from, messageID, flowResponse, displayName)
+							} else {
+								processErr = svc.ProcessMessage(r.Context(), phoneNumberID, from, messageID, messageBody, displayName)
+							}
+							if processErr != nil {
+								log.Printf("Error processing message: %v", processErr)
 							}
 						}
 					}

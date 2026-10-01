@@ -24,10 +24,13 @@ type Config struct {
 
 	CORSOrigins []string
 
-	WhatsAppVerifyToken   string
-	WhatsAppAppSecret     string
-	WhatsAppAccessToken   string
-	WhatsAppPhoneNumberID string
+	WhatsAppVerifyToken     string
+	WhatsAppAppSecret       string
+	WhatsAppAccessToken     string
+	WhatsAppPhoneNumberID   string
+	WhatsAppOrderFlowID     string
+	WhatsAppOrderFlowScreen string
+	WhatsAppOrderFlowCTA    string
 
 	MapboxToken  string
 	GeminiAPIKey string
@@ -136,27 +139,30 @@ func Load(env string) (*Config, error) {
 	}
 
 	c := &Config{
-		Env:                   env,
-		Port:                  envOr("PORT", "8080"),
-		DatabaseURL:           os.Getenv("DATABASE_URL"),
-		JWTSecret:             os.Getenv("JWT_SECRET"),
-		AccessTokenTTL:        envDuration("JWT_ACCESS_TTL", 15*time.Minute),
-		RefreshTokenTTL:       envDuration("JWT_REFRESH_TTL", 30*24*time.Hour),
-		CORSOrigins:           splitCSV(os.Getenv("CORS_ORIGINS")),
-		WhatsAppVerifyToken:   os.Getenv("WHATSAPP_WEBHOOK_VERIFY_TOKEN"),
-		WhatsAppAppSecret:     os.Getenv("WHATSAPP_APP_SECRET"),
-		WhatsAppAccessToken:   os.Getenv("WHATSAPP_ACCESS_TOKEN"),
-		WhatsAppPhoneNumberID: os.Getenv("WHATSAPP_PHONE_NUMBER_ID"),
-		MapboxToken:           os.Getenv("MAPBOX_TOKEN"),
-		GeminiAPIKey:          os.Getenv("GEMINI_API_KEY"),
-		MapboxCountry:         os.Getenv("MAPBOX_COUNTRY"),
-		MapboxProximity:       os.Getenv("MAPBOX_PROXIMITY"),
-		FXProvider:            os.Getenv("FX_PROVIDER"),
-		FXBaseURL:             os.Getenv("FX_OPENRATE_URL"),
-		FXCacheTTL:            envDuration("FX_CACHE_TTL", 5*time.Minute),
-		FXSources:             os.Getenv("FX_OPENRATE_SOURCES"),
-		FXMaxAge:              envDuration("FX_OPENRATE_MAX_AGE", time.Hour),
-		FXFetchTimeout:        envDuration("FX_OPENRATE_FETCH_TIMEOUT", 15*time.Second),
+		Env:                     env,
+		Port:                    envOr("PORT", "8080"),
+		DatabaseURL:             os.Getenv("DATABASE_URL"),
+		JWTSecret:               os.Getenv("JWT_SECRET"),
+		AccessTokenTTL:          envDuration("JWT_ACCESS_TTL", 15*time.Minute),
+		RefreshTokenTTL:         envDuration("JWT_REFRESH_TTL", 30*24*time.Hour),
+		CORSOrigins:             splitCSV(os.Getenv("CORS_ORIGINS")),
+		WhatsAppVerifyToken:     os.Getenv("WHATSAPP_WEBHOOK_VERIFY_TOKEN"),
+		WhatsAppAppSecret:       os.Getenv("WHATSAPP_APP_SECRET"),
+		WhatsAppAccessToken:     os.Getenv("WHATSAPP_ACCESS_TOKEN"),
+		WhatsAppPhoneNumberID:   os.Getenv("WHATSAPP_PHONE_NUMBER_ID"),
+		WhatsAppOrderFlowID:     os.Getenv("WHATSAPP_ORDER_FLOW_ID"),
+		WhatsAppOrderFlowScreen: envOr("WHATSAPP_ORDER_FLOW_SCREEN", "ORDER"),
+		WhatsAppOrderFlowCTA:    envOr("WHATSAPP_ORDER_FLOW_CTA", "Hacer pedido"),
+		MapboxToken:             os.Getenv("MAPBOX_TOKEN"),
+		GeminiAPIKey:            os.Getenv("GEMINI_API_KEY"),
+		MapboxCountry:           os.Getenv("MAPBOX_COUNTRY"),
+		MapboxProximity:         os.Getenv("MAPBOX_PROXIMITY"),
+		FXProvider:              os.Getenv("FX_PROVIDER"),
+		FXBaseURL:               os.Getenv("FX_OPENRATE_URL"),
+		FXCacheTTL:              envDuration("FX_CACHE_TTL", 5*time.Minute),
+		FXSources:               os.Getenv("FX_OPENRATE_SOURCES"),
+		FXMaxAge:                envDuration("FX_OPENRATE_MAX_AGE", time.Hour),
+		FXFetchTimeout:          envDuration("FX_OPENRATE_FETCH_TIMEOUT", 15*time.Second),
 	}
 
 	// Never leave AllowedOrigins empty: go-chi/cors turns an empty list into

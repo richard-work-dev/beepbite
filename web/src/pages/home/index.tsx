@@ -147,7 +147,7 @@ const Home = () => {
       }
 
       let query = supabase
-        .from('pedidos')
+        .from('orders')
         .select(`
           *,
           customers (
@@ -206,7 +206,7 @@ const Home = () => {
     );
     try {
       const { error } = await supabase
-        .from('pedidos')
+        .from('orders')
         .update({ status: newStatus, updated_at: new Date().toISOString() })
         .eq('id', orderId);
       if (error) throw error;

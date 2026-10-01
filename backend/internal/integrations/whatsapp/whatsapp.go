@@ -206,6 +206,54 @@ func (c *Client) SendInteractiveButtons(to, bodyText string, buttons []Interacti
 	})
 }
 
+// SendFlow opens a published WhatsApp Flow. The Flow itself owns the screens
+// and validation; this call only supplies the published Flow ID and optional
+// initial navigation/data. A flow token is echoed by Meta in the response so
+// the application can correlate a submitted form with its conversation.
+func (c *Client) SendFlow(to, bodyText, cta, flowID, flowToken, screen string, data map[string]interface{}, header, footer, version string) (*SendResponse, error) {
+	if version == "" {
+		version = "3"
+	}
+	parameters := map[string]interface{}{
+		"flow_message_version": version,
+		"flow_id":              flowID,
+		"flow_cta":             cta,
+	}
+	if flowToken != "" {
+		parameters["flow_token"] = flowToken
+	}
+	if screen != "" {
+		parameters["flow_action"] = "navigate"
+		parameters["flow_action_payload"] = map[string]interface{}{
+			"screen": screen,
+			"data":   data,
+		}
+	}
+
+	interactive := map[string]interface{}{
+		"type": "flow",
+		"body": map[string]interface{}{"text": bodyText},
+		"action": map[string]interface{}{
+			"name":       "flow",
+			"parameters": parameters,
+		},
+	}
+	if header != "" {
+		interactive["header"] = map[string]interface{}{"type": "text", "text": header}
+	}
+	if footer != "" {
+		interactive["footer"] = map[string]interface{}{"text": footer}
+	}
+
+	return c.post(map[string]interface{}{
+		"messaging_product": "whatsapp",
+		"recipient_type":    "individual",
+		"to":                to,
+		"type":              "interactive",
+		"interactive":       interactive,
+	})
+}
+
 // SendImage sends an image message by URL (or id via separate field).
 func (c *Client) SendImage(to, imageURL, caption string) (*SendResponse, error) {
 	image := map[string]interface{}{"link": imageURL}

@@ -1527,8 +1527,7 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
                 <p className="font-display text-xs uppercase tracking-widest text-primary mb-3 text-center">
                   ¿Cómo hará el pedido el cliente?
                 </p>
-                {isDineInMode ? (
-                  <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                     {/* Eat-in and Takeaway are two equal, non-hierarchical
                         starting points — neither is a "success" or "warning"
                         state, so they're differentiated with primary vs
@@ -1540,7 +1539,7 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
                       className="flex flex-col items-center justify-center gap-2 py-7 rounded-2xl border-2 border-primary/30 bg-card hover:bg-primary/10 hover:border-primary/50 active:bg-primary/15 transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     >
                       <Utensils className="w-10 h-10 text-primary" />
-                      <span className="text-base font-bold text-foreground">Consumo en el local</span>
+                      <span className="text-base font-bold text-foreground">Comer en el local</span>
                       <span className="text-[11px] text-muted-foreground">
                         {hasFloorPlan ? 'Seleccionar una mesa' : 'Primero configurá las mesas'}
                       </span>
@@ -1556,20 +1555,7 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
                       <span className="text-base font-bold text-foreground">Para llevar</span>
                       <span className="text-[11px] text-muted-foreground">Mostrador</span>
                     </button>
-                  </div>
-                ) : (
-                  /* Takeaway-only mode: single wide button, no table flow */
-                  <button
-                    type="button"
-                    onClick={handleAddWalkIn}
-                    aria-label="Iniciar un pedido nuevo"
-                    className="w-full flex flex-col items-center justify-center gap-2 py-8 rounded-2xl border-2 border-primary/30 bg-card hover:bg-primary/10 hover:border-primary/50 active:bg-primary/15 transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  >
-                    <ShoppingBag className="w-10 h-10 text-primary" />
-                    <span className="text-base font-bold text-foreground">Pedido nuevo</span>
-                    <span className="text-[11px] text-muted-foreground">Tocá para comenzar</span>
-                  </button>
-                )}
+                </div>
               </div>
             )}
             {loadingMenu ? (

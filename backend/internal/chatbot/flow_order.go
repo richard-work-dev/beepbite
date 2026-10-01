@@ -138,13 +138,15 @@ func (s *Service) ProcessFlowResponse(ctx context.Context, phoneNumberID, from, 
 	}
 
 	orderType := strings.ToLower(firstFlowString(response.Data, "order_type", "fulfillment_type", "delivery_type"))
-	if orderType == "collection" || orderType == "takeaway" || orderType == "pickup" || orderType == "para_llevar" {
+	if orderType == "dine_in" || orderType == "dine-in" || orderType == "local" || orderType == "comer_en_local" || orderType == "salon" || orderType == "salón" {
+		orderType = "dine_in"
+	} else if orderType == "collection" || orderType == "takeaway" || orderType == "pickup" || orderType == "para_llevar" {
 		orderType = "pickup"
 	} else if orderType == "delivery" {
 		orderType = "delivery"
 	} else {
 		s.clearCart(ctx, customer.ID, locationID)
-		return s.replyFlowError(ctx, normalizedFrom, chat.ID, "Falta indicar si el pedido es para llevar o delivery.")
+		return s.replyFlowError(ctx, normalizedFrom, chat.ID, "Falta indicar si el pedido es para llevar, comer en el local o delivery.")
 	}
 
 	var addressData *orderAddressData

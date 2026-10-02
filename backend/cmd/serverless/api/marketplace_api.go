@@ -44,7 +44,7 @@ func (a *application) handleMarketplaceAPI(ctx context.Context, request events.A
 	case "detail":
 		response = a.getMarketplaceStore(ctx, route.slug)
 	case "checkout":
-		response = a.createMarketplaceOrder(ctx, route.slug, request.Body)
+		response = a.createMarketplaceOrder(ctx, route.slug, request.Body, request.RequestContext.HTTP.SourceIP)
 	}
 	if response.Headers == nil {
 		response.Headers = map[string]string{}

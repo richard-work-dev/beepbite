@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowRight, Clock, MapPin, Plus, Search, ShoppingBag, UtensilsCrossed } from 'lucide-react';
+import { ArrowRight, Clock, MapPin, Plus, Search, ShieldCheck, ShoppingBag, UtensilsCrossed } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
@@ -73,6 +73,9 @@ function Storefront({ slug }: { slug: string }) {
   const canOrder = store.accepting_orders !== false && fulfillmentOptions(store).length > 0;
   const count = items.reduce((n, i) => n + i.quantity, 0);
   const total = orderTotals(items, store, mode).total;
+  const subtotal = orderTotals(items, store, mode).subtotal;
+  const deliveryThreshold = store.free_delivery_threshold_cents ?? 0;
+  const amountUntilFreeDelivery = Math.max(0, deliveryThreshold - subtotal);
   const normalize = (v: string) => v.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   const categories = store.categories.filter(c => category === 'all' || c.id === category).map(c => ({ ...c,
     items: c.items.filter(i => normalize(i.name + ' ' + (i.description || '')).includes(normalize(query.trim()))),
@@ -86,8 +89,9 @@ function Storefront({ slug }: { slug: string }) {
         <Input aria-label={'Aclaraciones para ' + item.name} placeholder="Sin cebolla, bien cocido… (opcional)" maxLength={300} value={item.notes} onChange={e => setItems(current => current.map(i => i.id === item.id ? { ...i, notes: e.target.value } : i))} />
       </li>)}</ul>
       <OrderSummary items={items} store={store} mode={mode} />
-      <Button asChild className="h-12 w-full rounded-xl"><Link to={'/store/' + encodeURIComponent(slug) + '/checkout'} aria-disabled={!canOrder} onClick={e => { if (!canOrder) e.preventDefault(); }}>Continuar con mis datos <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
-      <p className="text-center text-xs text-muted-foreground">Sin registrarte. Pagás al recibir tu pedido.</p>
+      {mode === 'delivery' && deliveryThreshold > 0 && <p className="rounded-xl bg-primary/5 p-3 text-sm" role="status">{amountUntilFreeDelivery > 0 ? `Te faltan ${publicMoney(amountUntilFreeDelivery, store)} para obtener envío gratis.` : '¡Tu envío es gratis con este pedido!'}</p>}
+      <Button asChild className="h-12 w-full rounded-xl"><Link to={'/store/' + encodeURIComponent(slug) + '/checkout'} aria-disabled={!canOrder} onClick={e => { if (!canOrder) e.preventDefault(); }}>Continuar para finalizar <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
+      <p className="flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground"><ShieldCheck className="h-3.5 w-3.5 shrink-0" />Sin registrarte. Revisás el total antes de confirmar y pagás al recibir.</p>
     </> : <div className="rounded-2xl border border-dashed p-8 text-center"><ShoppingBag className="mx-auto mb-3 h-9 w-9 text-muted-foreground" /><p className="font-medium">¿Qué vas a pedir hoy?</p><p className="mt-1 text-sm text-muted-foreground">Elegí tus favoritos del menú.</p></div>}
   </div>;
 
@@ -128,7 +132,7 @@ function Storefront({ slug }: { slug: string }) {
       </div>
       <footer className="flex flex-wrap justify-between gap-3 border-t pt-6 text-xs text-muted-foreground"><span>{store.name} · Pedidos online</span><Link to="/legal/privacy">Privacidad</Link></footer>
     </main>
-    {count > 0 && <div className="fixed inset-x-0 bottom-0 z-20 border-t bg-background/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden"><Button className="flex h-14 w-full justify-between rounded-xl px-5" onClick={() => setCartOpen(true)}><span className="flex items-center gap-2"><ShoppingBag className="h-5 w-5" />Ver mi pedido ({count})</span><span>{publicMoney(total, store)}</span></Button></div>}
+    {count > 0 && <div className="fixed inset-x-0 bottom-0 z-20 border-t bg-background/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden"><Button className="flex h-14 w-full justify-between rounded-xl px-5" onClick={() => setCartOpen(true)}><span className="flex items-center gap-2"><ShoppingBag className="h-5 w-5" />Ver pedido y finalizar ({count})</span><span>{publicMoney(total, store)}</span></Button></div>}
     <Sheet open={cartOpen} onOpenChange={setCartOpen}><SheetContent side="bottom" className="max-h-[90dvh] overflow-y-auto rounded-t-3xl px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-6"><SheetHeader className="mb-5 pr-8 text-left"><SheetTitle>Revisá tus productos</SheetTitle><SheetDescription>Podés ajustar cantidades y agregar aclaraciones.</SheetDescription></SheetHeader>{cart}</SheetContent></Sheet>
   </div>;
 }

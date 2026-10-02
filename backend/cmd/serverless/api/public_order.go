@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -20,6 +21,46 @@ import (
 )
 
 var publicOrderRequestPattern = regexp.MustCompile(`^[a-zA-Z0-9-]{16,80}$`)
+
+const publicOrderLimit = 5
+
+// publicOrderRateLimitKey uses a short-lived, window-specific digest: raw client
+// IP addresses are never persisted and cannot be correlated across windows.
+func publicOrderRateLimitKey(locationID, sourceIP string, now time.Time) (map[string]types.AttributeValue, int64) {
+	window := now.UTC().Unix() / int64((10*time.Minute)/time.Second)
+	digest := sha256.Sum256([]byte(fmt.Sprintf("%d:%s", window, strings.TrimSpace(sourceIP))))
+	expires := (window + 2) * int64((10*time.Minute)/time.Second)
+	return map[string]types.AttributeValue{
+		"PK": &types.AttributeValueMemberS{Value: "RATE#PUBLIC_ORDER#" + locationID + "#" + hex.EncodeToString(digest[:])},
+		"SK": &types.AttributeValueMemberS{Value: fmt.Sprintf("WINDOW#%d", window)},
+	}, expires
+}
+
+func (a *application) allowPublicOrder(ctx context.Context, locationID, sourceIP string, now time.Time) (bool, error) {
+	if strings.TrimSpace(sourceIP) == "" {
+		return false, errors.New("missing trusted API Gateway client address")
+	}
+	key, expires := publicOrderRateLimitKey(locationID, sourceIP, now)
+	_, err := a.dynamo.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+		TableName:           aws.String(a.table),
+		Key:                 key,
+		UpdateExpression:    aws.String("SET expires_at = :expires ADD request_count :one"),
+		ConditionExpression: aws.String("attribute_not_exists(request_count) OR request_count < :limit"),
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":expires": &types.AttributeValueMemberN{Value: strconv.FormatInt(expires, 10)},
+			":one":     &types.AttributeValueMemberN{Value: "1"},
+			":limit":   &types.AttributeValueMemberN{Value: strconv.Itoa(publicOrderLimit)},
+		},
+	})
+	if err == nil {
+		return true, nil
+	}
+	var limitReached *types.ConditionalCheckFailedException
+	if errors.As(err, &limitReached) {
+		return false, nil
+	}
+	return false, err
+}
 
 func publicOrderModeEnabled(location map[string]any, mode string) bool {
 	switch mode {
@@ -199,7 +240,7 @@ func publicOrderHash(input map[string]any) string {
 
 // Orders, lines, stock reservation, tracking and the retry receipt commit together.
 // In particular, a timed-out HTTP response must never create a second order.
-func (a *application) createMarketplaceOrder(ctx context.Context, slug, body string) events.APIGatewayV2HTTPResponse {
+func (a *application) createMarketplaceOrder(ctx context.Context, slug, body, sourceIP string) events.APIGatewayV2HTTPResponse {
 	if len(body) > 64*1024 {
 		return errorResponse(413, "El pedido es demasiado grande.")
 	}
@@ -224,6 +265,17 @@ func (a *application) createMarketplaceOrder(ctx context.Context, slug, body str
 	receiptID := locationID + "-" + requestID
 	hash := publicOrderHash(input)
 	if response, found := a.replayPublicOrder(ctx, orgID, receiptID, hash); found {
+		return response
+	}
+	rateLimitNow := time.Now().UTC()
+	allowed, limitErr := a.allowPublicOrder(ctx, locationID, sourceIP, rateLimitNow)
+	if limitErr != nil {
+		return dataAccessError(limitErr)
+	}
+	if !allowed {
+		response := errorResponse(429, "Llegaron varios pedidos desde esta conexión. Esperá unos minutos y volvé a intentar.")
+		retryAfter := int64(600) - rateLimitNow.Unix()%600
+		response.Headers = map[string]string{"Retry-After": strconv.FormatInt(retryAfter, 10), "Cache-Control": "no-store"}
 		return response
 	}
 	if !boolOr(location.row, "online_orders_enabled", true) {

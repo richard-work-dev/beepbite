@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, ShieldCheck, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -134,6 +134,7 @@ function Checkout({ slug }: { slug: string }) {
       <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
         {step === 'details' ? <form onSubmit={review} className="min-w-0 space-y-6 rounded-2xl border bg-card p-4 sm:p-6">
           <h1 className="text-2xl font-bold">Ya casi está.</h1>
+          <p className="flex items-start gap-2 rounded-xl bg-muted/60 p-3 text-sm text-muted-foreground"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span>Sin cuenta ni datos de tarjeta. El local recibe tu teléfono y, si elegís delivery, tu dirección para coordinar el pedido. <Link className="underline" to="/legal/privacy">Ver privacidad</Link>.</span></p>
           <FulfillmentPicker store={store} value={draft.fulfillment_type} onChange={value => update('fulfillment_type', value)} />
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2"><Label htmlFor="customer-name">Tu nombre</Label><Input id="customer-name" autoComplete="name" required minLength={2} maxLength={100} placeholder="¿A nombre de quién?" value={draft.customer_name} onChange={e => update('customer_name', e.target.value)} /></div>

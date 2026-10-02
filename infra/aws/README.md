@@ -38,6 +38,19 @@ terraform plan -out=serverless.tfplan
 The Lambda archives are local build artifacts and are ignored by Git. Build
 them before every plan or apply that changes Go code.
 
+### GitHub deployment flow
+
+Pushing to `develop` runs **Plan development deployment** only. Inspect the
+`development-plan` artifact (`plan.txt`) and confirm the resource actions before
+applying. To deploy that exact plan, manually run **Apply reviewed development
+plan**, providing the plan workflow's run ID and the exact commit SHA shown in
+its summary. Plans that destroy or replace resources are blocked unless the
+operator separately sets `allow_destroy` after reviewing those actions. The
+apply workflow rejects a commit mismatch and Terraform rejects a stale state
+plan. The saved plan and Lambda archives expire after two days;
+they may contain sensitive infrastructure values, so access follows this
+repository's GitHub artifact permissions. Never publish them outside the team.
+
 ## Deploy
 
 ```powershell

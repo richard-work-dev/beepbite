@@ -27,10 +27,22 @@ import { api } from '@/lib/api-client';
  * the flat wire format.
  */
 type TrackingStatus =
-  | 'pending' | 'confirmed' | 'preparing' | 'ready' | 'out_for_delivery'
+  | 'pending' | 'pending_on_delivery' | 'sent' | 'confirmed' | 'preparing' | 'ready' | 'out_for_delivery'
   | 'delivered' | 'completed' | 'cancelled';
 
 interface RawTracking {
+  order_number?: string;
+  total_cents?: number;
+  currency_code?: string;
+  locale?: string;
+  store_name?: string;
+  store_address?: string;
+  store_slug?: string;
+  payment_status?: string;
+  payment_method?: string;
+  table_label?: string;
+  estimated_prep_time_minutes?: number;
+  items?: { name: string; quantity: number; total_cents: number; notes?: string }[];
   token: string;
   order_id: string;
   status: TrackingStatus;
@@ -45,10 +57,19 @@ interface RawTracking {
 }
 
 export interface TrackingPayload {
+  orderNumber?: string;
+  totalCents?: number;
+  currency?: string;
+  locale?: string;
+  paymentStatus?: string;
+  paymentMethod?: string;
+  tableLabel?: string;
+  prepMinutes?: number;
+  items?: { name: string; quantity: number; total_cents: number; notes?: string }[];
   status: TrackingStatus;
   fulfillmentType: string;
   eta_minutes: number | null;
-  store: { lat?: number; lng?: number } | null;
+  store: { lat?: number; lng?: number; name?: string; address?: string; slug?: string } | null;
   delivery_address: { lat: number | null; lng: number | null; label: string | null };
   driver: { lat: number; lng: number } | null;
 }
@@ -66,12 +87,15 @@ function normalizeTracking(raw: RawTracking | null): TrackingPayload | null {
   }
 
   return {
+    orderNumber: raw.order_number, totalCents: raw.total_cents, currency: raw.currency_code,
+    locale: raw.locale, paymentStatus: raw.payment_status, paymentMethod: raw.payment_method,
+    tableLabel: raw.table_label, prepMinutes: raw.estimated_prep_time_minutes, items: raw.items,
     status: raw.status,
     fulfillmentType: raw.fulfillment_type,
     eta_minutes: etaMinutes,
     // The backend never sends a store name/address — only coordinates — so
     // there's no name/address field to carry through here.
-    store: hasStoreCoords ? { lat: raw.store_lat, lng: raw.store_lng } : null,
+    store: hasStoreCoords || raw.store_name ? { lat: raw.store_lat, lng: raw.store_lng, name: raw.store_name, address: raw.store_address, slug: raw.store_slug } : null,
     delivery_address: {
       lat: hasDeliveryCoords ? raw.delivery_lat ?? null : null,
       lng: hasDeliveryCoords ? raw.delivery_lng ?? null : null,

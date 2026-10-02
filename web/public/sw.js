@@ -8,9 +8,8 @@
  *     the shell cache.  On a successful network response the cache is updated.
  *
  *   Store-menu snapshots (GET /stores/<slug>):
- *     Stale-while-revalidate — serve the cached version immediately, then
- *     update the cache from the network in the background.  This makes the
- *     menu instantly available offline while keeping data fresh.
+ *     Always fetched from the network so prices and order availability stay
+ *     current.
  *
  *   All other API requests (non-GET or non-menu GET):
  *     Network-first with NO cache fallback.  Mutations must not be replayed
@@ -19,7 +18,7 @@
  * CACHES
  * ------
  *   bb-shell-v2   — app shell assets listed in SHELL_ASSETS
- *   bb-menu-v2    — GET /stores/<slug> snapshots (stale-while-revalidate)
+ *   Old menu caches are removed during activation.
  *
  * NOTE: The service worker is served from /sw.js (public directory).  Vite
  * does NOT bundle files in public/ so this file must be plain JS with no
@@ -32,8 +31,7 @@
 
 // ---- configuration ---------------------------------------------------------
 
-const SHELL_CACHE = 'bb-shell-v2';
-const MENU_CACHE  = 'bb-menu-v2';
+const SHELL_CACHE = 'bb-shell-v3';
 
 // Assets to pre-cache on install.  Keep this list minimal — large lists slow
 // down the install phase.  Add versioned asset manifests here once you have a
@@ -62,7 +60,7 @@ self.addEventListener('install', (evt) => {
 
 self.addEventListener('activate', (evt) => {
   // Evict any old caches that don't belong to this version.
-  const keep = new Set([SHELL_CACHE, MENU_CACHE]);
+  const keep = new Set([SHELL_CACHE]);
   evt.waitUntil(
     caches.keys().then((names) =>
       Promise.all(names.filter((n) => !keep.has(n)).map((n) => caches.delete(n)))
@@ -80,9 +78,9 @@ self.addEventListener('fetch', (evt) => {
   // POST/PATCH/DELETE are left to the network (queue.js handles offline mutations).
   if (request.method !== 'GET') return;
 
-  // --- Store-menu snapshots: stale-while-revalidate -------------------------
+  // --- Store-menu snapshots: always fresh -------------------------
   if (MENU_PATH_RE.test(url.pathname)) {
-    evt.respondWith(staleWhileRevalidate(request, MENU_CACHE));
+    evt.respondWith(fetch(request));
     return;
   }
 
@@ -101,43 +99,6 @@ self.addEventListener('fetch', (evt) => {
   // --- All other requests (API calls that are not menu snapshots) -----------
   // Let them pass through to the network unmodified.
 });
-
-// ---- strategy: stale-while-revalidate --------------------------------------
-
-/**
- * Serve from cache immediately (if available) then update the cache in the
- * background from the network.  Falls back to the network if no cache entry
- * exists.
- */
-async function staleWhileRevalidate(request, cacheName) {
-  const cache   = await caches.open(cacheName);
-  const cached  = await cache.match(request);
-
-  // Kick off background refresh regardless of whether we have a cached copy.
-  const networkFetch = fetch(request.clone())
-    .then((res) => {
-      if (res.ok) {
-        cache.put(request, res.clone()).catch(() => { /* quota errors are silent */ });
-      }
-      return res;
-    })
-    .catch(() => null); // network failure is non-fatal when we have cache
-
-  if (cached) {
-    // Background update already started — return the cached version.
-    return cached;
-  }
-
-  // No cache yet — wait for the network.
-  const fresh = await networkFetch;
-  if (fresh) return fresh;
-
-  // Both cache and network failed.
-  return new Response(JSON.stringify({ error: 'offline', cached: false }), {
-    status:  503,
-    headers: { 'Content-Type': 'application/json' },
-  });
-}
 
 // ---- strategy: network-first with shell cache fallback ---------------------
 

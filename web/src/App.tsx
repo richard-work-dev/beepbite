@@ -43,7 +43,7 @@ const AuthWrapper = () => {
           <PinModalProvider>
             <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
               <AppRoutes />
-              <OnboardingPopup />
+              <OnboardingPopup pathname={location.pathname} />
               <Toaster />
             </ThemeProvider>
           </PinModalProvider>

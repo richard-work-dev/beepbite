@@ -52,6 +52,11 @@ func (a *application) handleMarketplaceEngagementAPI(ctx context.Context, reques
 		response = a.replyMarketplaceReview(ctx, request, route.id)
 	case "tracking":
 		response = a.getMarketplaceTracking(ctx, route.token)
+		if response.Headers == nil {
+			response.Headers = map[string]string{}
+		}
+		response.Headers["Cache-Control"] = "no-store"
+		response.Headers["Referrer-Policy"] = "no-referrer"
 	case "pickup-slots":
 		response = a.listPickupSlots(ctx, route.id, request.RawQueryString)
 	}
@@ -306,10 +311,26 @@ func (a *application) getMarketplaceTracking(ctx context.Context, encodedToken s
 	}
 	response := map[string]any{
 		"token": token, "order_id": orderID, "status": order["status"], "fulfillment_type": order["fulfillment_type"],
+		"order_number": order["order_number"], "total_cents": order["total_cents"], "currency_code": order["currency_code"],
+		"store_name": location["name"], "store_address": location["address"], "store_slug": location["slug"],
+		"locale": valueOr(location, "locale", "es-AR"), "payment_status": valueOr(order, "payment_status", "pending"),
+		"payment_method": order["payment_method"], "table_label": valueOr(order, "table_label", nil),
+		"created_at": order["created_at"], "estimated_prep_time_minutes": order["estimated_prep_time"],
 		"estimated_delivery_time": valueOr(order, "estimated_delivery_time", nil),
 		"store_lat":               valueOr(location, "latitude", nil), "store_lng": valueOr(location, "longitude", nil),
 		"delivery_address": valueOr(order, "delivery_address", nil),
 	}
+	lines, err := a.queryDataRows(ctx, orgID, "order_items")
+	if err != nil {
+		return dataAccessError(err)
+	}
+	items := []map[string]any{}
+	for _, line := range lines {
+		if displayString(line["order_id"]) == orderID {
+			items = append(items, map[string]any{"name": valueOr(line, "item_name", "Producto"), "quantity": line["quantity"], "total_cents": line["line_total_cents"], "notes": line["special_instructions"]})
+		}
+	}
+	response["items"] = items
 	if displayString(order["status"]) == "out_for_delivery" {
 		response["delivery_lat"] = valueOr(order, "delivery_latitude", nil)
 		response["delivery_lng"] = valueOr(order, "delivery_longitude", nil)

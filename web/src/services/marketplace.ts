@@ -90,6 +90,16 @@ export interface StoreDetail {
   description: string | null;
   offers_delivery: boolean;
   offers_collection: boolean;
+  offers_dine_in?: boolean;
+  accepting_orders?: boolean;
+  on_delivery_payment_methods?: string[];
+  locale?: string | null;
+  phone_country_code?: string | null;
+  whatsapp_number?: string | null;
+  tax_rate?: number;
+  tax_inclusive?: boolean;
+  delivery_fee_cents?: number;
+  free_delivery_threshold_cents?: number;
   estimated_prep_time_minutes: number;
   currency_code: string | null;
   avg_rating: number | null;
@@ -107,6 +117,10 @@ export interface Order {
   status: string;
   payment_method: string;
   total: number;
+  total_cents?: number;
+  currency_code?: string;
+  tracking_url?: string;
+  tracking_token?: string;
   pay_url?: string;
   [key: string]: unknown;
 }
@@ -122,6 +136,12 @@ export interface Order {
 // float. The backend re-validates and re-totals it server-side; this is
 // just the wire shape.
 export interface CheckoutOrderPayload {
+  request_id?: string;
+  customer_name?: string;
+  customer_phone?: string;
+  notes?: string;
+  table_label?: string;
+  expected_total_cents?: number;
   customer_id?: string;
   fulfillment_type: 'delivery' | 'collection' | 'dine_in';
   on_delivery_method?: string;
@@ -148,8 +168,9 @@ export interface CartItem {
 }
 
 export interface CartMeta {
-  fulfillment_type: 'delivery' | 'collection' | null;
+  fulfillment_type: 'delivery' | 'collection' | 'dine_in' | null;
   delivery_address: string;
+  table_label?: string;
 }
 
 /**
@@ -214,15 +235,17 @@ export function readCart(slug: string): CartItem[] {
 }
 
 export function writeCart(slug: string, items: CartItem[] | null | undefined) {
+  try {
   if (!items || items.length === 0) {
     localStorage.removeItem(cartKey(slug));
   } else {
     localStorage.setItem(cartKey(slug), JSON.stringify(items));
   }
+  } catch { /* The cart still works when browser storage is unavailable. */ }
 }
 
 export function clearCart(slug: string) {
-  localStorage.removeItem(cartKey(slug));
+  try { localStorage.removeItem(cartKey(slug)); } catch { /* Optional persistence. */ }
 }
 
 /**
@@ -231,7 +254,15 @@ export function clearCart(slug: string) {
 export function readCartMeta(slug: string): CartMeta {
   try {
     const raw = localStorage.getItem(cartMetaKey(slug));
-    return raw ? JSON.parse(raw) : { fulfillment_type: null, delivery_address: '' };
+    if (!raw) return { fulfillment_type: null, delivery_address: '' };
+    const value: unknown = JSON.parse(raw);
+    if (!value || typeof value !== 'object') return { fulfillment_type: null, delivery_address: '' };
+    const meta = value as Partial<CartMeta>;
+    return {
+      fulfillment_type: ['delivery', 'collection', 'dine_in'].includes(String(meta.fulfillment_type)) ? meta.fulfillment_type! : null,
+      delivery_address: typeof meta.delivery_address === 'string' ? meta.delivery_address : '',
+      table_label: typeof meta.table_label === 'string' ? meta.table_label : '',
+    };
   } catch {
     return { fulfillment_type: null, delivery_address: '' };
   }
@@ -241,9 +272,11 @@ export function readCartMeta(slug: string): CartMeta {
  * Write fulfillment metadata for a cart.
  */
 export function writeCartMeta(slug: string, meta: CartMeta | null | undefined) {
+  try {
   if (!meta || !meta.fulfillment_type) {
     localStorage.removeItem(cartMetaKey(slug));
   } else {
     localStorage.setItem(cartMetaKey(slug), JSON.stringify(meta));
   }
+  } catch { /* Optional persistence. */ }
 }

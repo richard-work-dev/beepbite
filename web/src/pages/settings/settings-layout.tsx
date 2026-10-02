@@ -48,6 +48,7 @@ const SECTIONS: SettingsSection[] = [
   {
     title: 'Tienda',
     items: [
+      { label: 'Pedidos online', to: '/settings/online-ordering', icon: Globe },
       { label: 'Promociones', to: '/settings/promotions', icon: Tag },
       { label: 'Zonas de entrega', to: '/settings/delivery-zones', icon: Truck },
       { label: 'Fidelización', to: '/settings/loyalty', icon: Heart },

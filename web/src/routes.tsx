@@ -127,6 +127,7 @@ const LegalPrivacy = lazyImport(() => import('./pages/legal/privacy'));
 const CustomerChat = lazyImport(() => import('./pages/chat'));
 const CustomerDisplay = lazyImport(() => import('./pages/pos/customer-display'));
 const SettingsDomains = lazyImport(() => import('./pages/settings/domains'));
+const SettingsOnlineOrdering = lazyImport(() => import('./pages/settings/online-ordering'));
 const SettingsHardware = lazyImport(() => import('./pages/settings/hardware'));
 // Security (2FA) + Data & Privacy (export/delete) now live as tabs inside /account;
 // the standalone routes below redirect there for backwards-compatible links.
@@ -213,6 +214,7 @@ const AppRoutes = () => {
         <Route element={<BlankLayout />}>
           <Route path="/discover" element={<Discover />} />
           <Route path="/store/:slug" element={<StoreDetail />} />
+          <Route path="/store/:slug/checkout" element={<Checkout />} />
           <Route path="/checkout" element={<Checkout />} />
           {/* Quick POS kiosk — chrome-less counter-service, restricted to POS staff */}
           <Route path="/q/:slug" element={<Protected capabilities={['can_pos']}><QuickPOS /></Protected>} />
@@ -279,6 +281,7 @@ const AppRoutes = () => {
             <Route path="api-keys" element={<SettingsApiKeys />} />
             <Route path="kitchen" element={<SettingsKitchen />} />
             <Route path="domains" element={<SettingsDomains />} />
+            <Route path="online-ordering" element={<SettingsOnlineOrdering />} />
             <Route path="hardware" element={<SettingsHardware />} />
             <Route path="delivery-zones" element={<SettingsDeliveryZones />} />
             <Route path="loyalty" element={<SettingsLoyalty />} />

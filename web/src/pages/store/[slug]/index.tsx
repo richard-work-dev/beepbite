@@ -1,498 +1,134 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { ArrowRight, Clock, MapPin, Plus, Search, ShoppingBag, UtensilsCrossed } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { MapPin, Star, Clock, ChevronLeft, ShoppingCart, Truck, Store } from 'lucide-react';
-import { getStore, readCart, writeCart, readCartMeta, writeCartMeta, type StoreDetail, type CartItem } from '@/services/marketplace';
-import MenuSection from './components/menu-section';
-import CartWidget from './components/cart-widget';
-
-function StoreHeaderSkeleton() {
-  return (
-    <div className="space-y-4 animate-pulse">
-      <Skeleton className="h-44 sm:h-60 w-full rounded-none" />
-      <div className="px-4 space-y-2.5">
-        <div className="flex items-center gap-3">
-          <Skeleton className="h-12 w-12 rounded-full shrink-0" />
-          <div className="flex-1 space-y-1.5">
-            <Skeleton className="h-5 w-40" />
-            <Skeleton className="h-3 w-24" />
-          </div>
-        </div>
-        <Skeleton className="h-3 w-full" />
-        <Skeleton className="h-3 w-3/4" />
-        <div className="flex gap-3 pt-1">
-          <Skeleton className="h-4 w-20" />
-          <Skeleton className="h-4 w-16" />
-          <Skeleton className="h-4 w-24" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Cart items are permissively shaped (see services/marketplace.ts CartItem
-// comment): items added from the menu carry a decimal-string `price`
-// (MarketplaceMenuItem), items added from the cart widget carry a numeric
-// `price` (CartItem) — neither call site validates this before use, so
-// addToCart/removeFromCart accept either shape, matching pre-migration
-// dynamic-typing behavior exactly.
-interface CartLikeItem {
-  id?: string;
-  name?: string;
-  price?: string | number;
-  quantity?: number;
-}
-
-/**
- * Cart state helpers — merge add/remove into the items array.
- */
-function addToCart(items: CartItem[], item: CartLikeItem): CartItem[] {
-  const existing = items.find((i) => i.id === item.id);
-  if (existing) {
-    return items.map((i) =>
-      i.id === item.id ? { ...i, quantity: (i.quantity ?? 1) + 1 } : i
-    );
-  }
-  return [...items, { id: item.id, name: item.name, price: item.price, quantity: 1 } as CartItem];
-}
-
-function removeFromCart(items: CartItem[], item: CartLikeItem): CartItem[] {
-  return items
-    .map((i) =>
-      i.id === item.id ? { ...i, quantity: (i.quantity ?? 1) - 1 } : i
-    )
-    .filter((i) => (i.quantity ?? 0) > 0);
-}
-
-/**
- * Derive which fulfillment modes a store offers.
- * If neither flag is present (backend gap), default to offering both.
- */
-function getFulfillmentOptions(store: StoreDetail | null) {
-  if (!store) return { offersDelivery: true, offersCollection: true };
-
-  const hasDeliveryFlag = 'offers_delivery' in store;
-  const hasCollectionFlag = 'offers_collection' in store;
-
-  // Defensive: if neither flag is present, show both
-  if (!hasDeliveryFlag && !hasCollectionFlag) {
-    return { offersDelivery: true, offersCollection: true };
-  }
-
-  return {
-    offersDelivery: store.offers_delivery === true,
-    offersCollection: store.offers_collection === true,
-  };
-}
-
-/**
- * FulfillmentSelector — shows a Delivery / Collection toggle (or nothing if
- * only one mode is available, which gets auto-selected).
- */
-interface FulfillmentSelectorProps {
-  store: StoreDetail | null;
-  value: 'delivery' | 'collection';
-  onChange: (type: 'delivery' | 'collection') => void;
-  deliveryAddress: string;
-  onAddressChange: (value: string) => void;
-}
-
-function FulfillmentSelector({ store, value, onChange, deliveryAddress, onAddressChange }: FulfillmentSelectorProps) {
-  const { offersDelivery, offersCollection } = getFulfillmentOptions(store);
-
-  // Build store address string for collection note
-  const storeAddress = [store?.address, store?.city, store?.country]
-    .filter(Boolean)
-    .join(', ');
-
-  const showToggle = offersDelivery && offersCollection;
-
-  return (
-    <div className="rounded-xl border border-border/60 bg-muted/30 px-4 py-3 space-y-3">
-      {/* Tab-style toggle — only shown when both modes are available */}
-      {showToggle && (
-        <div className="flex gap-2 p-1 bg-muted rounded-lg w-fit">
-          <button
-            type="button"
-            onClick={() => onChange('delivery')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-              value === 'delivery'
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-primary'
-            }`}
-          >
-            <Truck className="h-3.5 w-3.5" />
-            Delivery
-          </button>
-          <button
-            type="button"
-            onClick={() => onChange('collection')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-              value === 'collection'
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-primary'
-            }`}
-          >
-            <Store className="h-3.5 w-3.5" />
-            Collection
-          </button>
-        </div>
-      )}
-
-      {/* Single-mode label when only one is available */}
-      {!showToggle && (
-        <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
-          {value === 'delivery' ? (
-            <>
-              <Truck className="h-3.5 w-3.5 text-primary" />
-              <span>Delivery only</span>
-            </>
-          ) : (
-            <>
-              <Store className="h-3.5 w-3.5 text-primary" />
-              <span>Collection only</span>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Delivery address input */}
-      {value === 'delivery' && (
-        <div className="space-y-1.5">
-          <Label htmlFor="delivery-address" className="text-xs text-muted-foreground font-medium">
-            Delivery address
-          </Label>
-          <Input
-            id="delivery-address"
-            type="text"
-            placeholder="Enter your delivery address"
-            value={deliveryAddress}
-            onChange={(e) => onAddressChange(e.target.value)}
-            className="h-9 text-sm focus-visible:ring-ring bg-background"
-          />
-        </div>
-      )}
-
-      {/* Collection note */}
-      {value === 'collection' && (
-        <p className="text-xs text-muted-foreground flex items-start gap-1.5">
-          <MapPin className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" aria-hidden="true" />
-          <span>
-            Collect at{' '}
-            <span className="font-medium text-foreground">
-              {storeAddress || store?.name || 'the store'}
-            </span>
-          </span>
-        </p>
-      )}
-    </div>
-  );
-}
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { FulfillmentPicker, OrderSummary, QuantityControl } from '@/components/public-order';
+import { getStore, readCart, writeCart, readCartMeta, writeCartMeta, type StoreDetail, type MarketplaceMenuItem } from '@/services/marketplace';
+import { fulfillmentOptions, orderTotals, publicMoney, reconcileCart, type OrderLine, type Fulfillment } from '@/services/public-order';
+import { currencyScale } from '@/lib/currency';
 
 export default function StoreDetailPage() {
-  const { slug } = useParams<{ slug: string }>();
-  const navigate = useNavigate();
+  const { slug = '' } = useParams();
+  return <Storefront key={slug} slug={slug} />;
+}
 
+function Storefront({ slug }: { slug: string }) {
+  const [params] = useSearchParams();
   const [store, setStore] = useState<StoreDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Cart — initialise items from localStorage
-  const [cartItems, setCartItems] = useState<CartItem[]>(() => readCart(slug as string));
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [attempt, setAttempt] = useState(0);
+  const [items, setItems] = useState<OrderLine[]>([]);
+  const [mode, setMode] = useState<Fulfillment>('collection');
   const [cartOpen, setCartOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [category, setCategory] = useState('all');
+  const [tableLabel, setTableLabel] = useState('');
 
-  // Fulfillment — initialise from localStorage meta
-  const [fulfillmentType, setFulfillmentType] = useState<'delivery' | 'collection' | null>(() => {
-    const meta = readCartMeta(slug as string);
-    return meta.fulfillment_type || null; // null = not yet resolved; set once store loads
-  });
-  const [deliveryAddress, setDeliveryAddress] = useState(() => {
-    const meta = readCartMeta(slug as string);
-    return meta.delivery_address || '';
-  });
+  useEffect(() => {
+    let active = true;
+    setError('');
+    void getStore(slug).then(({ data, error: err }) => {
+      if (!active) return;
+      if (err || !data) { setError('Este menú no está disponible. Revisá el enlace o consultá al local.'); return; }
+      const cart = reconcileCart(readCart(slug), data);
+      const meta = readCartMeta(slug);
+      const table = (params.get('mesa') || meta.table_label || '').slice(0, 60);
+      const available = fulfillmentOptions(data);
+      const requested = table ? 'dine_in' : meta.fulfillment_type;
+      setMode(requested && available.includes(requested) ? requested : available[0] || 'collection');
+      setTableLabel(table);
+      setItems(cart.items);
+      if (cart.changed) setNotice('Actualizamos tu carrito con los precios y productos disponibles.');
+      setStore(data);
+    }).catch(() => { if (active) setError('No pudimos cargar el menú. Comprobá tu conexión e intentá nuevamente.'); });
+    return () => { active = false; };
+  }, [slug, attempt, params]);
 
-  // Once store data is available, auto-select fulfillment type if not already set
   useEffect(() => {
     if (!store) return;
-    if (fulfillmentType) return; // already set by localStorage or previous interaction
+    writeCart(slug, items);
+    writeCartMeta(slug, { ...readCartMeta(slug), fulfillment_type: mode, table_label: tableLabel });
+  }, [items, mode, slug, store, tableLabel]);
 
-    const { offersDelivery, offersCollection } = getFulfillmentOptions(store);
-    if (offersDelivery) {
-      setFulfillmentType('delivery');
-    } else if (offersCollection) {
-      setFulfillmentType('collection');
+  function add(item: MarketplaceMenuItem) {
+    if (!items.some(i => i.id === item.id) && items.length >= 20) {
+      setNotice('El carrito admite hasta 20 productos diferentes por pedido. Quitá un producto para seguir.');
+      return;
     }
-  }, [store, fulfillmentType]);
+    const existing = items.find(i => i.id === item.id);
+    if ((existing?.quantity ?? 0) >= Math.min(99, item.remaining_today ?? 99)) return;
+    setItems(current => {
+      if (current.some(i => i.id === item.id)) return current.map(i => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i);
+      return [...current, { id: item.id, name: item.name, price: Number(item.price), quantity: 1, notes: '' }];
+    });
+  }
+  function remove(id: string) { setItems(current => current.map(i => i.id === id ? { ...i, quantity: i.quantity - 1 } : i).filter(i => i.quantity > 0)); }
 
-  // Also correct an existing fulfillment_type if the store doesn't actually offer it
-  useEffect(() => {
-    if (!store || !fulfillmentType) return;
-    const { offersDelivery, offersCollection } = getFulfillmentOptions(store);
-    if (fulfillmentType === 'delivery' && !offersDelivery && offersCollection) {
-      setFulfillmentType('collection');
-    } else if (fulfillmentType === 'collection' && !offersCollection && offersDelivery) {
-      setFulfillmentType('delivery');
-    }
-  }, [store, fulfillmentType]);
+  if (error) return <main className="mx-auto max-w-lg space-y-5 px-5 py-20 text-center"><ShoppingBag className="mx-auto h-12 w-12 text-primary" /><h1 className="text-2xl font-bold">No pudimos abrir el menú</h1><p role="alert">{error}</p><Button onClick={() => setAttempt(n => n + 1)}>Volver a intentar</Button></main>;
+  if (!store) return <main className="mx-auto max-w-6xl animate-pulse space-y-6 p-5" role="status" aria-label="Cargando menú"><div className="h-44 rounded-3xl bg-muted" /><div className="h-20 rounded-2xl bg-muted" /><div className="grid gap-4 sm:grid-cols-2">{[0, 1, 2, 3].map(i => <div key={i} className="h-40 rounded-2xl bg-muted" />)}</div><span className="sr-only">Cargando menú…</span></main>;
 
-  // Persist cart items to localStorage whenever they change
-  useEffect(() => {
-    writeCart(slug as string, cartItems);
-  }, [slug, cartItems]);
+  const canOrder = store.accepting_orders !== false && fulfillmentOptions(store).length > 0;
+  const count = items.reduce((n, i) => n + i.quantity, 0);
+  const total = orderTotals(items, store, mode).total;
+  const normalize = (v: string) => v.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const categories = store.categories.filter(c => category === 'all' || c.id === category).map(c => ({ ...c,
+    items: c.items.filter(i => normalize(i.name + ' ' + (i.description || '')).includes(normalize(query.trim()))),
+  })).filter(c => c.items.length);
+  const menuByID = new Map(store.categories.flatMap(c => c.items).map(i => [i.id, i]));
+  const cart = <div className="space-y-4">
+    <div className="flex items-center justify-between gap-3"><h2 className="text-xl font-bold">Tu pedido</h2>{count > 0 && <span className="rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">{count}</span>}</div>
+    {items.length ? <>
+      <ul className="space-y-4">{items.map(item => <li key={item.id} className="space-y-2 border-b pb-4">
+        <div className="flex flex-wrap items-center justify-between gap-2"><span className="min-w-0 flex-1 break-words font-medium">{item.name}</span><QuantityControl name={item.name} quantity={item.quantity} onMinus={() => remove(item.id)} onPlus={() => { const product = menuByID.get(item.id); if (product) add(product); }} max={Math.min(99, menuByID.get(item.id)?.remaining_today ?? 99)} /></div>
+        <Input aria-label={'Aclaraciones para ' + item.name} placeholder="Sin cebolla, bien cocido… (opcional)" maxLength={300} value={item.notes} onChange={e => setItems(current => current.map(i => i.id === item.id ? { ...i, notes: e.target.value } : i))} />
+      </li>)}</ul>
+      <OrderSummary items={items} store={store} mode={mode} />
+      <Button asChild className="h-12 w-full rounded-xl"><Link to={'/store/' + encodeURIComponent(slug) + '/checkout'} aria-disabled={!canOrder} onClick={e => { if (!canOrder) e.preventDefault(); }}>Continuar con mis datos <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
+      <p className="text-center text-xs text-muted-foreground">Sin registrarte. Pagás al recibir tu pedido.</p>
+    </> : <div className="rounded-2xl border border-dashed p-8 text-center"><ShoppingBag className="mx-auto mb-3 h-9 w-9 text-muted-foreground" /><p className="font-medium">¿Qué vas a pedir hoy?</p><p className="mt-1 text-sm text-muted-foreground">Elegí tus favoritos del menú.</p></div>}
+  </div>;
 
-  // Persist fulfillment meta to localStorage whenever it changes
-  useEffect(() => {
-    writeCartMeta(slug as string, { fulfillment_type: fulfillmentType, delivery_address: deliveryAddress });
-  }, [slug, fulfillmentType, deliveryAddress]);
-
-  // Fetch store detail
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-
-    getStore(slug as string)
-      .then(({ data, error: err }) => {
-        if (cancelled) return;
-        if (err) throw new Error(err.message || 'Store not found');
-        setStore(data);
-      })
-      .catch((e) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : String(e));
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => { cancelled = true; };
-  }, [slug]);
-
-  const handleAdd = useCallback((item: CartLikeItem) => {
-    setCartItems((prev) => addToCart(prev, item));
-  }, []);
-
-  const handleRemove = useCallback((item: CartLikeItem) => {
-    setCartItems((prev) => removeFromCart(prev, item));
-  }, []);
-
-  const handleClear = useCallback(() => {
-    setCartItems([]);
-  }, []);
-
-  const handleFulfillmentChange = useCallback((type: 'delivery' | 'collection') => {
-    setFulfillmentType(type);
-    if (type === 'collection') {
-      setDeliveryAddress('');
-    }
-  }, []);
-
-  const cartQty = cartItems.reduce((s, i) => s + (i.quantity ?? 1), 0);
-  // `store.menu` never exists on the real StoreDetail DTO (only `categories`
-  // does; see services/marketplace.ts StoreDetail comment) — dead defensive
-  // fallback, preserved via a cast rather than removed.
-  const menu = (store?.menu as StoreDetail['categories'] | undefined) || store?.categories || [];
-  // Same for `currency`/`default_currency_code` — only `currency_code` is
-  // real on this DTO.
-  const currency = (store?.currency || store?.default_currency_code || store?.currency_code || 'USD') as string;
-
-  return (
-    <div className="min-h-screen bg-background">
-      {/* Back nav */}
-      <div className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b px-4 h-13 flex items-center justify-between">
-        <button
-          onClick={() => navigate(-1)}
-          aria-label="Go back"
-          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors -ml-1 px-2 py-2 rounded-lg hover:bg-muted"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          <span className="hidden xs:inline">Back</span>
-        </button>
-
-        {/* Mobile cart trigger — floating pill */}
-        <Sheet open={cartOpen} onOpenChange={setCartOpen}>
-          <SheetTrigger asChild>
-            <Button
-              size="sm"
-              className={`relative gap-2 sm:hidden rounded-full px-4 transition-all ${
-                cartQty > 0
-                  ? 'bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/20'
-                  : 'bg-muted text-muted-foreground border border-border'
-              }`}
-              aria-label={`View cart${cartQty > 0 ? `, ${cartQty} items` : ''}`}
-            >
-              <ShoppingCart className="h-4 w-4" />
-              {cartQty > 0 ? (
-                <span className="font-semibold text-sm">{cartQty}</span>
-              ) : (
-                <span className="text-sm">Cart</span>
-              )}
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="bottom" className="h-auto max-h-[85vh] overflow-y-auto rounded-t-2xl px-0">
-            <div className="pt-1 pb-6 px-4">
-              <div className="mx-auto w-10 h-1 bg-muted rounded-full mb-4" />
-              <CartWidget
-                slug={slug}
-                items={cartItems}
-                onAdd={handleAdd}
-                onRemove={handleRemove}
-                onClear={handleClear}
-                storeName={store?.name}
-                currency={currency}
-                fulfillmentType={fulfillmentType}
-                deliveryAddress={deliveryAddress}
-              />
-            </div>
-          </SheetContent>
-        </Sheet>
-      </div>
-
-      {/* Store header */}
-      {loading ? (
-        <StoreHeaderSkeleton />
-      ) : error ? (
-        <div className="px-4 py-10 text-center space-y-3">
-          <p className="text-destructive text-sm">{error}</p>
-          <Button variant="outline" size="sm" onClick={() => navigate('/discover')}>
-            Back to discover
-          </Button>
+  return <div className="min-h-dvh bg-background pb-28 lg:pb-8">
+    <header className="border-b bg-card"><div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4"><span className="flex min-w-0 items-center gap-2 font-bold"><UtensilsCrossed className="h-5 w-5 shrink-0 text-primary" /><span className="truncate">{store.name}</span></span><span className="shrink-0 text-xs text-muted-foreground">Pedidos online</span></div></header>
+    <main className="mx-auto max-w-6xl space-y-6 px-4 pt-6 sm:px-6">
+      <section className="rounded-3xl border border-primary/15 bg-primary/5 p-5 sm:p-8">
+        <p className="mb-2 text-xs font-bold uppercase tracking-widest text-primary">Recién hecho, a tu manera</p>
+        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Hoy se come rico.</h1>
+        <p className="mt-3 max-w-2xl text-sm text-muted-foreground">{store.description || 'Elegí lo que más te gusta de ' + store.name + '. Armá tu pedido y seguí su preparación desde acá.'}</p>
+        <div className="mt-4 flex flex-wrap gap-4 text-xs text-muted-foreground">{store.address && <span className="flex items-center gap-1"><MapPin className="h-4 w-4" />{store.address}</span>}{store.estimated_prep_time_minutes > 0 && <span className="flex items-center gap-1"><Clock className="h-4 w-4" />Preparación estimada: {store.estimated_prep_time_minutes} min</span>}</div>
+      </section>
+      {!canOrder && <p role="status" className="rounded-xl border bg-muted p-4">Por el momento el local no recibe pedidos online. Podés consultar el menú y volver más tarde.</p>}
+      {notice && <p role="status" className="rounded-xl bg-primary/10 p-3 text-sm">{notice}</p>}
+      <FulfillmentPicker store={store} value={mode} onChange={setMode} />
+      {mode === 'dine_in' && tableLabel && <p className="text-sm text-primary">Mesa: {tableLabel}. Podés cambiarla al confirmar.</p>}
+      <div className="grid min-w-0 gap-7 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="min-w-0">
+          <div className="sticky top-0 z-10 space-y-3 bg-background/95 py-3 backdrop-blur">
+            <div className="relative"><Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" /><Input className="h-11 rounded-xl pl-10" aria-label="Buscar productos" placeholder="Buscá un producto…" value={query} onChange={e => setQuery(e.target.value)} /></div>
+            <nav aria-label="Categorías del menú" className="flex gap-2 overflow-x-auto pb-1">
+              {[{ id: 'all', name: 'Todo el menú' }, ...store.categories].map(c => <button type="button" key={c.id} aria-pressed={category === c.id} onClick={() => setCategory(c.id)} className={'min-h-11 shrink-0 rounded-full border px-4 text-sm font-medium ' + (category === c.id ? 'border-primary bg-primary text-primary-foreground' : 'bg-card')}>{c.name}</button>)}
+            </nav>
+          </div>
+          <div className="space-y-7 pt-4">
+            {!categories.length && <p className="rounded-2xl border border-dashed px-5 py-10 text-center text-muted-foreground">{query ? 'No encontramos productos con ese nombre.' : 'El local está actualizando su menú. Volvé a consultar en unos minutos.'}</p>}
+            {categories.map(c => <section key={c.id} aria-labelledby={'category-' + c.id}><h2 id={'category-' + c.id} className="mb-3 text-xl font-bold">{c.name}</h2><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">{c.items.map(item => {
+              const qty = items.find(i => i.id === item.id)?.quantity ?? 0;
+              return <article key={item.id} className="flex min-w-0 flex-col rounded-2xl border bg-card p-4 shadow-sm">
+                <div className="flex gap-3"><div className="min-w-0 flex-1"><h3 className="break-words font-semibold">{item.name}</h3>{item.description && <p className="mt-1 text-sm text-muted-foreground">{item.description}</p>}</div>{item.image_url && <img src={item.image_url} alt="" loading="lazy" className="h-20 w-20 shrink-0 rounded-xl object-cover" />}</div>
+                <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-4"><span className="font-bold tabular-nums">{publicMoney(Math.round(Number(item.price) * currencyScale(store.currency_code)), store)}</span>{canOrder && (qty ? <QuantityControl name={item.name} quantity={qty} onMinus={() => remove(item.id)} onPlus={() => add(item)} max={Math.min(99, item.remaining_today ?? 99)} /> : <Button className="h-11 rounded-xl" size="sm" onClick={() => add(item)} disabled={item.remaining_today === 0} aria-label={'Agregar ' + item.name}><Plus className="mr-1 h-4 w-4" />Agregar</Button>)}</div>
+                {item.remaining_today != null && item.remaining_today < 10 && <p className="mt-2 text-xs text-muted-foreground">Quedan {item.remaining_today} disponibles</p>}
+              </article>;
+            })}</div></section>)}
+          </div>
         </div>
-      ) : store ? (
-        <>
-          {/* Hero cover image */}
-          <div className="relative h-44 sm:h-64 bg-primary/10 overflow-hidden">
-            {store.cover_image_url ? (
-              <img
-                src={store.cover_image_url as string}
-                alt={store.name}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-primary/10">
-                <span className="text-7xl" role="img" aria-hidden="true">🍽️</span>
-              </div>
-            )}
-            {/* Bottom gradient */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
-
-            {/* Open/closed pill over hero */}
-            {store.is_open !== undefined && (
-              <span
-                className={`absolute bottom-3 right-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold shadow-lg ${
-                  store.is_open
-                    ? 'bg-success text-success-foreground'
-                    : 'bg-black/70 text-white/80'
-                }`}
-              >
-                <span className={`inline-block h-1.5 w-1.5 rounded-full ${store.is_open ? 'bg-success-foreground' : 'bg-muted-foreground'}`} />
-                {store.is_open ? 'Open now' : 'Closed'}
-              </span>
-            )}
-          </div>
-
-          {/* Store info card */}
-          <div className="px-4 pt-4 pb-4 border-b space-y-3 bg-background">
-            <div className="flex items-start gap-3">
-              {store.logo_url ? (
-                <img
-                  src={store.logo_url as string}
-                  alt={`${store.name} logo`}
-                  className="h-14 w-14 rounded-2xl border-2 border-white object-cover shrink-0 -mt-8 shadow-md"
-                />
-              ) : null}
-              <div className="flex-1 min-w-0 pt-0.5">
-                <h1 className="text-xl sm:text-2xl font-display leading-tight tracking-tight">{store.name}</h1>
-                {store.cuisine_type ? (
-                  <Badge
-                    variant="secondary"
-                    className="text-xs mt-1 bg-primary/10 text-primary border border-primary/20"
-                  >
-                    {store.cuisine_type as string}
-                  </Badge>
-                ) : null}
-              </div>
-            </div>
-
-            {store.description && (
-              <p className="text-sm text-muted-foreground leading-relaxed">{store.description}</p>
-            )}
-
-            {/* Meta chips */}
-            <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
-              {store.city && (
-                <span className="flex items-center gap-1">
-                  <MapPin className="h-3 w-3 text-primary" aria-hidden="true" />
-                  {store.city}
-                </span>
-              )}
-              {(store.rating as number | undefined) && (
-                <span className="flex items-center gap-1 font-medium">
-                  <Star className="h-3 w-3 fill-warning text-warning" aria-hidden="true" />
-                  <span className="text-foreground tabular-nums">{Number(store.rating).toFixed(1)}</span>
-                  {store.review_count ? (
-                    <span className="text-muted-foreground">({store.review_count} reviews)</span>
-                  ) : null}
-                </span>
-              )}
-              {(store.delivery_time_min as number | undefined) && (
-                <span className="flex items-center gap-1">
-                  <Clock className="h-3 w-3 text-primary" aria-hidden="true" />
-                  {store.delivery_time_min as number}–{(store.delivery_time_max as number | undefined) ?? (store.delivery_time_min as number) + 10} min
-                </span>
-              )}
-            </div>
-
-            {/* Fulfillment selector */}
-            {fulfillmentType && (
-              <div className="pt-1">
-                <FulfillmentSelector
-                  store={store}
-                  value={fulfillmentType}
-                  onChange={handleFulfillmentChange}
-                  deliveryAddress={deliveryAddress}
-                  onAddressChange={setDeliveryAddress}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Two-column layout: menu + sidebar cart */}
-          <div className="max-w-5xl mx-auto px-4 py-5 flex gap-6">
-            {/* Menu */}
-            <div className="flex-1 min-w-0">
-              <MenuSection
-                menu={menu}
-                cartItems={cartItems}
-                onAddItem={handleAdd}
-                onRemoveItem={handleRemove}
-                currency={currency}
-              />
-            </div>
-
-            {/* Desktop sticky cart */}
-            <aside className="hidden sm:block w-72 shrink-0" aria-label="Your cart">
-              <div className="sticky top-16">
-                <CartWidget
-                  slug={slug}
-                  items={cartItems}
-                  onAdd={handleAdd}
-                  onRemove={handleRemove}
-                  onClear={handleClear}
-                  storeName={store?.name}
-                  currency={currency}
-                  fulfillmentType={fulfillmentType}
-                  deliveryAddress={deliveryAddress}
-                />
-              </div>
-            </aside>
-          </div>
-        </>
-      ) : null}
-    </div>
-  );
+        <aside className="sticky top-4 hidden max-h-[calc(100dvh-2rem)] self-start overflow-y-auto rounded-2xl border bg-card p-5 lg:block">{cart}</aside>
+      </div>
+      <footer className="flex flex-wrap justify-between gap-3 border-t pt-6 text-xs text-muted-foreground"><span>{store.name} · Pedidos online</span><Link to="/legal/privacy">Privacidad</Link></footer>
+    </main>
+    {count > 0 && <div className="fixed inset-x-0 bottom-0 z-20 border-t bg-background/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden"><Button className="flex h-14 w-full justify-between rounded-xl px-5" onClick={() => setCartOpen(true)}><span className="flex items-center gap-2"><ShoppingBag className="h-5 w-5" />Ver mi pedido ({count})</span><span>{publicMoney(total, store)}</span></Button></div>}
+    <Sheet open={cartOpen} onOpenChange={setCartOpen}><SheetContent side="bottom" className="max-h-[90dvh] overflow-y-auto rounded-t-3xl px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-6"><SheetHeader className="mb-5 pr-8 text-left"><SheetTitle>Revisá tus productos</SheetTitle><SheetDescription>Podés ajustar cantidades y agregar aclaraciones.</SheetDescription></SheetHeader>{cart}</SheetContent></Sheet>
+  </div>;
 }

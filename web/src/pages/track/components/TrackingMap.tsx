@@ -120,19 +120,19 @@ export default function TrackingMap({ store, delivery, driver }: TrackingMapProp
 
       {store?.lat != null && store?.lng != null && (
         <Marker position={[store.lat, store.lng]} icon={storeIcon}>
-          <Popup>{store.name || 'Store'}</Popup>
+          <Popup>{store.name || 'Local'}</Popup>
         </Marker>
       )}
 
       {delivery?.lat != null && delivery?.lng != null && (
         <Marker position={[delivery.lat, delivery.lng]} icon={deliveryIcon}>
-          <Popup>{delivery.label || 'Delivery address'}</Popup>
+          <Popup>{delivery.label || 'Dirección de entrega'}</Popup>
         </Marker>
       )}
 
       {driver?.lat != null && driver?.lng != null && (
         <Marker position={[driver.lat, driver.lng]} icon={driverIcon}>
-          <Popup>Driver</Popup>
+          <Popup>Repartidor</Popup>
         </Marker>
       )}
     </MapContainer>

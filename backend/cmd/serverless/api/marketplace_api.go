@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"math"
 	"net/url"
 	"sort"
@@ -52,6 +51,9 @@ func (a *application) handleMarketplaceAPI(ctx context.Context, request events.A
 	}
 	if route.name != "checkout" {
 		response.Headers["Cache-Control"] = "public, max-age=60"
+	}
+	if route.name == "detail" || route.name == "checkout" {
+		response.Headers["Cache-Control"] = "no-store"
 	}
 	return response, true, nil
 }
@@ -249,19 +251,30 @@ func (a *application) getMarketplaceStore(ctx context.Context, slug string) even
 		return dataAccessError(err)
 	}
 	currencyCode := displayString(valueOr(location.row, "currency_code", location.row["default_currency_code"]))
-	menu := marketplaceMenu(locationID, currencyCode, categories, items, time.Now().UTC())
+	menu := marketplaceMenu(locationID, currencyCode, categories, items, marketplaceLocationTime(time.Now(), location.row))
 	average, count, err := a.marketplaceRating(ctx, location.orgID, locationID)
 	if err != nil {
 		return dataAccessError(err)
 	}
 	row := location.row
+	rate, inclusive, taxErr := a.marketplaceTaxConfig(ctx, location.orgID, locationID, row)
+	if taxErr != nil {
+		return dataAccessError(taxErr)
+	}
+	methods := publicOrderPaymentMethods(row)
 	return mustJSONResponse(200, map[string]any{
 		"id": row["id"], "name": row["name"], "slug": valueOr(row, "slug", nil), "city": valueOr(row, "city", nil),
 		"country": valueOr(row, "country", nil), "address": valueOr(row, "address", nil), "description": valueOr(row, "description", nil),
-		"offers_delivery": boolOr(row, "offers_delivery", false), "offers_collection": boolOr(row, "offers_collection", false),
-		"estimated_prep_time_minutes": integerOr(row, "estimated_prep_time", 30),
-		"currency_code":               valueOr(row, "currency_code", valueOr(row, "default_currency_code", nil)),
-		"avg_rating":                  average, "review_count": count, "categories": menu, "online_payment_available": false,
+		"offers_delivery": publicOrderModeEnabled(row, "delivery"), "offers_collection": publicOrderModeEnabled(row, "collection"),
+		"offers_dine_in": publicOrderModeEnabled(row, "dine_in"), "on_delivery_payment_methods": methods,
+		"accepting_orders": len(methods) > 0 && currencyCode != "" && boolOr(row, "online_orders_enabled", true),
+		"locale":           valueOr(row, "locale", "es-AR"), "phone_country_code": valueOr(row, "phone_country_code", nil),
+		"tax_rate": rate, "tax_inclusive": inclusive,
+		"delivery_fee_cents":            publicOrderMoney(row["delivery_fee"], currencyCode),
+		"free_delivery_threshold_cents": publicOrderMoney(row["free_delivery_threshold"], currencyCode),
+		"estimated_prep_time_minutes":   integerOr(row, "estimated_prep_time", 30),
+		"currency_code":                 valueOr(row, "currency_code", valueOr(row, "default_currency_code", nil)),
+		"avg_rating":                    average, "review_count": count, "categories": menu, "online_payment_available": false,
 	})
 }
 
@@ -294,14 +307,23 @@ func marketplaceMenu(locationID, currencyCode string, categories, items []map[st
 				continue
 			}
 			price, ok := numericValue(item["price"])
+			if cents, centsOK := integerValue(item["price_cents"]); centsOK {
+				price = float64(cents) / float64(currencyScale(currencyCode))
+				ok = true
+			}
 			if !ok {
-				if cents, centsOK := integerValue(item["price_cents"]); centsOK {
-					price = float64(cents) / float64(currencyScale(currencyCode))
-				}
+				continue
+			}
+			decimals := 2
+			switch currencyScale(currencyCode) {
+			case 1:
+				decimals = 0
+			case 1000:
+				decimals = 3
 			}
 			categoryItems = append(categoryItems, map[string]any{
 				"id": item["id"], "name": item["name"], "description": valueOr(item, "description", nil),
-				"price": strconv.FormatFloat(price, 'f', 2, 64), "image_url": valueOr(item, "image_url", nil),
+				"price": strconv.FormatFloat(price, 'f', decimals, 64), "image_url": valueOr(item, "image_url", nil),
 				"preparation_time_minutes": integerOr(item, "preparation_time", 0), "calories": valueOr(item, "calories", nil),
 				"spice_level": valueOr(item, "spice_level", nil), "sort_order": integerOr(item, "sort_order", 0),
 				"remaining_today": marketplaceRemaining(item, now),
@@ -364,195 +386,6 @@ func marketplaceRemaining(item map[string]any, now time.Time) any {
 		remaining = 0
 	}
 	return remaining
-}
-
-func (a *application) createMarketplaceOrder(ctx context.Context, slug, body string) events.APIGatewayV2HTTPResponse {
-	location, err := a.marketplaceLocationBySlug(ctx, slug)
-	if errors.Is(err, errNotFound) {
-		return errorResponse(404, "store not found")
-	} else if err != nil {
-		return dataAccessError(err)
-	}
-	var input map[string]any
-	if decodeDataObject(body, &input) != nil {
-		return errorResponse(400, "invalid request body")
-	}
-	fulfillment := strings.ToLower(displayString(input["fulfillment_type"]))
-	if fulfillment != "delivery" && fulfillment != "collection" && fulfillment != "dine_in" {
-		return errorResponse(400, "fulfillment_type must be one of: delivery, collection, dine_in")
-	}
-	lines, ok := input["items"].([]any)
-	if !ok || len(lines) == 0 {
-		return errorResponse(400, "items must not be empty")
-	}
-	tip, tipOK := integerValue(valueOr(input, "tip_cents", int64(0)))
-	if !tipOK || tip < 0 {
-		return errorResponse(400, "tip_cents must be >= 0")
-	}
-	methods, _ := stringSlice(location.row["on_delivery_payment_methods"])
-	if len(methods) == 0 {
-		return errorResponse(422, "no payment method available — store cannot accept orders right now")
-	}
-	status, paymentMethod := "confirmed", "cash"
-	if fulfillment == "delivery" {
-		status = "pending_on_delivery"
-		if displayString(input["on_delivery_method"]) == "card_machine" {
-			paymentMethod = "card_on_delivery"
-		} else {
-			paymentMethod = "cash_on_delivery"
-		}
-	}
-	orgID, locationID := location.orgID, displayString(location.row["id"])
-	if customerID := displayString(input["customer_id"]); customerID != "" {
-		if _, err := a.dataRowByID(ctx, orgID, "customers", customerID); err != nil {
-			return errorResponse(400, "customer_id is invalid")
-		}
-	}
-	allItems, err := a.queryDataRows(ctx, orgID, "items")
-	if err != nil {
-		return dataAccessError(err)
-	}
-	itemByID := map[string]map[string]any{}
-	for _, item := range allItems {
-		if displayString(item["location_id"]) == locationID && marketplaceItemAvailable(item, time.Now().UTC()) {
-			itemByID[displayString(item["id"])] = item
-		}
-	}
-	type pricedLine struct {
-		itemID              string
-		quantity, unitCents int64
-		notes               string
-	}
-	priced := make([]pricedLine, 0, len(lines))
-	requestedByItem := map[string]int64{}
-	var subtotal int64
-	for index, raw := range lines {
-		line, ok := raw.(map[string]any)
-		if !ok {
-			return errorResponse(400, fmt.Sprintf("item %d is invalid", index))
-		}
-		itemID := displayString(line["item_id"])
-		quantity, quantityOK := integerValue(line["quantity"])
-		item, found := itemByID[itemID]
-		if !found || !quantityOK || quantity <= 0 {
-			return errorResponse(400, fmt.Sprintf("item %d is unavailable or has invalid quantity", index))
-		}
-		currencyCode := displayString(valueOr(location.row, "currency_code", location.row["default_currency_code"]))
-		unitCents, priceOK := integerValue(item["price_cents"])
-		if !priceOK {
-			price, ok := numericValue(item["price"])
-			if !ok || price < 0 {
-				return errorResponse(409, "item price is invalid")
-			}
-			unitCents = int64(math.Round(price * float64(currencyScale(currencyCode))))
-		}
-		requestedByItem[itemID] += quantity
-		if remaining := marketplaceRemaining(item, time.Now().UTC()); remaining != nil && requestedByItem[itemID] > remaining.(int64) {
-			return errorResponse(422, "requested quantity is unavailable")
-		}
-		priced = append(priced, pricedLine{itemID: itemID, quantity: quantity, unitCents: unitCents, notes: displayString(line["notes"])})
-		subtotal += unitCents * quantity
-	}
-	if tip > subtotal*3 {
-		return errorResponse(400, "tip amount is not valid for this order")
-	}
-	pickupAt, pickupErr := validatePickupAt(input["pickup_at"], fulfillment)
-	if pickupErr != nil {
-		return errorResponse(400, pickupErr.Error())
-	}
-	taxRate, taxInclusive, taxErr := a.marketplaceTaxConfig(ctx, orgID, locationID, location.row)
-	if taxErr != nil {
-		return dataAccessError(taxErr)
-	}
-	taxCents := int64(0)
-	total := subtotal
-	if taxRate > 0 {
-		if taxInclusive {
-			taxCents = int64(math.Round(float64(subtotal) * taxRate / (100 + taxRate)))
-		} else {
-			taxCents = int64(math.Round(float64(subtotal) * taxRate / 100))
-			total += taxCents
-		}
-	}
-	total += tip
-	orderNumber := fmt.Sprintf("MKT%s", time.Now().UTC().Format("060102150405.000"))
-	order, err := a.createStoredRow(ctx, orgID, "orders", map[string]any{
-		"location_id": locationID, "customer_id": nullableString(input["customer_id"]), "order_number": orderNumber,
-		"order_type": mapMarketplaceFulfillment(fulfillment), "fulfillment_type": fulfillment, "status": status,
-		"subtotal_cents": subtotal, "tax_cents": taxCents, "total_cents": total, "tax_rate": taxRate,
-		"tax_inclusive": taxInclusive, "currency_code": valueOr(location.row, "currency_code", nil),
-		"delivery_address": nullableString(input["delivery_address"]), "estimated_prep_time": integerOr(location.row, "estimated_prep_time", 30),
-		"delivery_latitude": valueOr(input, "delivery_latitude", nil), "delivery_longitude": valueOr(input, "delivery_longitude", nil),
-		"estimated_delivery_time": valueOr(input, "estimated_delivery_time", nil), "pickup_at": pickupAt,
-		"gratuity_cents": tip, "business_date": time.Now().UTC().Format("2006-01-02"), "payment_method": paymentMethod,
-	})
-	if err != nil {
-		return dataAccessError(err)
-	}
-	createdItems := make([]map[string]any, 0, len(priced))
-	for _, line := range priced {
-		created, err := a.createStoredRow(ctx, orgID, "order_items", map[string]any{
-			"order_id": order["id"], "item_id": line.itemID, "quantity": line.quantity,
-			"unit_price_cents": line.unitCents, "total_price_cents": line.unitCents * line.quantity,
-			"line_total_cents": line.unitCents * line.quantity, "special_instructions": nullableString(line.notes),
-		})
-		if err != nil {
-			for _, createdItem := range createdItems {
-				_ = a.deleteStoredRow(ctx, orgID, "order_items", displayString(createdItem["id"]))
-			}
-			_ = a.deleteStoredRow(ctx, orgID, "orders", displayString(order["id"]))
-			return dataAccessError(err)
-		}
-		createdItems = append(createdItems, created)
-	}
-	itemSnapshots := map[string]map[string]any{}
-	now := time.Now().UTC()
-	for itemID, quantity := range requestedByItem {
-		item := itemByID[itemID]
-		itemSnapshots[itemID] = cloneDataRow(item)
-		sold := int64(0)
-		if displayString(item["daily_counter_date"]) == now.Format("2006-01-02") {
-			sold, _ = integerValue(item["daily_sold_count"])
-		}
-		item["daily_counter_date"], item["daily_sold_count"], item["updated_at"] = now.Format("2006-01-02"), sold+quantity, now.Format(time.RFC3339Nano)
-		if err := a.putDataRow(ctx, orgID, "items", item, false); err != nil {
-			for _, snapshot := range itemSnapshots {
-				_ = a.putDataRow(ctx, orgID, "items", snapshot, false)
-			}
-			for _, createdItem := range createdItems {
-				_ = a.deleteStoredRow(ctx, orgID, "order_items", displayString(createdItem["id"]))
-			}
-			_ = a.deleteStoredRow(ctx, orgID, "orders", displayString(order["id"]))
-			return dataAccessError(err)
-		}
-	}
-	trackingToken, err := randomID()
-	if err != nil {
-		for _, snapshot := range itemSnapshots {
-			_ = a.putDataRow(ctx, orgID, "items", snapshot, false)
-		}
-		for _, createdItem := range createdItems {
-			_ = a.deleteStoredRow(ctx, orgID, "order_items", displayString(createdItem["id"]))
-		}
-		_ = a.deleteStoredRow(ctx, orgID, "orders", displayString(order["id"]))
-		return dataAccessError(err)
-	}
-	tracking, err := a.createStoredRow(ctx, orgID, "order_tracking_tokens", marketplaceTrackingTokenRow(trackingToken, displayString(order["id"])))
-	if err != nil {
-		for _, snapshot := range itemSnapshots {
-			_ = a.putDataRow(ctx, orgID, "items", snapshot, false)
-		}
-		for _, createdItem := range createdItems {
-			_ = a.deleteStoredRow(ctx, orgID, "order_items", displayString(createdItem["id"]))
-		}
-		_ = a.deleteStoredRow(ctx, orgID, "orders", displayString(order["id"]))
-		return dataAccessError(err)
-	}
-	return mustJSONResponse(201, map[string]any{
-		"order_id": order["id"], "order_number": orderNumber, "status": status,
-		"payment_method": paymentMethod, "total": float64(total) / float64(currencyScale(displayString(valueOr(location.row, "currency_code", location.row["default_currency_code"])))),
-		"tracking_token": tracking["token"], "tracking_url": "/track/" + url.PathEscape(displayString(tracking["token"])),
-	})
 }
 
 func cloneDataRow(row map[string]any) map[string]any {

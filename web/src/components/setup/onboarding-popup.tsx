@@ -13,13 +13,13 @@ import { supabase } from '@/services/supabase-client';
 // /settings/location-settings once they're in. This keeps the popup
 // dependency-free of regions/lat-lng and lets the user dismiss any
 // friction on signup.
-const OnboardingPopup = () => {
+const OnboardingPopup = ({ pathname = '' }: { pathname?: string }) => {
   const { user, fetchOrganizations, needsOnboarding } = useAuth();
   const { toast } = useToast();
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
 
-  if (!needsOnboarding || !user) return null;
+  if (!needsOnboarding || !user || pathname.startsWith('/store/') || pathname.startsWith('/checkout') || pathname.startsWith('/track/')) return null;
 
   const trimmedName = name.trim();
   const isValid = trimmedName.length >= 2;

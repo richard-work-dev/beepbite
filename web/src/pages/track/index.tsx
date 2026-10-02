@@ -1,343 +1,106 @@
-/**
- * TrackOrderPage — live order tracking for customers.
- * Route: /track/:token  (added by orchestrator in routes.jsx)
- *
- * Behaviour:
- * - Calls GET /track/{token} (public, no bearer) on mount.
- * - Polls every 10 s while order is active (not delivered / cancelled).
- * - Cleans up interval on unmount or when polling should stop.
- * - Shows Leaflet map with store + delivery-address markers; adds driver
- *   marker ONLY when the backend sends coordinates (privacy-gated).
- * - Handles 404 (invalid/expired token) and generic network errors.
- */
+import { Suspense, lazy, useEffect, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { Check, CheckCircle2, ChefHat, Copy, MapPin, RefreshCw, ShoppingBag, Truck } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { fetchTracking, type TrackingPayload } from '@/services/tracking';
+import { formatMoney } from '@/lib/currency';
+import { fulfillmentLabels, paymentLabels, type Fulfillment } from '@/services/public-order';
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
-import { AlertCircle, Package } from 'lucide-react';
-
-import { fetchTracking } from '@/services/tracking';
-import type { TrackingPayload } from '@/services/tracking';
-import type { ApiError } from '@/lib/api-client';
-
-import OrderStatusSteps from './components/OrderStatusSteps';
-import EtaCard         from './components/EtaCard';
-
-// Lazy-load the map to avoid SSR/build issues with Leaflet's DOM dependency.
-const TrackingMap = React.lazy(() => import('./components/TrackingMap'));
-
-// ---- constants --------------------------------------------------------------
-
-const POLL_INTERVAL_MS = 10_000;
-
-// Real backend statuses (orders.status CHECK constraint) — 'delivered' and
-// 'completed' are both end-of-life for a delivery order (the latter marks
-// post-delivery settlement), and 'cancelled' is the failure terminal.
-const TERMINAL_STATUSES = new Set(['delivered', 'completed', 'cancelled']);
-
-// ---- helpers ----------------------------------------------------------------
-
-function isTerminal(status: string) {
-  return TERMINAL_STATUSES.has(status);
-}
-
-// ---- skeleton ---------------------------------------------------------------
-
-function MapSkeleton() {
-  return (
-    <div className="h-full w-full animate-pulse bg-muted rounded-xl flex items-center justify-center">
-      <span className="text-3xl" role="img" aria-label="Map loading">🗺️</span>
-    </div>
-  );
-}
-
-// ---- error / not-found view -------------------------------------------------
-
-function ErrorView({ status, message }: { status?: number; message?: string }) {
-  const notFound = status === 404;
-  return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-6 py-12">
-      <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 border-2 border-primary/20">
-        <AlertCircle className="h-9 w-9 text-primary" aria-hidden="true" />
-      </div>
-      <h1 className="text-xl font-display mb-2">
-        {notFound ? 'Tracking link not found' : 'Could not load tracking'}
-      </h1>
-      <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">
-        {notFound
-          ? 'This link may have expired or is invalid. Check your order confirmation for the correct link.'
-          : (message || 'An unexpected error occurred. Please try refreshing the page.')}
-      </p>
-    </div>
-  );
-}
-
-// ---- loading skeleton -------------------------------------------------------
-
-function LoadingSkeleton() {
-  return (
-    <div className="space-y-4 animate-pulse">
-      <div className="h-20 rounded-2xl bg-muted" />
-      <div className="h-[300px] sm:h-[360px] rounded-2xl bg-muted" />
-      <div className="h-16 rounded-2xl bg-muted" />
-      <div className="h-28 rounded-2xl bg-muted" />
-    </div>
-  );
-}
-
-// ---- main page --------------------------------------------------------------
+const terminalStatuses = new Set(['completed', 'delivered', 'cancelled']);
+const TrackingMap = lazy(() => import('./components/TrackingMap'));
 
 export default function TrackOrderPage() {
-  const { token } = useParams();
+  const { token = '' } = useParams();
+  return <Tracking key={token} token={token} />;
+}
 
-  const [tracking, setTracking]     = useState<TrackingPayload | null>(null);
-  const [loading, setLoading]       = useState(true);
-  const [error, setError]           = useState<ApiError | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<number | null>(null); // timestamp ms
-
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const mountedRef  = useRef(true);
-
-  const load = useCallback(async () => {
-    if (!token) return;
-    // fetchTracking() only wraps the API-error case in { data, error } — a
-    // network-level failure (fetch() itself rejecting) throws instead.
-    // Without this try/catch, a failed poll tick left `loading` stuck true
-    // (self-healing on the next successful tick, but with an unhandled
-    // rejection on every failed one in the meantime) and showed no error.
-    try {
-      const { data, error: err } = await fetchTracking(token);
-      if (!mountedRef.current) return;
-
-      if (err) {
-        setError(err);
-        setLoading(false);
-        return;
-      }
-
-      setTracking(data);
-      setLastUpdated(Date.now());
-      setError(null);
-      setLoading(false);
-
-      // Stop polling once the order reaches a terminal state.
-      if (data && isTerminal(data.status)) {
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
+function Tracking({ token }: { token: string }) {
+  const [tracking, setTracking] = useState<TrackingPayload | null>(null);
+  const [error, setError] = useState('');
+  const [unavailable, setUnavailable] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const [updated, setUpdated] = useState<Date | null>(null);
+  const [copyMessage, setCopyMessage] = useState('');
+  useEffect(() => {
+    let active = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    async function load() {
+      let finished = false;
+      try {
+        const { data, error: err } = await fetchTracking(token);
+        if (!active) return;
+        if (err || !data) {
+          const missing = err?.status === 404;
+          setUnavailable(missing);
+          setError(missing ? 'El enlace no existe o venció. Consultá al local con tu número de pedido.' : 'No pudimos actualizar el estado. Reintentaremos automáticamente.');
+          finished = missing;
+        } else {
+          setTracking(data); setError(''); setUnavailable(false); setUpdated(new Date());
+          finished = terminalStatuses.has(data.status);
         }
-      }
-    } catch (err) {
-      console.error('Error loading tracking status:', err);
-      if (mountedRef.current) {
-        setError({ message: 'Unable to reach the server.' });
-        setLoading(false);
+      } catch {
+        if (active) setError('Se interrumpió la conexión. Conservamos el último estado recibido.');
+      } finally {
+        if (active && !finished) timer = setTimeout(() => { void load(); }, 10000);
       }
     }
-  }, [token]);
-
-  useEffect(() => {
-    mountedRef.current = true;
     void load();
+    return () => { active = false; if (timer) clearTimeout(timer); };
+  }, [token, attempt]);
 
-    // Start polling — load() will clear the interval itself when terminal.
-    intervalRef.current = setInterval(() => {
-      void load();
-    }, POLL_INTERVAL_MS);
-
-    return () => {
-      mountedRef.current = false;
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
-  }, [load]);
-
-  // ---- render states ----
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <main className="mx-auto max-w-lg px-4 py-6">
-          <LoadingSkeleton />
-        </main>
-      </div>
-    );
+  async function copyLink() {
+    try { await navigator.clipboard.writeText(window.location.href); setCopyMessage('Enlace copiado'); }
+    catch { setCopyMessage('Podés guardar el enlace desde la barra de direcciones.'); }
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <main className="mx-auto max-w-lg px-4">
-          <ErrorView status={error.status} message={error.message} />
-        </main>
-      </div>
-    );
-  }
+  if (!tracking) return <main className="mx-auto max-w-lg space-y-5 px-5 py-20 text-center"><ShoppingBag className="mx-auto h-12 w-12 text-primary" /><h1 className="text-2xl font-bold">{unavailable ? 'Seguimiento no disponible' : 'Seguimiento de tu pedido'}</h1>{error ? <><p role="alert">{error}</p>{!unavailable && <Button onClick={() => setAttempt(n => n + 1)}>Volver a intentar</Button>}</> : <p role="status">Consultando el estado…</p>}</main>;
 
-  if (!tracking) return null;
+  const mode = tracking.fulfillmentType;
+  const delivery = mode === 'delivery';
+  const collected = mode === 'collection' || mode === 'pickup';
+  const status = tracking.status;
+  const done = status === 'completed' || status === 'delivered';
+  const cancelled = status === 'cancelled';
+  const steps = [
+    { label: 'Recibido', icon: ShoppingBag },
+    { label: 'En preparación', icon: ChefHat },
+    { label: collected ? 'Listo para retirar' : 'Listo', icon: CheckCircle2 },
+    ...(delivery ? [{ label: 'En camino', icon: Truck }] : []),
+    { label: delivery ? 'Entregado' : collected ? 'Retirado' : 'Completado', icon: Check },
+  ];
+  const index = done ? steps.length - 1 : status === 'out_for_delivery' ? 3 : status === 'ready' ? 2 : status === 'preparing' ? 1 : 0;
+  const title = cancelled ? 'Pedido cancelado' : done ? '¡Que lo disfrutes!' : status === 'out_for_delivery' ? 'Tu pedido está en camino' : status === 'ready' ? collected ? '¡Ya podés retirar tu pedido!' : '¡Tu pedido está listo!' : status === 'preparing' ? 'Estamos preparando tu pedido' : '¡Recibimos tu pedido!';
+  const money = (value: number) => formatMoney(value, { currency: tracking.currency, locale: tracking.locale || 'es-AR' });
+  const menuURL = tracking.store?.slug ? '/store/' + encodeURIComponent(tracking.store.slug) : null;
 
-  const { status, delivery_address, eta_minutes, driver } = tracking;
-  // NOTE: TrackingPayload.store (src/services/tracking.ts) only ever carries
-  // {lat, lng} — the backend never sends a store name/address. `.name` and
-  // `.address` below are therefore always undefined. Pre-existing display
-  // defect, flagged not fixed (see also STORE_DISPLAY cast below).
-  const store = tracking.store as (typeof tracking.store & { name?: string; address?: string });
-  const hasMap = store?.lat != null && delivery_address?.lat != null;
-  const hasDriver = driver?.lat != null && driver?.lng != null;
-  const terminal = isTerminal(status);
-
-  return (
-    <div className="min-h-screen bg-muted/30">
-      <Header storeName={store?.name} />
-
-      <main className="mx-auto max-w-lg px-4 pb-12 pt-4 space-y-4">
-
-        {/* ETA card — promoted to top on mobile for maximum impact */}
-        <EtaCard
-          etaMinutes={eta_minutes}
-          status={status}
-          lastUpdated={lastUpdated}
-        />
-
-        {/* Map — only renders once the backend has both store + delivery
-            coordinates (delivery coordinates are withheld until the order
-            is out for delivery, for customer-address privacy). Everywhere
-            else gets a real empty state instead of a blank/hidden box. */}
-        {hasMap ? (
-          <div className="rounded-2xl overflow-hidden border border-border/60 shadow-md h-[300px] sm:h-[360px]">
-            <React.Suspense fallback={<MapSkeleton />}>
-              <TrackingMap
-                store={store}
-                delivery={delivery_address}
-                driver={hasDriver ? driver : null}
-              />
-            </React.Suspense>
-          </div>
-        ) : (
-          !terminal && (
-            <div className="rounded-2xl border border-dashed border-border/60 bg-muted/40 px-5 py-8 text-center">
-              <span className="text-2xl" role="img" aria-label="Map">🗺️</span>
-              <p className="text-sm font-medium text-foreground mt-2">Map isn't available yet</p>
-              <p className="text-xs text-muted-foreground mt-1 max-w-xs mx-auto">
-                The live map appears once your order is out for delivery.
-              </p>
-            </div>
-          )
-        )}
-
-        {/* Driver location note — only relevant once the map itself is showing */}
-        {hasMap && !hasDriver && !terminal && (
-          <p className="text-xs text-center text-muted-foreground px-4">
-            Driver location will appear on the map once available.
-          </p>
-        )}
-
-        {/* Store + address summary */}
-        <AddressSummary
-          store={store}
-          deliveryAddress={delivery_address}
-          status={status}
-        />
-
-        {/* Status steps */}
-        <div className="rounded-2xl border border-border/60 bg-card shadow-sm px-5 py-5">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-5">
-            Order progress
-          </p>
-          <OrderStatusSteps status={status} />
-        </div>
-
-        {/* Delivered celebration */}
-        {(status === 'delivered' || status === 'completed') && (
-          <div className="rounded-2xl border border-success/30 bg-success/10 px-5 py-5 text-center shadow-sm">
-            <p className="text-2xl mb-2" role="img" aria-label="Celebration">🎉</p>
-            <p className="text-base font-display text-success">Your order has arrived!</p>
-            <p className="text-sm text-success/80 mt-1">Enjoy your meal.</p>
-          </div>
-        )}
-      </main>
-    </div>
-  );
+  return <div className="min-h-dvh bg-muted/20 pb-10">
+    <header className="border-b bg-background"><div className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-4 py-4"><p className="min-w-0 truncate font-bold">{tracking.store?.name || 'Tu pedido'}</p>{menuURL && <Link to={menuURL} className="shrink-0 text-sm text-primary underline">Ver menú</Link>}</div></header>
+    <main className="mx-auto max-w-2xl space-y-5 p-4 sm:p-6">
+      <section className={'rounded-3xl border p-6 text-center ' + (cancelled ? 'border-destructive/30 bg-destructive/5' : 'border-primary/20 bg-primary/5')}>
+        <CheckCircle2 className={'mx-auto mb-4 h-12 w-12 ' + (cancelled ? 'text-destructive' : 'text-primary')} />
+        <h1 className="text-2xl font-bold" aria-live="polite">{title}</h1>
+        <p className="mt-2 break-all text-sm font-semibold">{tracking.orderNumber}</p>
+        <p className="mt-2 text-sm text-muted-foreground">{cancelled ? 'Consultá al local si necesitás ayuda.' : done ? 'Gracias por elegirnos.' : 'Podés seguir la preparación desde este enlace. No hace falta enviar un mensaje.'}</p>
+        {!done && !cancelled && index < 2 && Boolean(tracking.prepMinutes) && <p className="mt-3 text-sm">Preparación estimada: {tracking.prepMinutes} minutos. Puede variar según la demanda.</p>}
+      </section>
+      {error && <p role="alert" className="rounded-xl border bg-card p-3 text-sm">{error}</p>}
+      {!cancelled && <section className="rounded-2xl border bg-card p-5"><h2 className="mb-5 font-bold">Estado del pedido</h2><ol className="space-y-4">{steps.map((step, i) => {
+        const Icon = step.icon;
+        return <li key={step.label} aria-current={i === index ? 'step' : undefined} className={'flex items-center gap-3 ' + (i > index ? 'text-muted-foreground' : 'text-primary')}><span className={'flex h-9 w-9 items-center justify-center rounded-full ' + (i <= index ? 'bg-primary/10' : 'bg-muted')}>{i < index ? <Check className="h-4 w-4" /> : <Icon className="h-4 w-4" />}</span><span className={i === index ? 'font-bold' : 'text-sm'}>{step.label}</span>{i === index && !done && <span className="ml-auto text-xs">Actual</span>}</li>;
+      })}</ol></section>}
+      <section className="space-y-4 rounded-2xl border bg-card p-5">
+        <h2 className="font-bold">Detalle de tu pedido</h2>
+        <p className="text-sm">{fulfillmentLabels[mode as Fulfillment] || (collected ? 'Para llevar' : mode)}</p>
+        {(delivery ? tracking.delivery_address.label : tracking.store?.address) && <p className="flex items-start gap-2 text-sm"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />{delivery ? tracking.delivery_address.label : tracking.store?.address}</p>}
+        {mode === 'dine_in' && tracking.tableLabel && <p className="text-sm">Mesa / referencia: {tracking.tableLabel}</p>}
+        <ul className="divide-y">{tracking.items?.map((item, i) => <li key={i} className="flex justify-between gap-3 py-3 text-sm"><div className="min-w-0"><p className="break-words">{item.quantity}× {item.name}</p>{item.notes && <p className="mt-1 break-words text-xs text-muted-foreground">{item.notes}</p>}</div><span className="shrink-0">{money(item.total_cents)}</span></li>)}</ul>
+        {tracking.totalCents != null && <div className="flex justify-between gap-3 border-t pt-4 text-lg font-bold"><span>Total</span><span>{money(tracking.totalCents)}</span></div>}
+        <p className="text-sm text-muted-foreground">{tracking.paymentStatus === 'paid' ? 'Pago registrado' : 'Pago pendiente al recibir'}{tracking.paymentMethod ? ' · ' + (paymentLabels[tracking.paymentMethod] || tracking.paymentMethod) : ''}</p>
+      </section>
+      {delivery && (tracking.store?.lat != null || tracking.delivery_address.lat != null) && <section className="h-72 overflow-hidden rounded-2xl border bg-card" aria-label="Mapa del recorrido"><Suspense fallback={<div className="flex h-full items-center justify-center text-sm text-muted-foreground">Cargando mapa…</div>}><TrackingMap store={tracking.store} delivery={tracking.delivery_address} driver={tracking.driver} /></Suspense></section>}
+      <div className="flex flex-wrap gap-3"><Button variant="outline" onClick={() => void copyLink()} className="min-h-11 flex-1"><Copy className="mr-2 h-4 w-4" />Guardar enlace</Button>{!done && !cancelled && <Button variant="outline" onClick={() => setAttempt(n => n + 1)} className="min-h-11 flex-1"><RefreshCw className="mr-2 h-4 w-4" />Actualizar</Button>}</div>
+      {copyMessage && <p role="status" className="text-center text-sm">{copyMessage}</p>}
+      <p className="text-center text-xs text-muted-foreground">{updated ? 'Última actualización: ' + updated.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) : ''}. Este enlace es privado: compartilo solo con quien deba seguir el pedido.</p>
+    </main>
+  </div>;
 }
-
-// ---- sub-components ---------------------------------------------------------
-
-function Header({ storeName }: { storeName?: string }) {
-  return (
-    <header className="sticky top-0 z-10 border-b border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-      <div className="mx-auto max-w-lg px-4 h-14 flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary shadow-sm shadow-primary/20">
-          <Package className="h-4.5 w-4.5 text-primary-foreground" aria-hidden="true" />
-        </div>
-        <div className="min-w-0">
-          <p className="text-sm font-display leading-tight truncate">
-            {storeName ? `Order from ${storeName}` : 'Order tracking'}
-          </p>
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-            Live updates
-          </p>
-        </div>
-      </div>
-    </header>
-  );
-}
-
-function AddressSummary({
-  store,
-  deliveryAddress,
-  status,
-}: {
-  store: { lat?: number | null; lng?: number | null; name?: string; address?: string } | null;
-  deliveryAddress: { lat?: number | null; lng?: number | null; label?: string | null } | null;
-  status: string;
-}) {
-  if (!store && !deliveryAddress) return null;
-
-  return (
-    <div className="rounded-2xl border border-border/60 bg-card shadow-sm px-5 py-4 space-y-3">
-      {store?.address && (
-        <AddressRow icon="🏪" label="From" value={store.address} />
-      )}
-      {deliveryAddress?.label && (
-        <>
-          {store?.address && <div className="border-l-2 border-primary/25 ml-3 h-3" />}
-          <AddressRow icon="📍" label="Delivering to" value={deliveryAddress.label} />
-        </>
-      )}
-      {!store?.address && !deliveryAddress?.label && (
-        <p className="text-sm text-muted-foreground">
-          {STATUS_DISPLAY[status] || 'Tracking your order…'}
-        </p>
-      )}
-    </div>
-  );
-}
-
-function AddressRow({ icon, label, value }: { icon: string; label: string; value: string }) {
-  return (
-    <div className="flex items-start gap-3">
-      <span className="text-lg shrink-0 leading-tight mt-0.5" role="img" aria-hidden="true">
-        {icon}
-      </span>
-      <div className="min-w-0">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{label}</p>
-        <p className="text-sm font-medium leading-snug mt-0.5">{value}</p>
-      </div>
-    </div>
-  );
-}
-
-const STATUS_DISPLAY: Record<string, string> = {
-  pending:          'Your order has been placed.',
-  confirmed:        'Your order has been confirmed.',
-  preparing:        'The kitchen is preparing your order.',
-  ready:            'Your order is ready.',
-  out_for_delivery: 'Your order is on the way!',
-  delivered:        'Your order has been delivered.',
-  completed:        'Your order has been delivered.',
-  cancelled:        'This order was cancelled.',
-};

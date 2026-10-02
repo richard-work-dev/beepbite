@@ -353,7 +353,7 @@
             <ul class="tour-list">
               <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><span><b>Read-only views</b> over your own database — you can query all six yourself today, screen or no screen.</span></li>
               <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><span><b>Gated by capability</b> — <code>can_view_reports</code> is a permission, not an honour system.</span></li>
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><span><b>Export what you like</b> — it's your Postgres. Nothing is locked in a vendor's warehouse.</span></li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><span><b>Your data, your account</b> — application records are stored in your AWS DynamoDB tables.</span></li>
             </ul>
           </div>
         </div>
@@ -469,7 +469,7 @@
           <span class="flow-lbl">Your hardware</span>
           <div class="flow-grp">
             <div class="flow-node">Go API <small>one binary</small></div>
-            <div class="flow-node">PostgreSQL <small>your database</small></div>
+            <div class="flow-node">DynamoDB <small>managed data store</small></div>
             <div class="flow-node">Till · Kitchen · Floor <small>browser</small></div>
           </div>
         </div>
@@ -703,10 +703,10 @@
         <div><b>No subscription</b><small>There is no plan to be on, and no plan to be moved off.</small></div>
         <div><b>No commission</b><small>Nobody takes a slice of a delivery or a WhatsApp order.</small></div>
         <div><b>No feature tiers</b><small>One binary. Every feature in it is in every copy.</small></div>
-        <div><b>No lock-in</b><small>It's your PostgreSQL. Export it, fork it, walk away with it.</small></div>
+        <div><b>Serverless on AWS</b><small>Lambda, DynamoDB and managed AWS services power the application.</small></div>
       </div>
 
-      <p class="price-fine">Licensed <b>MIT or Apache-2.0</b>, your choice. What it costs you instead: a machine to run it on, a Postgres database, someone comfortable at a terminal for about half an hour at install, and the honest truth that <b>there is nobody to call</b> — there is documentation, an issue tracker and the source. If that trade is wrong for you, it is genuinely wrong, and we would rather you knew now. <a href="./docs.html#faq">The FAQ goes through it properly.</a></p>
+      <p class="price-fine">BeepBite runs on AWS serverless services, including Lambda and DynamoDB. AWS usage charges depend on traffic and region. Review the <a href="./docs.html#setup">deployment guide</a> and AWS pricing before enabling a live environment.</p>
     </div>
   </div>
 </section>
@@ -724,7 +724,7 @@
       <div class="shape now">
         <div class="ico t-orange"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></div>
         <h3>One shop, one machine <span class="chip chip-built">Built</span></h3>
-        <p>A Go binary and a PostgreSQL database on hardware you own. Browsers on the floor point at it. This is the shape BeepBite is actually built for, and the one that works today.</p>
+        <p>The React web app connects to Go services on AWS Lambda. Orders and operational records are stored in tenant-scoped DynamoDB tables.</p>
       </div>
       <div class="shape">
         <div class="ico t-amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="7" rx="2"/><rect x="2" y="13" width="20" height="7" rx="2"/></svg></div>
@@ -778,7 +778,7 @@ go run ./cmd/server
 <span class="c"># 5. the app</span>
 npm install &amp;&amp; npm run dev</pre>
     </div>
-    <p class="note">Roughly half an hour, once, by someone comfortable at a terminal. After that it is a web page on your own network. Full walkthrough in <a href="./docs.html#setup" style="color:var(--primary);font-weight:600;text-decoration:underline;text-underline-offset:2px">the setup chapter</a>. Postgres is required — the single-file SQLite install is planned, not done. The Go API is one binary; the web app is a static bundle you serve alongside it. Binaries are built for Linux and macOS on both Intel and ARM; Windows is not built.</p>
+    <p class="note">Deployment uses Terraform and an AWS account. The setup guide covers the serverless stack, GitHub OIDC deployments and environment configuration.</p>
   </div>
 </section>
 
@@ -825,15 +825,15 @@ npm install &amp;&amp; npm run dev</pre>
       </details>
       <details>
         <summary>Can you see my data?</summary>
-        <div class="a"><p>There is nowhere for us to see it from. There is no BeepBite cloud, no telemetry, no account system we operate. A fresh install with no optional integrations configured makes no outbound network calls at all. The data is in a PostgreSQL database you administer.</p></div>
+        <div class="a"><p>Application data is scoped to your BeepBite tenant in DynamoDB. Access and infrastructure are managed in your AWS account; review AWS IAM, logging and retention settings for your deployment.</p></div>
       </details>
       <details>
         <summary>What happens if the project stops?</summary>
-        <div class="a"><p>Your install keeps running, because nothing about it depends on us being alive. The source is MIT or Apache-2.0 — fork it, pay someone to maintain it, or freeze it. The database is ordinary Postgres with a documented schema, so even walking away entirely, you leave with your data in a format anything can read.</p></div>
+        <div class="a"><p>The application runs on managed AWS services. Your continued access depends on the AWS account, deployment configuration and availability of those services.</p></div>
       </details>
       <details>
         <summary>What hardware do I need?</summary>
-        <div class="a"><p>A machine to run the server and Postgres — a small desktop or mini PC is plenty for one site — and a browser on whatever you want the till, kitchen screen and floor plan to run on. Tablets work; so do cheap touchscreen all-in-ones.</p><p><b>Receipt printers:</b> network ESC/POS printers are supported directly, including kicking the cash drawer through the printer's cable. <b>USB printing is not finished</b> — the handler is a stub. Browser printing works everywhere as a fallback. Barcode scanners work as keyboard-wedge devices with no driver. <a href="./docs.html#setup">The setup chapter goes through it properly.</a></p></div>
+        <div class="a"><p>Staff need a supported browser and network access to the deployed application. Tablets and touchscreen terminals can be used for the till and kitchen screens.</p><p><b>Receipt printers:</b> browser printing is the available fallback; confirm printer compatibility with your deployment before rollout. <a href="./docs.html#setup">The setup chapter goes through deployment.</a></p></div>
       </details>
       <details>
         <summary>Who supports it?</summary>

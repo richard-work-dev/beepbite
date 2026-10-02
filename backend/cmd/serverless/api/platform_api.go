@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strconv"
@@ -13,12 +14,14 @@ import (
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/go-pdf/fpdf"
 )
 
-// handlePlatformAPI contains the smaller management contracts that used to
-// depend on PostgreSQL. They all use the same tenant partition as /data so a
-// development deployment has one authoritative, isolated data model.
+// handlePlatformAPI contains management contracts backed by the same
+// tenant-scoped DynamoDB data model as /data.
 func (a *application) handlePlatformAPI(ctx context.Context, request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, bool, error) {
 	method, path := request.RequestContext.HTTP.Method, strings.Trim(request.RawPath, "/")
 	public := strings.HasPrefix(path, "legal/") && strings.HasSuffix(path, "/current") || path == "geocode/suggest" || strings.HasPrefix(path, "link-whatsapp/") && method == "GET"
@@ -84,6 +87,9 @@ func (a *application) handlePlatformAPI(ctx context.Context, request events.APIG
 	}
 	if path == "customers/search" {
 		return a.handleCustomerSearch(ctx, request, userID), true, nil
+	}
+	if customerID, matched := customerForgetID(path, request.RequestContext.HTTP.Method); matched {
+		return a.handleForgetCustomer(ctx, request, userID, customerID), true, nil
 	}
 	if strings.HasPrefix(path, "quick-coupons") {
 		return a.handleQuickCoupons(ctx, request, userID), true, nil
@@ -859,25 +865,253 @@ func (a *application) handleLegalAccept(ctx context.Context, request events.APIG
 }
 
 func (a *application) handleDataRights(ctx context.Context, request events.APIGatewayV2HTTPRequest, userID, path string) events.APIGatewayV2HTTPResponse {
-	orgID, response, ok := a.managerOrganization(ctx, request, userID)
-	if !ok {
-		return response
+	orgID := requestHeader(request.Headers, "x-organization-id")
+	if orgID == "" {
+		return errorResponse(400, "organization context required")
+	}
+	membership, err := a.getMembership(ctx, userID, orgID)
+	if err != nil || displayString(membership["role"]) != "owner" {
+		return errorResponse(403, "only the organization owner can manage data rights")
 	}
 	switch path {
 	case "settings/data-export":
-		tables := []string{"organizations", "locations", "staff", "customers", "items", "orders"}
-		data := map[string]any{}
-		for _, table := range tables {
-			rows, _ := a.queryDataRows(ctx, orgID, table)
-			data[table] = rows
+		if request.RequestContext.HTTP.Method != "POST" {
+			return errorResponse(405, "method not allowed")
 		}
-		return mustJSONResponse(200, map[string]any{"organization_id": orgID, "exported_at": time.Now().UTC().Format(time.RFC3339Nano), "data": data})
+		if _, response, ok := a.managerOrganization(ctx, request, userID); !ok {
+			return response
+		}
+		return a.exportOrganizationData(ctx, orgID, userID)
 	case "settings/account":
-		return mustJSONResponse(202, map[string]any{"status": "scheduled", "message": "Account deletion scheduled; use restore before the retention window expires."})
+		if request.RequestContext.HTTP.Method != "DELETE" {
+			return errorResponse(405, "method not allowed")
+		}
+		var input struct {
+			Confirm          bool   `json:"confirm"`
+			OrganizationName string `json:"organization_name"`
+		}
+		if decodeBody(request.Body, &input) != nil || !input.Confirm || strings.TrimSpace(input.OrganizationName) == "" {
+			return errorResponse(400, "confirm:true and organization_name are required")
+		}
+		return a.requestOrganizationPurge(ctx, orgID, input.OrganizationName)
 	case "settings/account/restore":
-		return mustJSONResponse(200, map[string]any{"status": "restored"})
+		if request.RequestContext.HTTP.Method != "POST" {
+			return errorResponse(405, "method not allowed")
+		}
+		return errorResponse(409, "la purga comienza al confirmar y no se puede restaurar")
 	}
 	return errorResponse(404, "not found")
+}
+
+func (a *application) requestOrganizationPurge(ctx context.Context, orgID, confirmation string) events.APIGatewayV2HTTPResponse {
+	key := map[string]types.AttributeValue{
+		"PK": &types.AttributeValueMemberS{Value: "ORG#" + orgID},
+		"SK": &types.AttributeValueMemberS{Value: "PROFILE"},
+	}
+	result, err := a.dynamo.GetItem(ctx, &dynamodb.GetItemInput{TableName: aws.String(a.table), Key: key, ConsistentRead: aws.Bool(true)})
+	if err != nil {
+		return dataAccessError(err)
+	}
+	organization, ok := decodeJSONItem(result.Item)
+	if !ok {
+		return errorResponse(404, "organization not found")
+	}
+	if !strings.EqualFold(strings.TrimSpace(confirmation), strings.TrimSpace(displayString(organization["name"]))) {
+		return errorResponse(400, "organization_name does not match")
+	}
+	if requestedAt := displayString(organization["deletion_requested_at"]); requestedAt != "" {
+		return mustJSONResponse(202, map[string]any{
+			"status": "purge_pending", "requested_at": requestedAt,
+			"message": "La purga ya fue solicitada y no se puede cancelar.",
+		})
+	}
+	jobID, err := randomID()
+	if err != nil {
+		return errorResponse(500, "could not create purge request")
+	}
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	organization["deletion_requested_at"], organization["deletion_job_id"] = now, jobID
+	orgItem, err := jsonDataItem("ORG#"+orgID, "PROFILE", "organization", orgID, organization)
+	if err != nil {
+		return errorResponse(500, "could not prepare purge request")
+	}
+	previousData, ok := result.Item["data"].(*types.AttributeValueMemberS)
+	if !ok {
+		return errorResponse(500, "organization record is invalid")
+	}
+	job := map[string]any{"organization_id": orgID, "job_id": jobID, "status": "purging_data", "requested_at": now}
+	jobData, err := json.Marshal(job)
+	if err != nil {
+		return errorResponse(500, "could not prepare purge request")
+	}
+	_, err = a.dynamo.TransactWriteItems(ctx, &dynamodb.TransactWriteItemsInput{TransactItems: []types.TransactWriteItem{
+		{Put: &types.Put{TableName: aws.String(a.table), Item: orgItem,
+			ConditionExpression:       aws.String("attribute_exists(PK) AND #data = :previous"),
+			ExpressionAttributeNames:  map[string]string{"#data": "data"},
+			ExpressionAttributeValues: map[string]types.AttributeValue{":previous": &types.AttributeValueMemberS{Value: previousData.Value}},
+		}},
+		{Put: &types.Put{TableName: aws.String(a.table), Item: map[string]types.AttributeValue{
+			"PK":          &types.AttributeValueMemberS{Value: "PURGE#" + orgID},
+			"SK":          &types.AttributeValueMemberS{Value: "JOB"},
+			"entity_type": &types.AttributeValueMemberS{Value: "account_purge_job"},
+			"data":        &types.AttributeValueMemberS{Value: string(jobData)},
+		}, ConditionExpression: aws.String("attribute_not_exists(PK)")}},
+	}})
+	if err != nil {
+		// A duplicate concurrent request is safely idempotent.
+		latest, getErr := a.dynamo.GetItem(ctx, &dynamodb.GetItemInput{TableName: aws.String(a.table), Key: key, ConsistentRead: aws.Bool(true)})
+		if getErr == nil {
+			if current, exists := decodeJSONItem(latest.Item); exists && current["deletion_requested_at"] != nil {
+				return mustJSONResponse(202, map[string]any{"status": "purge_pending", "requested_at": current["deletion_requested_at"]})
+			}
+		}
+		return errorResponse(409, "could not schedule organization purge; retry the request")
+	}
+	return mustJSONResponse(202, map[string]any{
+		"status": "purge_pending", "job_id": jobID, "requested_at": now,
+		"message": "La purga fue solicitada. El acceso quedó bloqueado y el proceso continúa en segundo plano.",
+	})
+}
+
+func (a *application) exportOrganizationData(ctx context.Context, orgID, userID string) events.APIGatewayV2HTTPResponse {
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	data := make(map[string]any, len(serverlessDataTables)+1)
+	organization, err := a.dynamo.GetItem(ctx, &dynamodb.GetItemInput{
+		TableName: aws.String(a.table), ConsistentRead: aws.Bool(true),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: "ORG#" + orgID},
+			"SK": &types.AttributeValueMemberS{Value: "PROFILE"},
+		},
+	})
+	if err != nil {
+		return dataAccessError(err)
+	}
+	if row, ok := decodeJSONItem(organization.Item); ok {
+		data["organization"] = row
+	}
+	tables := make([]string, 0, len(serverlessDataTables))
+	for table := range serverlessDataTables {
+		if table != "organizations" && table != "profiles" {
+			tables = append(tables, table)
+		}
+	}
+	sort.Strings(tables)
+	for _, table := range tables {
+		rows, queryErr := a.queryDataRows(ctx, orgID, table)
+		if queryErr != nil {
+			return dataAccessError(queryErr)
+		}
+		data[table] = rows
+	}
+	archive := map[string]any{"organization_id": orgID, "exported_at": now, "data": data}
+	archiveBytes, err := json.Marshal(archive)
+	if err != nil {
+		return errorResponse(500, "could not serialize organization export")
+	}
+	if len(archiveBytes) > 4*1024*1024 {
+		return errorResponse(413, "organization export exceeds the inline download limit")
+	}
+	job, err := a.createStoredRow(ctx, orgID, "data_export_jobs", map[string]any{
+		"status": "complete", "requested_by": userID,
+		"completed_at": now, "storage_key": "inline",
+	})
+	if err != nil {
+		return dataAccessError(err)
+	}
+	if _, err := a.createStoredRow(ctx, orgID, "audit_log", map[string]any{
+		"actor_type": "member", "actor_id": userID, "action": "org.data_export",
+		"entity_type": "data_export_jobs", "entity_id": job["id"],
+		"after_state": map[string]any{"status": "complete"},
+	}); err != nil {
+		return dataAccessError(err)
+	}
+	return mustJSONResponse(200, map[string]any{"job": job, "archive": archive})
+}
+
+func (a *application) handleForgetCustomer(ctx context.Context, request events.APIGatewayV2HTTPRequest, userID, customerID string) events.APIGatewayV2HTTPResponse {
+	orgID, response, ok := a.orgForPlatform(ctx, request, userID)
+	if !ok {
+		return response
+	}
+	membership, err := a.getMembership(ctx, userID, orgID)
+	if err != nil || displayString(membership["role"]) != "owner" {
+		return errorResponse(403, "only the organization owner can erase customer data")
+	}
+	customer, err := a.dataRowByID(ctx, orgID, "customers", customerID)
+	if err != nil {
+		return errorResponse(404, "customer not found")
+	}
+	if displayString(customer["pii_redacted_at"]) != "" {
+		return errorResponse(409, "customer PII has already been erased")
+	}
+
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	// Remove direct contact/location records; retain order and loyalty ledgers,
+	// but detach customer identity from order snapshots for accounting history.
+	for _, table := range []string{"customer_addresses", "customer_favorites"} {
+		rows, queryErr := a.queryDataRows(ctx, orgID, table)
+		if queryErr != nil {
+			return dataAccessError(queryErr)
+		}
+		for _, row := range rows {
+			if displayString(row["customer_id"]) == customerID {
+				if deleteErr := a.deleteStoredRow(ctx, orgID, table, displayString(row["id"])); deleteErr != nil {
+					return dataAccessError(deleteErr)
+				}
+			}
+		}
+	}
+	orders, err := a.queryDataRows(ctx, orgID, "orders")
+	if err != nil {
+		return dataAccessError(err)
+	}
+	for _, order := range orders {
+		if displayString(order["customer_id"]) != customerID {
+			continue
+		}
+		redactOrderCustomerPII(order, now)
+		if err := a.putDataRow(ctx, orgID, "orders", order, false); err != nil {
+			return dataAccessError(err)
+		}
+	}
+	redactCustomerPII(customer, now)
+	if err := a.putDataRow(ctx, orgID, "customers", customer, false); err != nil {
+		return dataAccessError(err)
+	}
+	if _, err := a.createStoredRow(ctx, orgID, "audit_log", map[string]any{
+		"actor_type": "member", "actor_id": userID, "action": "customer.forget",
+		"entity_type": "customers", "entity_id": customerID,
+		"after_state": map[string]any{"pii_redacted_at": now},
+	}); err != nil {
+		return dataAccessError(err)
+	}
+	return mustJSONResponse(200, map[string]string{
+		"status": "forgotten", "message": "Se eliminaron los datos personales del cliente; el historial de ventas se conserva anonimizado.",
+	})
+}
+
+func customerForgetID(path, method string) (string, bool) {
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+	if method == "POST" && len(parts) == 3 && parts[0] == "customers" && parts[1] != "" && parts[2] == "forget" {
+		return parts[1], true
+	}
+	return "", false
+}
+
+func redactCustomerPII(customer map[string]any, at string) {
+	for _, field := range []string{"name", "first_name", "last_name", "email", "phone", "whatsapp_number", "notes", "address", "birth_date", "tax_id", "document_number"} {
+		delete(customer, field)
+	}
+	customer["pii_redacted_at"] = at
+	customer["updated_at"] = at
+}
+
+func redactOrderCustomerPII(order map[string]any, at string) {
+	for _, field := range []string{"customer_name", "customer_email", "customer_phone", "delivery_address", "delivery_lat", "delivery_lng", "customer_notes", "notes"} {
+		delete(order, field)
+	}
+	order["customer_pii_redacted_at"] = at
+	order["updated_at"] = at
 }
 
 func (a *application) handleCustomerSearch(ctx context.Context, request events.APIGatewayV2HTTPRequest, userID string) events.APIGatewayV2HTTPResponse {

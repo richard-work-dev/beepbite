@@ -392,6 +392,8 @@ export async function applyOrderAdjustment({
   approverStaffId,
   approverPin,
   itemId,            // required for comp
+  amountCents,
+  selectedItems,
 }: {
   orderId: string;
   // `string & {}` (not bare `string`) keeps the documented literals from
@@ -403,6 +405,8 @@ export async function applyOrderAdjustment({
   approverStaffId?: string;
   approverPin?: string;
   itemId?: string;
+  amountCents?: number;
+  selectedItems?: Array<{ order_item_id: string; quantity: number }>;
 }) {
   if (!orderId) throw new Error('orderId required');
 
@@ -430,6 +434,8 @@ export async function applyOrderAdjustment({
     applied_by_staff_id: appliedByStaffId || '',
     approver_staff_id: approverStaffId || '',
     approver_pin: approverPin || '',
+    ...(amountCents !== undefined ? { amount_cents: amountCents } : {}),
+    ...(selectedItems?.length ? { selected_items: selectedItems } : {}),
   };
 
   const { data, error } = await api.request('POST', endpoint, { body });

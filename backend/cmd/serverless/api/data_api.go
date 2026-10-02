@@ -275,8 +275,17 @@ func (a *application) updateData(ctx context.Context, request events.APIGatewayV
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	for _, row := range rows {
+		previousStatus := fmt.Sprint(row["status"])
 		for key, value := range changes {
 			row[key] = value
+		}
+		if table == "orders" {
+			if next, changesStatus := changes["status"]; changesStatus && fmt.Sprint(next) != previousStatus {
+				fulfillment := displayString(valueOr(row, "fulfillment_type", row["order_type"]))
+				if !validOrderStatusTransition(previousStatus, fmt.Sprint(next), fulfillment) {
+					return errorResponse(409, "invalid order status transition"), nil
+				}
+			}
 		}
 		row["updated_at"] = now
 		if err := validateDataRow(table, row); err != nil {
@@ -287,6 +296,34 @@ func (a *application) updateData(ctx context.Context, request events.APIGatewayV
 		}
 	}
 	return jsonResponse(200, rows)
+}
+
+func validOrderStatusTransition(current, next, fulfillment string) bool {
+	if current == next {
+		return true
+	}
+	if next == "cancelled" {
+		return current == "pending" || current == "pending_on_delivery" || current == "confirmed" || current == "preparing" || current == "ready" || current == "out_for_delivery"
+	}
+	switch current {
+	case "pending":
+		return next == "confirmed"
+	case "confirmed":
+		return next == "preparing"
+	case "preparing":
+		return next == "ready"
+	case "ready":
+		if fulfillment == "delivery" {
+			return next == "out_for_delivery"
+		}
+		return next == "completed"
+	case "out_for_delivery":
+		return fulfillment == "delivery" && next == "delivered"
+	case "pending_on_delivery":
+		return next == "delivered"
+	default:
+		return false
+	}
 }
 
 func (a *application) deleteData(ctx context.Context, request events.APIGatewayV2HTTPRequest, userID, table string, query dataQuery) (events.APIGatewayV2HTTPResponse, error) {
@@ -333,6 +370,19 @@ func (a *application) authorizedOrganization(ctx context.Context, request events
 		return "", errOrganizationRequired
 	}
 	if _, err := a.getMembership(ctx, userID, orgID); err != nil {
+		return "", errForbidden
+	}
+	organization, err := a.dynamo.GetItem(ctx, &dynamodb.GetItemInput{
+		TableName: aws.String(a.table), ConsistentRead: aws.Bool(true),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: "ORG#" + orgID},
+			"SK": &types.AttributeValueMemberS{Value: "PROFILE"},
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	if row, ok := decodeJSONItem(organization.Item); !ok || row["deletion_requested_at"] != nil {
 		return "", errForbidden
 	}
 	return orgID, nil
@@ -475,7 +525,9 @@ func (a *application) organizationRows(ctx context.Context, userID string) ([]ma
 			return nil, getErr
 		}
 		if row, ok := decodeJSONItem(result.Item); ok {
-			rows = append(rows, row)
+			if row["deletion_requested_at"] == nil {
+				rows = append(rows, row)
+			}
 		}
 	}
 	return rows, nil

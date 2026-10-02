@@ -24,9 +24,7 @@ import type { Location } from '@/context/auth-context';
 // tones still predate the Ticket Rail token system and are out of this pass's scope.
 const COMPLEXITY_BADGE_VARIANT: Record<string, string> = { simple: 'success', moderate: 'warning', complex: 'destructive' };
 
-// Mirrors the subset of the `recipe_breakdown` VIEW (backend/migrations/001_baseline.sql)
-// this component actually reads. The view also has `location_id`, unused here — the
-// fallback query below (fetchBreakdownDataFallback) doesn't reconstruct it either.
+// Flattened recipe-component data assembled from DynamoDB item and recipe rows.
 interface RecipeBreakdownRow {
   parent_item_id: string;
   parent_item_name: string;
@@ -67,8 +65,7 @@ const RecipeBreakdown = ({ activeLocation }: RecipeBreakdownProps) => {
 
   useEffect(() => {
     if (activeLocation) {
-      // Both fetchBreakdownData() and fetchRecipes() are fully try/catch/
-      // finally-wrapped below.
+      // Both fetchers handle their own errors and loading state.
       void fetchBreakdownData();
       void fetchRecipes();
     }
@@ -97,20 +94,9 @@ const RecipeBreakdown = ({ activeLocation }: RecipeBreakdownProps) => {
     
     setLoading(true);
     try {
-      // Use the recipe_breakdown view we created in the SQL
-      const { data, error } = await supabase
-        .from('recipe_breakdown')
-        .select('*')
-        .order('parent_item_name', { ascending: true })
-        .order('level_depth', { ascending: true })
-        .order('component_name', { ascending: true });
-      
-      if (error) throw error;
-      setBreakdownData(data || []);
+      await fetchBreakdownDataFallback();
     } catch (error) {
       console.error('Error fetching breakdown data:', error);
-      // Fallback to manual query if view doesn't exist
-      await fetchBreakdownDataFallback();
     } finally {
       setLoading(false);
     }
@@ -519,4 +505,4 @@ const RecipeBreakdown = ({ activeLocation }: RecipeBreakdownProps) => {
   );
 };
 
-export default RecipeBreakdown; 
+export default RecipeBreakdown;

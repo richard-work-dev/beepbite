@@ -685,7 +685,7 @@ func (a *application) chargePOSOrder(ctx context.Context, orgID, orderID, body s
 	paymentStatus := "partial"
 	if paidCents == totalCents {
 		paymentStatus = "paid"
-		order["status"] = orderStatusAfterPayment(fmt.Sprint(order["status"]), statuses)
+		order["status"] = orderStatusAfterPayment(fmt.Sprint(order["status"]), displayString(valueOr(order, "fulfillment_type", order["order_type"])), statuses)
 	}
 	order["payment_status"], order["updated_at"] = paymentStatus, time.Now().UTC().Format(time.RFC3339Nano)
 	if len(legs) == 1 {
@@ -1245,8 +1245,17 @@ func summarizeKDSStatuses(statuses []string) (active, allReady, allFinished bool
 	return active, allReady, allFinished
 }
 
-func orderStatusAfterPayment(current string, statuses []string) string {
+func orderStatusAfterPayment(current, fulfillment string, statuses []string) string {
 	_, _, allFinished := summarizeKDSStatuses(statuses)
+	if fulfillment == "delivery" {
+		if current == "out_for_delivery" || current == "delivered" || current == "cancelled" {
+			return current
+		}
+		if allFinished {
+			return "ready"
+		}
+		return current
+	}
 	if len(statuses) == 0 || allFinished {
 		return "completed"
 	}
@@ -1284,7 +1293,8 @@ func (a *application) syncOrderStatusFromKDS(ctx context.Context, orgID, orderID
 	}
 	_, allReady, allFinished := summarizeKDSStatuses(statuses)
 	next := "preparing"
-	if allFinished && fmt.Sprint(order["payment_status"]) == "paid" {
+	fulfillment := displayString(valueOr(order, "fulfillment_type", order["order_type"]))
+	if allFinished && fmt.Sprint(order["payment_status"]) == "paid" && fulfillment != "delivery" {
 		next = "completed"
 	} else if allReady {
 		next = "ready"

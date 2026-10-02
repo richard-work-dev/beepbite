@@ -2,7 +2,7 @@
 # Regenerate THIRD-PARTY-NOTICES.txt from the ACTUAL dependency graph.
 #
 # beepbite redistributes third-party code two ways: Go modules compiled into
-# the binary (backend/go.mod — chi, pgx, jwt, ...) and npm packages bundled
+# the Lambda functions (backend/go.mod — AWS SDK, JWT, ...) and npm packages bundled
 # into the React app (web/src/). The mermaid/marked bundles vendored into the
 # marketing site (site/assets/vendor/) are folded in too. MIT, BSD and ISC all
 # require the copyright notice and licence text to travel with the copy.
@@ -81,7 +81,7 @@ HEADER
   done
 
   echo "================================================================================"
-  echo "Go standard library (compiled into the beepbite binary)"
+  echo "Go standard library (compiled into the Lambda functions)"
   echo "================================================================================"
   echo
   echo "--------------------------------------------------------------------------------"
@@ -96,7 +96,7 @@ HEADER
   echo
 
   echo "================================================================================"
-  echo "Go modules (compiled into the beepbite binary, from backend/go.mod)"
+  echo "Go modules (compiled into the Lambda functions, from backend/go.mod)"
   echo "================================================================================"
   echo
   if grep -q "^Module  :" "$TMP/go-notices.txt"; then
@@ -110,5 +110,8 @@ HEADER
 # site/ is the static marketing site, deployed separately from the binary —
 # it gets its own copy of the notices.
 cp "$OUT" site/licenses.txt
+# Git Bash on Windows may preserve CRLF from source licence files. Normalize
+# generated notices so `git diff --check` and Unix CI see clean line endings.
+sed -i 's/\r$//; s/[[:space:]]*$//' "$OUT" site/licenses.txt
 
 echo "==> wrote $OUT, site/licenses.txt ($(wc -l < "$OUT" | tr -d ' ') lines)"

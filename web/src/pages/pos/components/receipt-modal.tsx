@@ -14,8 +14,8 @@
 // page — including the Dialog chrome — is hidden. This mirrors the approach
 // used in receipt-view.jsx (Wave 24).
 //
-// Email / WhatsApp: no dedicated "send receipt" backend endpoint exists, so
-// both buttons are rendered in a disabled/coming-soon state with a tooltip.
+// Sharing uses the customer's own mail/WhatsApp app; it does not require a
+// paid messaging API or send a message without the operator's confirmation.
 //
 import { useCallback, useEffect, useId, useState } from 'react';
 import {
@@ -36,12 +36,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { formatMoney } from '@/lib/currency';
 import { fetchReceipt, type Receipt } from '@/services/receipts';
@@ -343,6 +337,24 @@ export default function ReceiptModal({ orderId, open, onClose, onNewOrder }: Rec
     window.print();
   }, []);
 
+  const receiptMessage = useCallback(() => {
+    if (!receipt) return '';
+    const money = (cents: number) => formatMoney(cents, { currency: receipt.currency_code });
+    const items = receipt.line_items.map(item => `${item.quantity}x ${item.item_name} — ${money(item.total_price_cents)}`).join('\n');
+    return [`Comprobante ${receipt.order_number}`, receipt.store_name, items, `Total: ${money(receipt.total_cents)}`, `Fecha: ${formatDate(receipt.created_at)}`].filter(Boolean).join('\n');
+  }, [receipt]);
+
+  const handleShareWhatsApp = useCallback(() => {
+    if (!receipt) return;
+    window.open(`https://wa.me/?text=${encodeURIComponent(receiptMessage())}`, '_blank', 'noopener,noreferrer');
+  }, [receipt, receiptMessage]);
+
+  const handleShareEmail = useCallback(() => {
+    if (!receipt) return;
+    const subject = `Comprobante ${receipt.order_number} - ${receipt.store_name}`;
+    window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(receiptMessage())}`;
+  }, [receipt, receiptMessage]);
+
   const handleNewOrder = useCallback(() => {
     onNewOrder?.();
     onClose?.();
@@ -372,7 +384,7 @@ export default function ReceiptModal({ orderId, open, onClose, onNewOrder }: Rec
   }, [orderId]);
 
   return (
-    <TooltipProvider delayDuration={200}>
+    <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent
           className={cn(
@@ -442,44 +454,14 @@ export default function ReceiptModal({ orderId, open, onClose, onNewOrder }: Rec
               Imprimir
             </Button>
 
-            {/* Email — stubbed: no dedicated send-receipt endpoint exists */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                {/* Wrapper span so tooltip works on a disabled button */}
-                <span tabIndex={0} className="inline-flex">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled
-                    className="gap-1.5 cursor-not-allowed"
-                    aria-disabled="true"
-                  >
-                    <Mail className="w-4 h-4" />
-                    Correo
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="top">El envío por correo todavía no está disponible</TooltipContent>
-            </Tooltip>
-
-            {/* WhatsApp — stubbed: no dedicated send-receipt endpoint exists */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span tabIndex={0} className="inline-flex">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled
-                    className="gap-1.5 cursor-not-allowed"
-                    aria-disabled="true"
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                    WhatsApp
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="top">El envío por WhatsApp todavía no está disponible</TooltipContent>
-            </Tooltip>
+            <Button variant="outline" size="sm" disabled={!receipt} onClick={handleShareEmail} className="gap-1.5">
+              <Mail className="w-4 h-4" />
+              Correo
+            </Button>
+            <Button variant="outline" size="sm" disabled={!receipt} onClick={handleShareWhatsApp} className="gap-1.5">
+              <MessageCircle className="w-4 h-4" />
+              WhatsApp
+            </Button>
 
             {/* Spacer pushes primary action to the right */}
             <span className="flex-1" />
@@ -520,6 +502,6 @@ export default function ReceiptModal({ orderId, open, onClose, onNewOrder }: Rec
           }
         }
       `}</style>
-    </TooltipProvider>
+    </>
   );
 }

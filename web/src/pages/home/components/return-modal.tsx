@@ -77,9 +77,8 @@ const REASONS = [
  * (void, refund, comp, price-override) instead of a generic POST /adjustments.
  * The applyOrderAdjustment() helper in services/pos.js handles the routing.
  *
- * TODO: when the canonical POST /adjustments endpoint lands (with per-item
- * quantity support), swap applyOrderAdjustment to send `{ order_id, items, reason, manager_pin }`
- * in one call. Right now whole-order void/refund are supported; comp is per-item.
+ * Refund amounts are calculated from selected item quantities and validated
+ * against the remaining paid balance by the API. Comp remains item-specific.
  *
  * Props:
  *   open              boolean
@@ -212,7 +211,7 @@ export default function ReturnModal({
     reason &&
     approverStaffId &&
     managerPin.length >= 4 &&
-    (reason === 'void' || reason === 'refund' || totalReturnQty > 0);
+    (reason === 'void' || totalReturnQty > 0);
 
   const handleSubmit = async () => {
     if (!canSubmit || submitting || !order) return;
@@ -220,12 +219,16 @@ export default function ReturnModal({
     setSubmitError('');
     try {
       const staff = getStaff();
-      // For comp we must pass a specific item id. Pick the first selected item.
-      let itemId: string | undefined;
-      if (reason === 'comp') {
-        const entry = Object.entries(returnQty).find(([, q]) => q > 0);
-        itemId = entry?.[0];
-      }
+      const selectedItems = orderItems
+        .filter(item => (returnQty[item.id] || 0) > 0)
+        .map(item => ({ order_item_id: item.id, quantity: returnQty[item.id] || 0 }));
+      const itemId = reason === 'comp' ? selectedItems[0]?.order_item_id : undefined;
+      const amountCents = reason === 'refund' ? orderItems.reduce((sum, item) => {
+        const ordered = Math.max(1, Number(item.quantity) || 1);
+        const selected = Math.min(ordered, returnQty[item.id] || 0);
+        const lineCents = Number(item.total_price_cents ?? Math.round(Number(item.total_price || 0) * scale));
+        return sum + Math.round(lineCents * selected / ordered);
+      }, 0) : undefined;
       const result = await applyOrderAdjustment({
         orderId: order.id,
         reason,
@@ -233,6 +236,8 @@ export default function ReturnModal({
         approverStaffId,
         approverPin: managerPin,
         itemId,
+        amountCents,
+        selectedItems: reason === 'refund' ? selectedItems : undefined,
       });
       setSuccess(true);
       onSuccess?.(result);
@@ -328,7 +333,7 @@ export default function ReturnModal({
                             {oi.item_name || oi.name || `Item ${oi.id?.slice(0, 6)}`}
                           </p>
                           <p className="text-xs text-muted-foreground tabular-nums">
-                            Cant. {oi.quantity} · {format(Math.round(parseFloat(String(oi.total_price || 0)) * scale))}
+                            Cant. {oi.quantity} · {format(Number(oi.total_price_cents ?? Math.round(Number(oi.total_price || 0) * scale)))}
                           </p>
                         </div>
                         <div className="flex items-center gap-1.5">
@@ -348,7 +353,8 @@ export default function ReturnModal({
                           <Button
                             type="button"
                             size="sm"
-                            onClick={() => updateQty(oi.id, qty + 1)}
+                            onClick={() => updateQty(oi.id, Math.min(Number(oi.quantity) || 0, qty + 1))}
+                            disabled={qty >= Number(oi.quantity)}
                             className="h-7 w-7 p-0 rounded-full bg-primary hover:bg-primary/90"
                             aria-label="Aumentar cantidad a devolver"
                           >
@@ -384,7 +390,7 @@ export default function ReturnModal({
           )}
           {reason === 'refund' && (
             <p className="text-xs text-muted-foreground">
-              El reembolso revierte el pago completo del pedido.
+              Seleccioná las unidades que se devuelven. El importe se calcula por cantidad y no puede superar el saldo pagado.
             </p>
           )}
         </div>

@@ -65,6 +65,8 @@ type marketplaceLocation struct {
 
 func (a *application) marketplaceLocations(ctx context.Context) ([]marketplaceLocation, error) {
 	locations := []marketplaceLocation{}
+	deletingOrganizations := map[string]bool{}
+	checkedOrganizations := map[string]bool{}
 	var startKey map[string]types.AttributeValue
 	for {
 		result, err := a.dynamo.Scan(ctx, &dynamodb.ScanInput{
@@ -89,6 +91,24 @@ func (a *application) marketplaceLocations(ctx context.Context) ([]marketplaceLo
 				orgID = strings.TrimPrefix(stringValue(item["PK"]), "ORG#")
 			}
 			if orgID != "" {
+				if !checkedOrganizations[orgID] {
+					organization, getErr := a.dynamo.GetItem(ctx, &dynamodb.GetItemInput{
+						TableName: aws.String(a.table), ConsistentRead: aws.Bool(true),
+						Key: map[string]types.AttributeValue{
+							"PK": &types.AttributeValueMemberS{Value: "ORG#" + orgID},
+							"SK": &types.AttributeValueMemberS{Value: "PROFILE"},
+						},
+					})
+					if getErr != nil {
+						return nil, getErr
+					}
+					profile, exists := decodeJSONItem(organization.Item)
+					deletingOrganizations[orgID] = !exists || profile["deletion_requested_at"] != nil
+					checkedOrganizations[orgID] = true
+				}
+				if deletingOrganizations[orgID] {
+					continue
+				}
 				locations = append(locations, marketplaceLocation{orgID: orgID, row: row})
 			}
 		}

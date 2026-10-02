@@ -44,7 +44,14 @@ import {
 // ── Status colour helpers (kept in this file so they stay co-located) ───────
 
 // Shorter label for CTA buttons
-function getStatusLabelShort(status: string): string {
+function getStatusLabelShort(status: string, order?: HomeOrder): string {
+  const fulfillment = order?.fulfillment_type || order?.order_type;
+  if (status === 'completed') {
+    if (fulfillment === 'collection' || fulfillment === 'pickup') return 'Marcar retirado';
+    if (fulfillment === 'dine_in') return 'Marcar servido';
+    return 'Finalizar pedido';
+  }
+  if (status === 'delivered') return 'Confirmar entrega';
   const labels: Record<string, string> = {
     pending:          'Pendiente',
     confirmed:        'Confirmado',
@@ -68,6 +75,13 @@ function orderCustomerName(order: HomeOrder): string {
 
 function orderCustomerPhone(order: HomeOrder): string {
   return order.customer_phone?.trim() || order.customers?.whatsapp_number?.trim() || '';
+}
+
+function isOnDeliveryPaymentDue(order: HomeOrder): boolean {
+  const legacyPending = order.status === 'pending_on_delivery';
+  const delivery = order.fulfillment_type === 'delivery' || order.order_type === 'delivery' || legacyPending;
+  const method = order.payment_method || '';
+  return delivery && order.payment_status !== 'paid' && (legacyPending || method === 'cash_on_delivery' || method === 'card_on_delivery' || method === 'cash' || method === 'card_machine');
 }
 
 // ── Skeleton card ─────────────────────────────────────────────────────────────
@@ -152,7 +166,7 @@ interface OrderDetailsViewProps {
   onEdit: (order: HomeOrder) => void;
   updateOrderStatus: (orderId: string, newStatus: string) => void;
   getStatusColor: (status: string) => string;
-  getNextStatus: (status: string) => string | undefined;
+  getNextStatus: (order: HomeOrder) => string | undefined;
   getStatusLabel: (status: string) => string;
   drivers: Driver[];
   loadingDrivers: boolean;
@@ -421,13 +435,13 @@ function OrderDetailsView({
             {/* Actions */}
             <div className="flex gap-2 pt-2">
               {(() => {
-                const nextStatus = getNextStatus(order.status);
+                const nextStatus = getNextStatus(order);
                 return nextStatus && (
                   <Button
                     onClick={() => updateOrderStatus(order.id, nextStatus)}
                     className="flex-1 h-11 rounded-xl text-sm font-semibold"
                   >
-                    {getStatusLabelShort(nextStatus)}
+                    {getStatusLabelShort(nextStatus, order)}
                     <ChevronRight className="w-4 h-4 ml-1" aria-hidden="true" />
                   </Button>
                 );
@@ -614,9 +628,10 @@ type MarkPaidMethod = 'cash' | 'card_machine';
 interface OrderCardProps {
   order: HomeOrder;
   getStatusColor: (status: string) => string;
-  getNextStatus: (status: string) => string | undefined;
+  getNextStatus: (order: HomeOrder) => string | undefined;
   getStatusLabel: (status: string) => string;
   updateOrderStatus: (orderId: string, newStatus: string) => void;
+  refreshOrders: () => void;
   onViewDetails: (order: HomeOrder) => void;
   onEditOrder: (order: HomeOrder) => void;
   canSettle: boolean;
@@ -630,13 +645,14 @@ function OrderCard({
   getNextStatus,
   getStatusLabel,
   updateOrderStatus,
+  refreshOrders,
   onViewDetails,
   onEditOrder,
   canSettle,
   markingPaid,
   onMarkPaid,
 }: OrderCardProps) {
-  const nextStatus = getNextStatus(order.status);
+  const nextStatus = getNextStatus(order);
   const customerName = orderCustomerName(order);
   const customerPhone = orderCustomerPhone(order);
 
@@ -681,7 +697,7 @@ function OrderCard({
               aria-label={`Avanzar pedido #${order.order_number} a ${getStatusLabel(nextStatus)}`}
               className="flex-1 h-9 rounded-lg text-xs font-semibold truncate"
             >
-              {getStatusLabelShort(nextStatus)}
+              {getStatusLabelShort(nextStatus, order)}
             </Button>
           )}
           <Button
@@ -705,7 +721,7 @@ function OrderCard({
         </div>
 
         {/* Mark-paid buttons for pending_on_delivery orders */}
-        {order.status === 'pending_on_delivery' && canSettle && (
+        {isOnDeliveryPaymentDue(order) && canSettle && (
           <div className="flex gap-1.5 mt-1.5">
             <Button
               size="sm"
@@ -771,11 +787,12 @@ interface OrdersSectionProps {
   setOrderStatusFilter: (filter: string) => void;
   filteredOrders: HomeOrder[];
   updateOrderStatus: (orderId: string, newStatus: string) => void;
+  refreshOrders: () => void;
   setEditingOrder: (order: HomeOrder | null) => void;
   setIsOrderEditModalOpen: (open: boolean) => void;
   viewOrderDetails: (order: HomeOrder) => void;
   getStatusColor: (status: string) => string;
-  getNextStatus: (status: string) => string | undefined;
+  getNextStatus: (order: HomeOrder) => string | undefined;
   getStatusLabel: (status: string) => string;
   isOrdersExpanded: boolean;
 }
@@ -791,6 +808,7 @@ const OrdersSection = ({
   setOrderStatusFilter,
   filteredOrders,
   updateOrderStatus,
+  refreshOrders,
   setEditingOrder,
   setIsOrderEditModalOpen,
   viewOrderDetails,
@@ -834,7 +852,7 @@ const OrdersSection = ({
         }
         return;
       }
-      updateOrderStatus(orderId, 'completed');
+      refreshOrders();
     } finally {
       setMarkingPaid((prev) => {
         const next = { ...prev };
@@ -1134,6 +1152,7 @@ const OrdersSection = ({
                 getNextStatus={getNextStatus}
                 getStatusLabel={getStatusLabel}
                 updateOrderStatus={updateOrderStatus}
+                refreshOrders={refreshOrders}
                 onViewDetails={handleViewDetails}
                 onEditOrder={handleEditOrder}
                 canSettle={canSettle}

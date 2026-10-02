@@ -249,14 +249,14 @@ const TopBar = () => {
         <nav className="h-16 px-3 sm:px-5 lg:px-8 xl:px-12">
           <div className="h-full flex items-center justify-between max-w-content mx-auto">
             {/* Left: Logo and Navigation */}
-            <div className="flex min-w-0 items-center gap-6">
+            <div className="flex min-w-0 items-center gap-2 lg:gap-6">
               <Link to={user ? '/home' : '/'} className="flex min-w-0 items-center" aria-label="RikoPollo, inicio">
                 <Logo variant="minimal" className="[&>span]:hidden min-[390px]:[&>span]:inline" />
               </Link>
 
               {/* Desktop Navigation - Show for authenticated users */}
               {user && (
-                <nav className="hidden lg:flex items-center gap-1.5" aria-label="Navegación principal">
+                <nav className="hidden md:flex items-center gap-0.5 lg:gap-1.5" aria-label="Navegación principal">
                   {availablePrimaryItems.map((item) => {
                     const Icon = item.icon;
                     const isActive = isActivePath(item.path);
@@ -265,16 +265,18 @@ const TopBar = () => {
                       <Link
                         key={item.path}
                         to={item.path}
+                        title={item.name}
+                        aria-label={item.name}
                         aria-current={isActive ? 'page' : undefined}
                         className={cn(
-                          "flex items-center gap-2 sm:gap-2.5 px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-md text-xs sm:text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                          "flex items-center gap-2 px-2 lg:px-3.5 py-2 sm:py-2.5 rounded-md text-xs sm:text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                           isActive
                             ? "bg-primary text-primary-foreground"
                             : "text-muted-foreground hover:text-foreground hover:bg-muted"
                         )}
                       >
                         <Icon className="w-4 h-4 sm:w-[1.1rem] sm:h-[1.1rem]" aria-hidden="true" />
-                        <span className="hidden sm:inline">{item.name}</span>
+                        <span className="hidden lg:inline">{item.name}</span>
                       </Link>
                     );
                   })}
@@ -285,10 +287,12 @@ const TopBar = () => {
                     onClick={(event) => toggleSideNav(event.currentTarget)}
                     aria-expanded={isSideNavOpen}
                     aria-haspopup="dialog"
-                    className="ml-1 gap-2"
+                    aria-label="Módulos"
+                    title="Módulos"
+                    className="ml-0 gap-2 px-2 lg:ml-1 lg:px-3"
                   >
                     <Menu className="h-4 w-4" aria-hidden="true" />
-                    Módulos
+                    <span className="hidden lg:inline">Módulos</span>
                   </Button>
                 </nav>
               )}
@@ -395,7 +399,7 @@ const TopBar = () => {
 
       {showAppNavigation && (
         <nav
-          className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_-18px_rgba(0,0,0,0.45)] backdrop-blur lg:hidden"
+          className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_-18px_rgba(0,0,0,0.45)] backdrop-blur md:hidden"
           aria-label="Navegación principal móvil"
         >
           <div
@@ -409,6 +413,7 @@ const TopBar = () => {
                 <Link
                   key={item.path}
                   to={item.path}
+                  title={item.name}
                   aria-current={active ? 'page' : undefined}
                   className={cn(
                     'relative flex min-w-0 flex-col items-center justify-center gap-1 px-1 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',

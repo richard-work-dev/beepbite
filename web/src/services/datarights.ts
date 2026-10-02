@@ -13,25 +13,18 @@ export interface DataExportResult {
 }
 
 /**
- * Soft-delete the caller's organisation (reversible within 30 days).
- */
-export async function deleteAccount() {
-  return api.request<StatusMessage>('DELETE', '/settings/account', { body: { confirm: true } });
-}
-
-/**
- * Cancel a pending soft-delete and restore the organisation.
- */
-export async function restoreAccount() {
-  return api.request<StatusMessage>('POST', '/settings/account/restore');
-}
-
-/**
- * Request a full data export (JSON archive of orders, customers, staff,
- * audit log). The response includes the job metadata and the inline archive.
+ * Request a tenant-scoped JSON export. The archive is returned inline up to
+ * the API's 4 MB response limit.
  */
 export async function requestDataExport() {
   return api.request<DataExportResult>('POST', '/settings/data-export');
+}
+
+/** Request irreversible tenant deletion after typing the exact organization name. */
+export async function requestOrganizationPurge(organizationName: string) {
+  return api.request<StatusMessage>('DELETE', '/settings/account', {
+    body: { confirm: true, organization_name: organizationName },
+  });
 }
 
 /**

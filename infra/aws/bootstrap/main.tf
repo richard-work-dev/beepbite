@@ -162,18 +162,6 @@ resource "aws_iam_role_policy" "github_application" {
         Resource = "*"
       },
       {
-        Sid      = "ApplicationRepositories"
-        Effect   = "Allow"
-        Action   = "ecr:*"
-        Resource = "arn:aws:ecr:${var.aws_region}:${data.aws_caller_identity.current.account_id}:repository/beepbite-dev-*"
-      },
-      {
-        Sid      = "ECRAuthorization"
-        Effect   = "Allow"
-        Action   = "ecr:GetAuthorizationToken"
-        Resource = "*"
-      },
-      {
         Sid      = "ApplicationSecrets"
         Effect   = "Allow"
         Action   = "secretsmanager:*"

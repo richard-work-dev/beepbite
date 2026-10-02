@@ -5,6 +5,30 @@ import (
 	"testing"
 )
 
+func TestValidOrderStatusTransition(t *testing.T) {
+	tests := []struct {
+		current, next, fulfillment string
+		want                       bool
+	}{
+		{"pending", "confirmed", "delivery", true},
+		{"confirmed", "preparing", "collection", true},
+		{"preparing", "ready", "dine_in", true},
+		{"ready", "out_for_delivery", "delivery", true},
+		{"ready", "completed", "collection", true},
+		{"out_for_delivery", "delivered", "delivery", true},
+		{"ready", "out_for_delivery", "pickup", false},
+		{"confirmed", "completed", "delivery", false},
+		{"completed", "preparing", "collection", false},
+		{"preparing", "cancelled", "delivery", true},
+		{"ready", "ready", "delivery", true},
+	}
+	for _, test := range tests {
+		if got := validOrderStatusTransition(test.current, test.next, test.fulfillment); got != test.want {
+			t.Errorf("validOrderStatusTransition(%q, %q, %q) = %v, want %v", test.current, test.next, test.fulfillment, got, test.want)
+		}
+	}
+}
+
 func TestDataTableFromPath(t *testing.T) {
 	tests := []struct {
 		path  string

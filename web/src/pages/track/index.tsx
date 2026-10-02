@@ -58,7 +58,9 @@ function Tracking({ token }: { token: string }) {
   const mode = tracking.fulfillmentType;
   const delivery = mode === 'delivery';
   const collected = mode === 'collection' || mode === 'pickup';
-  const status = tracking.status;
+  // Only delivery orders can be in transit; old or malformed pickup/local
+  // orders with that status stay on the truthful "ready" step.
+  const status = tracking.status === 'out_for_delivery' && !delivery ? 'ready' : tracking.status;
   const done = status === 'completed' || status === 'delivered';
   const cancelled = status === 'cancelled';
   const steps = [
@@ -68,7 +70,7 @@ function Tracking({ token }: { token: string }) {
     ...(delivery ? [{ label: 'En camino', icon: Truck }] : []),
     { label: delivery ? 'Entregado' : collected ? 'Retirado' : 'Completado', icon: Check },
   ];
-  const index = done ? steps.length - 1 : status === 'out_for_delivery' ? 3 : status === 'ready' ? 2 : status === 'preparing' ? 1 : 0;
+  const index = done ? steps.length - 1 : status === 'out_for_delivery' && delivery ? 3 : status === 'ready' ? 2 : status === 'preparing' ? 1 : 0;
   const title = cancelled ? 'Pedido cancelado' : done ? '¡Que lo disfrutes!' : status === 'out_for_delivery' ? 'Tu pedido está en camino' : status === 'ready' ? collected ? '¡Ya podés retirar tu pedido!' : '¡Tu pedido está listo!' : status === 'preparing' ? 'Estamos preparando tu pedido' : '¡Recibimos tu pedido!';
   const money = (value: number) => formatMoney(value, { currency: tracking.currency, locale: tracking.locale || 'es-AR' });
   const menuURL = tracking.store?.slug ? '/store/' + encodeURIComponent(tracking.store.slug) : null;

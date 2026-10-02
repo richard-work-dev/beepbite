@@ -70,7 +70,10 @@ const CONFIG = {
   repoRoot: path.resolve(SCRIPT_DIR, '..', '..'),
 
   // Directory names to prune anywhere in the walk (assertion B).
-  excludeDirNames: new Set(['node_modules', 'dist', 'build', 'target', '.git', 'out']),
+  // Ignore generated workspace caches as well as build output. In particular,
+  // backend/tmp may contain unpacked Go modules whose package.json files are
+  // unrelated to this repository's dependency declarations.
+  excludeDirNames: new Set(['node_modules', 'dist', 'build', 'target', '.git', 'out', 'tmp', '.terraform']),
 
   // Minimum number of files `eslint .` must report linting from webRoot
   // (assertion C). Measured real count on 2026-08-05: 362 files, 0 errors,

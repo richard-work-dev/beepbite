@@ -1,6 +1,6 @@
 // api-client.js — a thin fetch wrapper that mimics the subset of supabase-js
-// the app uses (.from().select()/.insert()/.update()/.delete(), .rpc(), and
-// .auth.* for sign-in flows). It hits the Go backend at VITE_API_URL.
+// the app uses (.from().select()/.insert()/.update()/.delete() and .auth.*).
+// It calls the AWS Lambda API backed by DynamoDB at VITE_API_URL.
 //
 // Tokens are persisted to localStorage. The client auto-refreshes once on a
 // 401 and replays the original request.
@@ -43,7 +43,7 @@ interface RequestOpts {
   _managerOverrideAttempted?: boolean;
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const API_URL = import.meta.env.VITE_API_URL || 'https://api-dev.rikopollo.dpdns.org';
 
 const STORAGE_KEY = 'bb.auth';
 
@@ -322,22 +322,15 @@ const auth = {
     return { data: { session: readAuth() }, error: null };
   },
 
-  // Same reasoning as getSession() above: no await in the body, but kept
-  // `async` since context/auth-context.tsx already
-  // `await supabase.auth.updateUser(...)`.
-  // eslint-disable-next-line @typescript-eslint/require-await
-  async updateUser(_updates?: { password?: string; [key: string]: unknown }) {
-    // TODO(backend): no self-service "change own password while authenticated"
-    // endpoint exists yet. The email password-reset flow (POST /auth/password/forgot
-    // → token email → POST /auth/password/reset) is the supported path.
-    // When a /auth/me/password endpoint lands, wire it here.
-    return {
-      data: null,
-      error: {
-        message:
-          'To change your password, use the "Forgot password" link on the sign-in page. A reset link will be emailed to you.',
-      },
-    };
+  // Keep the auth facade contract consumed by auth-context.
+  async updateUser(updates?: { password?: string; current_password?: string; [key: string]: unknown }) {
+    if (!updates?.password || !updates.current_password) {
+      return { data: null, error: { message: 'Se requiere la contraseña actual y la nueva.' } };
+    }
+    const { error } = await request('POST', '/auth/me/password', {
+      body: { current_password: updates.current_password, new_password: updates.password },
+    });
+    return error ? { data: null, error } : { data: { user: readAuth()?.user ?? null }, error: null };
   },
 
   async resetPasswordForEmail(email: string, _opts?: { redirectTo?: string }) {
@@ -761,10 +754,6 @@ function serialize(v: unknown): string {
 
 function from(table: string) { return new Builder(table); }
 
-async function rpc<T = unknown>(fn: string, args: unknown = {}) {
-  return request<T>('POST', `/rpc/${encodeURIComponent(fn)}`, { body: args });
-}
-
 // ---- edge-function-style invoke (matches supabase.functions.invoke) ----
 
 async function invokeFunction(name: string, { body }: { body?: unknown } = {}) {
@@ -780,13 +769,12 @@ async function invokeFunction(name: string, { body }: { body?: unknown } = {}) {
 
 export const supabase = {
   from,
-  rpc,
   auth,
   functions: { invoke: invokeFunction },
 };
 
 // Raw helpers for code that wants to hit the REST layer directly.
-export const api = { request, auth, from, rpc };
+export const api = { request, auth, from };
 
 // Backwards-compat default export so `import supabase from ...` keeps working.
 export default supabase;

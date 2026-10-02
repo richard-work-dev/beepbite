@@ -19,7 +19,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
-	"github.com/beepbite/backend/internal/auth"
+	"github.com/beepbite/backend/pkg/tokens"
 )
 
 var (
@@ -104,7 +104,7 @@ func connect(ctx context.Context, request events.APIGatewayWebsocketProxyRequest
 	if err != nil {
 		return response(500), err
 	}
-	claims, err := auth.Parse(token, secret)
+	claims, err := tokens.Parse(token, secret)
 	if err != nil {
 		return response(401), nil
 	}

@@ -70,10 +70,28 @@ func TestOrderStatusAfterPaymentWaitsForKitchenHandoff(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			if got := orderStatusAfterPayment(test.current, test.statuses); got != test.want {
+			if got := orderStatusAfterPayment(test.current, "collection", test.statuses); got != test.want {
 				t.Fatalf("orderStatusAfterPayment(%q, %#v) = %q, want %q", test.current, test.statuses, got, test.want)
 			}
 		})
+	}
+}
+
+func TestDeliveryOrderStatusAfterPaymentRemainsInFulfillmentFlow(t *testing.T) {
+	tests := []struct {
+		current  string
+		statuses []string
+		want     string
+	}{
+		{current: "confirmed", statuses: []string{"bumped"}, want: "ready"},
+		{current: "ready", statuses: []string{"bumped"}, want: "ready"},
+		{current: "out_for_delivery", statuses: []string{"bumped"}, want: "out_for_delivery"},
+		{current: "delivered", statuses: []string{"bumped"}, want: "delivered"},
+	}
+	for _, test := range tests {
+		if got := orderStatusAfterPayment(test.current, "delivery", test.statuses); got != test.want {
+			t.Fatalf("orderStatusAfterPayment(%q, delivery, %#v) = %q, want %q", test.current, test.statuses, got, test.want)
+		}
 	}
 }
 

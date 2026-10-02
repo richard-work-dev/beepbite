@@ -22,7 +22,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
-	"github.com/beepbite/backend/internal/auth"
+	"github.com/beepbite/backend/pkg/tokens"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -134,15 +134,8 @@ func handler(ctx context.Context, request events.APIGatewayV2HTTPRequest) (event
 		return application.signOut(ctx, request)
 	case "GET /auth/me":
 		return application.me(ctx, request)
-	case "POST /rpc/check_invites":
-		// In the DynamoDB single-store runtime, invitations are accepted when the
-		// invited address signs up (or immediately when the user already exists).
-		// Keep the legacy authenticated RPC contract used by the web client so a
-		// normal sign-in does not generate a spurious 404.
-		if _, err := application.authenticate(ctx, request.Headers); err != nil {
-			return errorResponse(401, "invalid token"), nil
-		}
-		return mustJSONResponse(200, []any{}), nil
+	case "POST /auth/me/password":
+		return application.changeOwnPassword(ctx, request)
 	default:
 		if response, handled, marketplaceErr := application.handleMarketplaceAPI(ctx, request); handled {
 			return response, marketplaceErr
@@ -295,7 +288,7 @@ func (a *application) refresh(ctx context.Context, request events.APIGatewayV2HT
 	if decodeBody(request.Body, &input) != nil || input.RefreshToken == "" {
 		return errorResponse(400, "refresh_token required"), nil
 	}
-	oldHash := auth.HashToken(input.RefreshToken)
+	oldHash := tokens.HashToken(input.RefreshToken)
 	result, err := a.dynamo.GetItem(ctx, &dynamodb.GetItemInput{TableName: aws.String(a.table), ConsistentRead: aws.Bool(true), Key: refreshKey(oldHash)})
 	if err != nil || len(result.Item) == 0 || boolValue(result.Item["revoked"]) || numberValue(result.Item["expires_at"]) <= time.Now().Unix() {
 		return errorResponse(401, "invalid refresh token"), nil
@@ -324,7 +317,7 @@ func (a *application) refresh(ctx context.Context, request events.APIGatewayV2HT
 func (a *application) signOut(ctx context.Context, request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
 	var input refreshRequest
 	if decodeBody(request.Body, &input) == nil && input.RefreshToken != "" {
-		_, _ = a.dynamo.UpdateItem(ctx, &dynamodb.UpdateItemInput{TableName: aws.String(a.table), Key: refreshKey(auth.HashToken(input.RefreshToken)), UpdateExpression: aws.String("SET revoked = :true"), ExpressionAttributeValues: map[string]types.AttributeValue{
+		_, _ = a.dynamo.UpdateItem(ctx, &dynamodb.UpdateItemInput{TableName: aws.String(a.table), Key: refreshKey(tokens.HashToken(input.RefreshToken)), UpdateExpression: aws.String("SET revoked = :true"), ExpressionAttributeValues: map[string]types.AttributeValue{
 			":true": &types.AttributeValueMemberBOOL{Value: true},
 		}})
 	}
@@ -343,7 +336,87 @@ func (a *application) me(ctx context.Context, request events.APIGatewayV2HTTPReq
 	return jsonResponse(200, currentUser)
 }
 
-func (a *application) authenticate(ctx context.Context, headers map[string]string) (*auth.Claims, error) {
+// changeOwnPassword changes the authenticated account password and revokes all
+// refresh tokens for that account. Existing access tokens expire within the
+// normal short access-token lifetime.
+func (a *application) changeOwnPassword(ctx context.Context, request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
+	claims, err := a.authenticate(ctx, request.Headers)
+	if err != nil {
+		return errorResponse(401, "invalid token"), nil
+	}
+	var input struct {
+		CurrentPassword string `json:"current_password"`
+		NewPassword     string `json:"new_password"`
+	}
+	if decodeBody(request.Body, &input) != nil || input.CurrentPassword == "" {
+		return errorResponse(400, "current_password and new_password are required"), nil
+	}
+	if !validAccountPassword(input.NewPassword) {
+		return errorResponse(400, "new password must have at least 12 characters, an uppercase letter, a lowercase letter, and a number"), nil
+	}
+	current, err := a.findUserByID(ctx, claims.UserID)
+	if err != nil || bcrypt.CompareHashAndPassword([]byte(current.PasswordHash), []byte(input.CurrentPassword)) != nil {
+		return errorResponse(400, "current password is incorrect"), nil
+	}
+	if bcrypt.CompareHashAndPassword([]byte(current.PasswordHash), []byte(input.NewPassword)) == nil {
+		return errorResponse(400, "new password must be different from the current password"), nil
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(input.NewPassword), accountHashCost)
+	if err != nil {
+		return events.APIGatewayV2HTTPResponse{}, err
+	}
+	_, err = a.dynamo.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+		TableName: aws.String(a.table), Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: "USER#" + claims.UserID},
+			"SK": &types.AttributeValueMemberS{Value: "PROFILE"},
+		},
+		UpdateExpression:    aws.String("SET password_hash = :hash, password_changed_at = :changed"),
+		ConditionExpression: aws.String("attribute_exists(PK) AND password_hash = :current"),
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":hash":    &types.AttributeValueMemberS{Value: string(hash)},
+			":current": &types.AttributeValueMemberS{Value: current.PasswordHash},
+			":changed": &types.AttributeValueMemberS{Value: time.Now().UTC().Format(time.RFC3339Nano)},
+		},
+	})
+	if err != nil {
+		return errorResponse(409, "password changed concurrently; please sign in again"), nil
+	}
+	// Revoking refresh tokens forces every other device to authenticate again.
+	var start map[string]types.AttributeValue
+	for {
+		page, queryErr := a.dynamo.Query(ctx, &dynamodb.QueryInput{
+			TableName: aws.String(a.table), IndexName: aws.String("GSI2"),
+			KeyConditionExpression: aws.String("GSI2PK = :user"),
+			ExpressionAttributeValues: map[string]types.AttributeValue{
+				":user": &types.AttributeValueMemberS{Value: "USER#" + claims.UserID},
+			}, ExclusiveStartKey: start,
+		})
+		if queryErr != nil {
+			return events.APIGatewayV2HTTPResponse{}, queryErr
+		}
+		for _, item := range page.Items {
+			if stringValue(item["entity_type"]) != "refresh_token" || boolValue(item["revoked"]) {
+				continue
+			}
+			_, queryErr = a.dynamo.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+				TableName: aws.String(a.table), Key: map[string]types.AttributeValue{
+					"PK": item["PK"], "SK": item["SK"],
+				}, UpdateExpression: aws.String("SET revoked = :true"),
+				ExpressionAttributeValues: map[string]types.AttributeValue{":true": &types.AttributeValueMemberBOOL{Value: true}},
+			})
+			if queryErr != nil {
+				return events.APIGatewayV2HTTPResponse{}, queryErr
+			}
+		}
+		if len(page.LastEvaluatedKey) == 0 {
+			break
+		}
+		start = page.LastEvaluatedKey
+	}
+	return jsonResponse(200, map[string]string{"status": "password_changed"})
+}
+
+func (a *application) authenticate(ctx context.Context, headers map[string]string) (*tokens.Claims, error) {
 	header := headers["authorization"]
 	if header == "" {
 		header = headers["Authorization"]
@@ -356,7 +429,7 @@ func (a *application) authenticate(ctx context.Context, headers map[string]strin
 	if err != nil {
 		return nil, err
 	}
-	return auth.Parse(parts[1], secret)
+	return tokens.Parse(parts[1], secret)
 }
 
 func (a *application) newSession(ctx context.Context, currentUser user, userAgent string, now time.Time) (sessionResponse, map[string]types.AttributeValue, error) {
@@ -364,11 +437,11 @@ func (a *application) newSession(ctx context.Context, currentUser user, userAgen
 	if err != nil {
 		return sessionResponse{}, nil, err
 	}
-	accessToken, expiresAt, err := auth.IssueAccess(currentUser.ID, currentUser.Email, secret, accessTTL)
+	accessToken, expiresAt, err := tokens.IssueAccess(currentUser.ID, currentUser.Email, secret, accessTTL)
 	if err != nil {
 		return sessionResponse{}, nil, err
 	}
-	refreshToken, refreshHash, err := auth.NewRefreshToken()
+	refreshToken, refreshHash, err := tokens.NewRefreshToken()
 	if err != nil {
 		return sessionResponse{}, nil, err
 	}

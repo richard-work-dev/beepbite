@@ -9,17 +9,11 @@ here is thinner than you'd expect.
 
 Two things this guide is not:
 
-- **Not the install guide.** Getting an instance running — PostgreSQL,
-  migrations, starting the server — is a one-time technical job. If nobody's
-  done that yet, hand [Setup](setup.md) to whoever does your IT and come
-  back once you have a web address to open. Nothing past this paragraph
-  needs a terminal.
-- **Not a sales pitch.** BeepBite is free — MIT OR Apache-2.0, no per-order
-  fee, no subscription, no feature tier a payment unlocks, every feature in
-  every copy. It's self-hosted: your data lives in a Postgres database on
-  hardware you (or whoever you hired) control. There's no BeepBite cloud, no
-  company to call, no bill to appeal. See [FAQ](faq.md) for the blunt
-  version of that trade.
+- **Not the deployment guide.** BeepBite runs on AWS serverless services.
+  Ask the administrator for your environment's web address; technical setup
+  is in [Setup](setup.md). Nothing past this paragraph needs a terminal.
+- **Not a sales pitch.** The application is open source, but running it can
+  incur AWS and optional integration charges. See [FAQ](faq.md) for details.
 
 ---
 
@@ -327,12 +321,9 @@ select items or a custom amount. BeepBite records the refund against the
 original tender — actually returning the money (drawer, card machine) is
 on you.
 
-> [!WARNING]
-> An **optional, off-by-default** online card payment path exists for
-> remote orders with no counter to pay at. It's gated behind a compile-time
-> build flag (`-tags patala`) not in the default build, its own integration
-> tests currently **fail**, and it has **never run against a live
-> processor**. Don't plan around it. See [ONLINE-PAYMENTS.md](ONLINE-PAYMENTS.md).
+Online card processing is not part of the supported product. For remote
+orders, agree the payment method with the customer and record the tender when
+the order is paid; BeepBite does not collect or process card details.
 
 ---
 
@@ -566,10 +557,10 @@ a page yet:
 | Theoretical vs. actual COGS | Menu-cost-implied food cost vs. actual stock movement | Food-cost and waste variance |
 | Revenue by payment method | Totals per tender, per day | Cash/card mix, matching your card machine's settlement |
 
-If you need one of those, that's a question for whoever runs your database
-directly (the same Postgres your orders live in), not a button in the app.
-For **cash reconciliation**, see [The cash drawer](#9-the-cash-drawer) — it
-lives on the Cash page, per session, not on Reports.
+If a report is not available in the Reports screen, it is not exposed as an
+operator-facing report yet. Contact your administrator rather than querying
+the application's storage directly. For **cash reconciliation**, see [The
+cash drawer](#9-the-cash-drawer) — it lives on the Cash page, per session.
 
 ---
 
@@ -655,8 +646,7 @@ technical operator first.
 
 ## 20. What this guide deliberately does not cover
 
-- **Installing, upgrading or configuring the server** — environment
-  variables, migrations, deployment. That's [Setup](setup.md).
+- **Provisioning AWS or deploying a release** — that's [Setup](setup.md).
 - **Multi-branch sync between two BeepBite instances.** Doesn't exist yet —
   no push/pull, no peer enrolment, no apply path. See
   [Before your first service](#1-before-your-first-service).
@@ -664,12 +654,9 @@ technical operator first.
   isn't implemented — scaffolding exists in the codebase but nothing in the
   running app uses it; a dropped connection behaves exactly like it always
   has.
-- **Online card payments as a finished feature.** Optional, off by default,
-  compile-time gated, its integration tests currently fail. See
-  [Taking payment](#8-taking-payment).
+- **Online card processing.** BeepBite records tenders; it does not process
+  card payments. See [Taking payment](#8-taking-payment).
 - **Discord, Slack or email ordering.** Not built.
 - **Any compliance certification.** No claim to PCI-DSS, GDPR or SOC 2 —
   those describe an operator's practices, and nobody has audited a
-  self-hosted deployment you run.
-- **How to appeal a bill, or reach customer success.** There's no bill and
-  no such desk. See the top of this guide.
+  environment you run.

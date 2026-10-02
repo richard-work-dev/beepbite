@@ -136,7 +136,6 @@ const Menu = () => {
   const [items, setItems] = useState<Item[]>([]);
   const [categories, setCategories] = useState<MenuCategoryRow[]>([]);
   const [recipes, setRecipes] = useState<Item[]>([]);
-  const [recipeBreakdown, setRecipeBreakdown] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -197,7 +196,6 @@ const Menu = () => {
     setItems([]);
     setCategories([]);
     setRecipes([]);
-    setRecipeBreakdown([]);
     setLoading(false);
   };
 
@@ -207,7 +205,6 @@ const Menu = () => {
       await Promise.all([
         fetchItems(),
         fetchCategories(),
-        fetchRecipeBreakdown()
       ]);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -270,23 +267,6 @@ const Menu = () => {
       setCategories(data || []);
     } catch (error) {
       console.error('Error fetching categories:', error);
-    }
-  };
-
-  const fetchRecipeBreakdown = async () => {
-    if (!activeLocation) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('recipe_breakdown')
-        .select('*')
-        .order('parent_item_name', { ascending: true })
-        .order('level_depth', { ascending: true });
-
-      if (error) throw error;
-      setRecipeBreakdown(data || []);
-    } catch (error) {
-      console.error('Error fetching recipe breakdown:', error);
     }
   };
 
@@ -535,10 +515,28 @@ const Menu = () => {
   const updateRecipeMetadata = async (itemId: string) => {
     setActionLoading(itemId);
     try {
-      const { error } = await supabase.rpc('update_recipe_metadata', {
-        item_uuid: itemId
-      });
-
+      const [{ data: components, error: componentsError }, { data: children, error: childrenError }] = await Promise.all([
+        supabase.from('item_recipes').select('quantity_needed, cost_per_unit, child_item_id').eq('parent_item_id', itemId),
+        supabase.from('items').select('id, cost_price, max_recipe_level').eq('location_id', activeLocation?.id),
+      ]);
+      if (componentsError) throw componentsError;
+      if (childrenError) throw childrenError;
+      const childById = new Map<string, { id: string; cost_price?: number; max_recipe_level?: number }>((children || []).map((child: { id: string; cost_price?: number; max_recipe_level?: number }) => [child.id, child]));
+      const rows = components || [];
+      const maxLevel = rows.reduce((max: number, component: { child_item_id: string }) =>
+        Math.max(max, Number(childById.get(component.child_item_id)?.max_recipe_level || 0) + 1), 0);
+      const complexity = maxLevel > 2 || rows.length > 5 ? 'complex' : maxLevel > 1 || rows.length > 2 ? 'moderate' : 'simple';
+      const calculatedCost = rows.reduce((total: number, component: { quantity_needed?: number; cost_per_unit?: number; child_item_id: string }) =>
+        total + Number(component.quantity_needed || 0) * Number(component.cost_per_unit ?? childById.get(component.child_item_id)?.cost_price ?? 0), 0);
+      const metadata: Record<string, unknown> = {
+        total_components: rows.length,
+        max_recipe_level: maxLevel,
+        recipe_complexity: complexity,
+        updated_at: new Date().toISOString(),
+      };
+      const currentItem = items.find((candidate) => candidate.id === itemId);
+      if (currentItem?.auto_calculate_cost) metadata.cost_price = calculatedCost;
+      const { error } = await supabase.from('items').update(metadata).eq('id', itemId);
       if (error) throw error;
       await fetchData();
     } catch (error) {

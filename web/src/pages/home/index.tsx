@@ -362,6 +362,7 @@ const Home = () => {
               setOrderStatusFilter={setOrderStatusFilter}
               filteredOrders={filteredOrders}
               updateOrderStatus={updateOrderStatus}
+              refreshOrders={() => { void fetchOrders(); }}
             />
           </Reveal>
         </section>

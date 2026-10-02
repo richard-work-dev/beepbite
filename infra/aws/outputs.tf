@@ -53,11 +53,6 @@ output "jobs_queue_url" {
   value       = aws_sqs_queue.jobs.id
 }
 
-output "api_repository_url" {
-  description = "ECR repository retained during the application migration."
-  value       = aws_ecr_repository.api.repository_url
-}
-
 output "uploads_bucket" {
   description = "Private bucket used for direct image uploads."
   value       = aws_s3_bucket.uploads.id

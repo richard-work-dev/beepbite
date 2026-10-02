@@ -35,12 +35,12 @@ const MainLayout = () => {
           </main>
         ) : isWorkspace ? (
           <main className="min-w-0 flex-1 bg-background">
-            <div className="h-[calc(100dvh-8rem-env(safe-area-inset-bottom))] lg:h-[calc(100dvh-4rem)]">
+            <div className="h-[calc(100dvh-8rem-env(safe-area-inset-bottom))] md:h-[calc(100dvh-4rem)]">
               <Outlet />
             </div>
           </main>
         ) : (
-          <main className="min-w-0 flex-1 bg-muted/40 px-3 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:px-5 lg:px-8 lg:pb-0 xl:px-12">
+          <main className="min-w-0 flex-1 bg-muted/40 px-3 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:px-5 md:pb-0 lg:px-8 xl:px-12">
             <div className="mx-auto w-full max-w-content py-4 sm:py-6 lg:py-8">
               <Outlet />
             </div>

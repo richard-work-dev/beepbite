@@ -283,11 +283,19 @@ const RecipeBuilder = ({
         if (insertError) throw insertError;
       }
 
-      // Update recipe metadata
-      const { error: metadataError } = await supabase.rpc('update_recipe_metadata', {
-        item_uuid: item.id
-      });
-      
+      // Persist derived fields in DynamoDB; the old SQL trigger/RPC is not
+      // part of the serverless runtime.
+      const metadata: Record<string, unknown> = {
+        total_components: components.length,
+        max_recipe_level: recipeStats.maxLevel,
+        recipe_complexity: recipeStats.complexity,
+        updated_at: new Date().toISOString(),
+      };
+      if (item.auto_calculate_cost === true) metadata.cost_price = recipeStats.totalCost;
+      const { error: metadataError } = await supabase
+        .from('items')
+        .update(metadata)
+        .eq('id', item.id);
       if (metadataError) throw metadataError;
 
       onSave?.();

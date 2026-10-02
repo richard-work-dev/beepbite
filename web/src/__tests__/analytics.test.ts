@@ -55,4 +55,30 @@ describe('reportes de ventas', () => {
       order_count: 1, net_sales_cents: 4200, order_type: 'delivery', gross_profit_available: false,
     });
   });
+
+  it('calcula estados, finalización, horario, demora de cocina y clientes desde pedidos reales', () => {
+    const result = analyticsService._transform([], [], {
+      from: new Date('2026-10-01T00:00:00Z'), to: new Date('2026-10-01T23:59:59Z'),
+    }, [
+      { id: 'o1', status: 'completed', customer_id: 'c1', created_at: '2026-10-01T12:00:00Z', total_cents: 2500 },
+      { id: 'o2', status: 'confirmed', customer_id: 'c1', created_at: '2026-10-01T12:30:00Z', total_cents: 1800 },
+    ], [
+      { order_id: 'o1', fired_at: '2026-10-01T12:01:00Z', ready_at: '2026-10-01T12:11:00Z' },
+    ], [
+      { id: 'c1', created_at: '2026-10-01T10:00:00Z' },
+      { id: 'c2', created_at: '2026-09-20T10:00:00Z' },
+    ], [{ rating: 4 }, { rating: 5 }]);
+
+    expect(result.totalOrders.count).toBe(2);
+    expect(result.orderStatusDistribution).toEqual(expect.arrayContaining([
+      expect.objectContaining({ status: 'completed', value: 1 }),
+      expect.objectContaining({ status: 'confirmed', value: 1 }),
+    ]));
+    expect(result.completionRate.percentage).toBe(50);
+    expect(result.averageResponseTime).toMatchObject({ minutes: 10, seconds: 0 });
+    expect(result.averageRating.rating).toBe(4.5);
+    expect(result.customerAnalytics).toMatchObject({ totalCustomers: 2, newCustomers: 1, returningCustomers: 1, avgOrdersPerCustomer: 2 });
+    expect(result.recentOrders).toHaveLength(2);
+    expect(result.performanceByHour).toHaveLength(1);
+  });
 });

@@ -186,6 +186,7 @@ locals {
   application_origins = distinct(concat(
     ["https://${aws_cloudfront_distribution.frontend.domain_name}"],
     var.enable_custom_domains ? ["https://${local.frontend_domain}"] : [],
+    var.environment == "dev" ? ["http://localhost:5173", "http://127.0.0.1:5173"] : [],
     var.upload_cors_origins
   ))
 }
@@ -208,7 +209,7 @@ resource "aws_lambda_function" "function" {
   filename         = each.value
   source_code_hash = filebase64sha256(each.value)
   memory_size      = each.key == "api" ? 512 : 256
-  timeout          = each.key == "worker" ? 120 : 30
+  timeout          = contains(["worker", "stream"], each.key) ? 120 : 30
 
   environment {
     variables = local.lambda_environment

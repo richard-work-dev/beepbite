@@ -26,17 +26,8 @@ import { supabase } from '@/services/supabase-client';
 import { cn } from "@/lib/utils";
 import type { Location } from '@/context/auth-context';
 
-// Mirrors backend/migrations/001_baseline.sql `items` table (subset), plus the
-// fields this page computes locally (calculated_cost/cost_variance/profit_*/status).
-//
-// NOTE (real defect found by this TS conversion, not fixed — out of scope):
-// fetchAnalysisData's primary path below queries a `recipe_summary` view that
-// does not exist in any migration file — it's only referenced by
-// backend/internal/handlers/data/allowlist.go (marked "// view" but never
-// created by a migration). That query always throws, so this component
-// always falls through to fetchAnalysisDataFallback, which is the only path
-// that ever actually runs. This type mirrors that fallback's real shape
-// rather than the unreachable primary path's assumed one.
+// Item fields loaded for recipe cost analysis, plus values calculated in this
+// page from DynamoDB recipe component rows.
 interface AnalysisCategoryRef {
   id: string;
   name: string;
@@ -62,16 +53,6 @@ interface AnalysisRow {
 }
 
 type SortKey = 'profit_margin' | 'profit_amount' | 'cost_variance' | 'listed_cost' | 'calculated_cost' | 'name';
-
-// Shape assumed by the dead `recipe_summary` primary path below — unverifiable
-// since the view itself doesn't exist (see the NOTE above); typed to the
-// minimum this file actually reads from it.
-interface RecipeSummaryDeadRow {
-  listed_cost?: number | null;
-  calculated_cost?: number | null;
-  cost_variance: number;
-  [key: string]: unknown;
-}
 
 interface CostAnalysisProps {
   activeLocation: Location | null;
@@ -99,34 +80,7 @@ const CostAnalysis = ({ activeLocation }: CostAnalysisProps) => {
     
     setLoading(true);
     try {
-      // Try to use the recipe_summary view first
-      const { data: summaryData, error: summaryError } = await supabase
-        .from('recipe_summary')
-        .select('*')
-        .order('recipe_complexity', { ascending: false })
-        .order('cost_variance', { ascending: false });
-      
-      if (summaryError) throw summaryError;
-      
-      // Enhance with additional calculations
-      const enhancedData = summaryData.map((item: RecipeSummaryDeadRow) => {
-        const profitMargin = (item.listed_cost || 0) > 0
-          ? (((item.listed_cost || 0) - (item.calculated_cost || 0)) / (item.listed_cost || 0) * 100)
-          : 0;
-        
-        const profitAmount = (item.listed_cost || 0) - (item.calculated_cost || 0);
-        
-        const status = determineStatus(item, profitMargin);
-        
-        return {
-          ...item,
-          profit_margin: profitMargin,
-          profit_amount: profitAmount,
-          status
-        };
-      });
-      
-      setAnalysisData(enhancedData);
+      await fetchAnalysisDataFallback();
     } catch (error) {
       console.error('Error fetching analysis data:', error);
       // Fallback to manual calculation
@@ -158,13 +112,44 @@ const CostAnalysis = ({ activeLocation }: CostAnalysisProps) => {
           )
         `)
         .eq('location_id', activeLocation.id)
-        .neq('recipe_type', 'simple');
+          .order('name');
 
       if (error) throw error;
 
+      const { data: recipeComponents, error: recipeError } = await supabase
+        .from('item_recipes')
+        .select('parent_item_id, child_item_id, quantity_needed, cost_per_unit');
+      if (recipeError) throw recipeError;
+
+      const itemsById = new Map<string, { id: string; cost_price?: number | null; recipe_type: string }>(items.map((item: { id: string; cost_price?: number | null; recipe_type: string }) => [item.id, item]));
+      const componentsByParent = new Map<string, Array<{ child_item_id: string; quantity_needed?: number; cost_per_unit?: number }>>();
+      for (const component of recipeComponents || []) {
+        const existing = componentsByParent.get(component.parent_item_id) || [];
+        existing.push(component);
+        componentsByParent.set(component.parent_item_id, existing);
+      }
+      const costCache = new Map<string, number>();
+      const visiting = new Set<string>();
+      const calculatedCostFor = (itemId: string): number => {
+        if (costCache.has(itemId)) return costCache.get(itemId)!;
+        const item = itemsById.get(itemId);
+        const components = componentsByParent.get(itemId) || [];
+        if (!item || components.length === 0 || visiting.has(itemId)) return Number(item?.cost_price || 0);
+        visiting.add(itemId);
+        const cost = components.reduce((total, component) => {
+          const child = itemsById.get(component.child_item_id);
+          const childCost = componentsByParent.has(component.child_item_id)
+            ? calculatedCostFor(component.child_item_id)
+            : Number(component.cost_per_unit ?? child?.cost_price ?? 0);
+          return total + Number(component.quantity_needed || 0) * childCost;
+        }, 0);
+        visiting.delete(itemId);
+        costCache.set(itemId, cost);
+        return cost;
+      };
+
       // Calculate costs manually for items that need it
-      const enhancedData = await Promise.all(
-        items.map(async (item: {
+      const enhancedData = items.filter((item: { recipe_type: string }) => item.recipe_type !== 'simple').map((item: {
           id: string;
           name: string;
           price: number;
@@ -176,18 +161,7 @@ const CostAnalysis = ({ activeLocation }: CostAnalysisProps) => {
           auto_calculate_cost: boolean;
           categories?: AnalysisCategoryRef | null;
         }) => {
-          let calculatedCost = item.cost_price || 0;
-
-          if (item.recipe_type !== 'simple') {
-            try {
-              const { data: costData } = await supabase.rpc<number>('calculate_recipe_cost', {
-                item_uuid: item.id
-              });
-              calculatedCost = costData || 0;
-            } catch (_costError) {
-              console.warn('Failed to calculate cost for', item.name);
-            }
-          }
+          const calculatedCost = calculatedCostFor(item.id);
 
           const profitMargin = item.price > 0
             ? ((item.price - calculatedCost) / item.price * 100)
@@ -207,8 +181,7 @@ const CostAnalysis = ({ activeLocation }: CostAnalysisProps) => {
             profit_amount: profitAmount,
             status
           };
-        })
-      );
+        });
       
       setAnalysisData(enhancedData);
     } catch (error) {
@@ -600,4 +573,4 @@ const CostAnalysis = ({ activeLocation }: CostAnalysisProps) => {
   );
 };
 
-export default CostAnalysis; 
+export default CostAnalysis;

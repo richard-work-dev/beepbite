@@ -45,11 +45,9 @@ export default tseslint.config([
   // file while applying zero rules to it (confirmed: an injected unused-var
   // probe went unflagged before this block existed). It runs under Node
   // only, never the browser. Scoped to this one file rather than
-  // `scripts/**/*.mjs`: the other two scripts in scripts/ (screenshots.mjs,
-  // smoke.mjs) embed Playwright `page.evaluate()` callbacks that execute in
-  // the browser (`localStorage`, `document`), which `no-undef` would flag
-  // under Node-only globals — a real fix for those needs per-file globals
-  // decisions, not a blanket glob, so it's left alone here.
+  // `scripts/**/*.mjs`: browser smoke scripts can embed Playwright
+  // `page.evaluate()` callbacks that execute in the browser (`localStorage`,
+  // `document`), which `no-undef` would flag under Node-only globals.
   {
     files: ['scripts/check-lint-config.mjs'],
     extends: [js.configs.recommended],

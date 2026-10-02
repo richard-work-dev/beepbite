@@ -587,19 +587,8 @@ describe('supabase.from — embedded joins (the hand-rolled PostgREST-embed shim
 });
 
 // ---------------------------------------------------------------------------
-// rpc() and functions.invoke()
+// functions.invoke()
 // ---------------------------------------------------------------------------
-
-describe('api.rpc', () => {
-  it('POSTs to /rpc/{fn} with the args as the body', async () => {
-    fetchMock.mockResolvedValueOnce(jsonResponse({ result: 42 }));
-    const { data } = await api.rpc('compute_total', { order_id: 'o1' });
-    const [url, init] = fetchMock.mock.calls[0];
-    expect(new URL(url, 'http://x').pathname).toBe('/rpc/compute_total');
-    expect(JSON.parse(init.body)).toEqual({ order_id: 'o1' });
-    expect(data).toEqual({ result: 42 });
-  });
-});
 
 describe('supabase.functions.invoke', () => {
   it('maps a known function name to its Go route', async () => {

@@ -1,16 +1,9 @@
 # Third-party services
 
-BeepBite is self-hosted, open-source software. **There is no BeepBite service
-operator**, no hosted instance and no company processing your data on your
-behalf. You run the binary; you are the data controller and, where the law uses
-the term, your own processor.
-
-That means this page cannot be a sub-processor list in the usual sense. Nobody
-is a sub-processor to BeepBite, because BeepBite is not a service. What follows
-is the honest version: the third parties **you** may choose to engage, what data
-leaves your server if you do, and what happens if you do not.
-
-Every one of them is optional. BeepBite runs with none of them configured.
+BeepBite's supported deployment uses AWS serverless infrastructure. The AWS
+account hosting an environment stores and processes its application data. The
+development deployment is in `us-east-1`; operators deploying another
+environment should confirm the region and AWS terms that apply to it.
 
 ---
 
@@ -18,6 +11,7 @@ Every one of them is optional. BeepBite runs with none of them configured.
 
 | Service | Enabled by | What leaves your server | If you skip it |
 |---|---|---|---|
+| **Amazon Web Services** | Required for the hosted application | Application records and requests are processed by API Gateway, Lambda and DynamoDB; files may use S3 and delivery uses CloudFront | The application cannot run without its AWS stack |
 | **Meta (WhatsApp Business API)** | `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID` | Customer phone number, order summary, chat messages | No WhatsApp ordering channel. QR / web ordering still works. |
 | **SMTP server of your choice** | `SMTP_HOST` and friends | Email address, name, receipt and invite contents | No transactional email. Everything else works. |
 | **SendGrid / Mailgun / Amazon SES** | `EMAIL_PROVIDER_DEFAULT` | Same as above | Use plain SMTP instead — it is the default. |
@@ -31,15 +25,12 @@ account. BeepBite never holds them and there is no shared account.
 
 - **No payment processor.** BeepBite records tenders and never touches a card.
   See [Payments](help/payments.md).
-- **No analytics or telemetry.** Nothing phones home. There is no crash
-  reporter, no product analytics and no usage beacon.
-- **No identity provider.** Sign-in is email + password and staff PIN, verified
-  against your own database.
-- **No hosting dependency.** Where the binary and the Postgres database run is
-  entirely your choice.
+- **No payment processor.** BeepBite records tenders and never touches a card.
+- **No third-party identity provider is required.** Sign-in is managed by the
+  BeepBite API; secrets are held in AWS Secrets Manager.
 
 ## Your obligations
 
-Because you operate the instance, the DPAs, privacy notices and data-residency
-decisions are yours to make. If you enable any service above, its terms apply
-between you and that vendor. BeepBite is not a party to it.
+Operators are responsible for their privacy notices, access policies,
+retention and data-residency choices. Review AWS and any optional service's
+terms for the account and region where the environment is deployed.

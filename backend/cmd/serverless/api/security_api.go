@@ -19,7 +19,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/beepbite/backend/internal/auth"
+	"github.com/beepbite/backend/pkg/tokens"
 	"github.com/pquerna/otp/totp"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -89,6 +89,10 @@ func (a *application) presignImageUpload(ctx context.Context, request events.API
 	if a.uploadsBucket == "" || a.uploadsBaseURL == "" {
 		return errorResponse(503, "uploads not configured")
 	}
+	orgID, err := a.authorizedOrganization(ctx, request, userID)
+	if err != nil {
+		return dataAccessError(err)
+	}
 	var input map[string]any
 	if decodeDataObject(request.Body, &input) != nil {
 		return errorResponse(400, "invalid request")
@@ -98,12 +102,16 @@ func (a *application) presignImageUpload(ctx context.Context, request events.API
 	if folder == "" {
 		folder = "uploads"
 	}
+	folder = regexp.MustCompile(`[^a-zA-Z0-9_-]+`).ReplaceAllString(folder, "-")
 	safe := regexp.MustCompile(`[^a-zA-Z0-9._-]+`).ReplaceAllString(filename, "-")
 	if safe == "" {
 		return errorResponse(400, "filename required")
 	}
-	id, _ := randomID()
-	key := folder + "/" + userID + "/" + id + "-" + safe
+	id, err := randomID()
+	if err != nil {
+		return errorResponse(500, "could not create upload key")
+	}
+	key := "organizations/" + orgID + "/" + folder + "/" + userID + "/" + id + "-" + safe
 	presigner := s3.NewPresignClient(a.s3)
 	signed, err := presigner.PresignPutObject(ctx, &s3.PutObjectInput{Bucket: aws.String(a.uploadsBucket), Key: aws.String(key)}, func(o *s3.PresignOptions) { o.Expires = 10 * time.Minute })
 	if err != nil {
@@ -192,7 +200,7 @@ func (a *application) verifyStaffPIN(ctx context.Context, request events.APIGate
 		return errorResponse(503, "runtime not ready")
 	}
 	caps := capabilityList(valueOr(staff, "capabilities", map[string]any{}))
-	token, expires, err := auth.IssueActorToken(userID, displayString(staff["id"]), displayString(staff["location_id"]), caps, []byte(secret), 15*time.Minute)
+	token, expires, err := tokens.IssueActorToken(userID, displayString(staff["id"]), displayString(staff["location_id"]), caps, []byte(secret), 15*time.Minute)
 	if err != nil {
 		return errorResponse(500, "could not issue actor token")
 	}
@@ -249,11 +257,11 @@ func (a *application) staffLogin(ctx context.Context, request events.APIGatewayV
 		if loadErr != nil {
 			return errorResponse(503, "runtime not ready")
 		}
-		access, expires, issueErr := auth.IssueAccess(subject, username+"@staff.beepbite", secret, accessTTL)
+		access, expires, issueErr := tokens.IssueAccess(subject, username+"@staff.beepbite", secret, accessTTL)
 		if issueErr != nil {
 			return errorResponse(500, "could not issue session")
 		}
-		refresh, refreshHash, tokenErr := auth.NewRefreshToken()
+		refresh, refreshHash, tokenErr := tokens.NewRefreshToken()
 		if tokenErr != nil {
 			return errorResponse(500, "could not issue session")
 		}

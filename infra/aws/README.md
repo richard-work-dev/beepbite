@@ -11,15 +11,17 @@ This Terraform root deploys the BeepBite development environment in
 - Route 53 and ACM for the `rikopollo.dpdns.org` development hostnames;
 - Secrets Manager for runtime values and CloudWatch log retention.
 
-The old EC2, VPC and local PostgreSQL runtime is removed by this configuration.
-The ECR repository and archive bucket remain during the application migration.
+This is the supported application runtime: Lambda for compute and DynamoDB for
+application data. No PostgreSQL instance, EC2 application server, or ECR image
+is required.
 
 ## Prerequisites
 
 - Terraform 1.10 or newer
 - Go 1.25 or newer
 - AWS CLI profile `beepbite-dev`
-- credentials from the dedicated IAM user
+- an AWS profile authorized to deploy the development account (CI uses GitHub
+  OIDC; local deployments use the operator's AWS profile)
 
 ## Build and validate
 
@@ -76,6 +78,24 @@ The OIDC provider and deployment role live in the separate `bootstrap/` root so
 the deployment role cannot change its own trust policy. GitHub stores only role,
 region and state coordinates as environment variables; no AWS access keys are
 stored in the repository.
+
+## Tenant deletion
+
+An organization owner can start an irreversible purge from **Cuenta y datos**
+after exporting anything they need and typing the organization name. The API
+locks the tenant immediately and writes a purge marker to the core DynamoDB
+table. The existing DynamoDB Streams Lambda removes the tenant partition in
+small retryable pages, its membership mirrors, orphaned user credentials and
+refresh tokens, then objects under `organizations/<organization-id>/` in the
+uploads bucket. No live AWS purge is run by local tests.
+
+Uploads created before organization-scoped S3 keys were introduced may still
+use the legacy user-scoped key layout. Those objects are intentionally not
+deleted automatically because a user may have shared them with another
+organization; migrate/attribute those legacy objects before claiming a full
+historical file purge. DynamoDB point-in-time recovery and retained backup
+archives are also governed by their configured retention windows and are not
+selectively erased by this tenant purge.
 
 ## Development domain
 

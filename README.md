@@ -4,26 +4,23 @@
 
 # BeepBite
 
-### A restaurant point-of-sale you actually own.
+### Restaurant POS, kitchen, inventory and online ordering.
 
-Front of house, kitchen, delivery, and however your customers already order —
-one system, running on your own hardware. No cloud account, no per-order fee,
-no platform standing between you and them.
+One web platform for the counter, kitchen, floor, delivery and customer orders.
+The application runs on AWS serverless infrastructure: Go Lambdas, DynamoDB,
+API Gateway, S3 and CloudFront.
 
 [![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](CHANGELOG.md)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-FF6B35.svg)](LICENSE-MIT)
-[![Self-hostable](https://img.shields.io/badge/self--hostable-your%20hardware-E8871E)](docs/setup.md)
-[![Platform fee](https://img.shields.io/badge/platform%20fee-none-14B8A6)](#what-beepbite-is-not)
+[![AWS](https://img.shields.io/badge/runtime-AWS%20serverless-FF9900?logo=awslambda&logoColor=white)](infra/aws/README.md)
 [![Go](https://img.shields.io/badge/Go-1.25-00ADD8?logo=go&logoColor=white)](https://golang.org)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev)
 
-[**Quick start**](#quick-start) · [**Screenshots**](#screenshots) · [**Features**](#features) · [**How it works**](#how-it-works) · [**Status**](#status) · [**Docs**](docs/) · [**Roadmap**](ROADMAP.md)
-
-<sub><em>Vulos — rooted in <strong>vula</strong>, the Zulu and Xhosa word for <strong>open</strong>.</em></sub>
+[Features](#features) · [Architecture](#architecture) · [Development](docs/development.md) · [Deployment](infra/aws/README.md)
 
 <br/>
 
-<img src="docs/screenshots/hero.png" alt="BeepBite dashboard — sales trend, busy hours, and the live orders feed for a real seeded restaurant" width="900" />
+<img src="docs/screenshots/hero.png" alt="BeepBite restaurant dashboard" width="900" />
 
 </div>
 
@@ -31,273 +28,85 @@ no platform standing between you and them.
 
 ## What is BeepBite?
 
-A complete restaurant system: take the order, cook it, serve it, deliver it,
-and know what it cost you. A Go API and a React app running against your own
-Postgres — on a laptop in the back office, a machine in the cupboard, or a VM
-you rent.
+BeepBite is a restaurant operations platform with a point of sale, kitchen
+display, floor plan, inventory, reports, delivery tools and a public ordering
+storefront. Staff use it in a browser; customers can order from the restaurant's
+web link and follow order status.
 
-What makes it different is **who it belongs to**. Delivery platforms take
-15–30% of every order and own the customer relationship. Cloud POS vendors
-charge per terminal per month and hold your data hostage to a subscription.
-BeepBite takes nothing and holds nothing, because there is no BeepBite service
-— there is only the copy you run.
+The active backend is serverless. Orders, menus, customers and tenant data are
+stored in DynamoDB; Go Lambda functions expose the API. PostgreSQL is not part
+of the deployed architecture. Development deployments are managed by GitHub
+Actions and Terraform; see the [AWS setup guide](infra/aws/README.md).
 
-Ordering is meant to be **channel-agnostic**: customers order from wherever
-they already are, not wherever BeepBite decided to build first. Today that
-means WhatsApp chat (built, using your own Meta credentials) and a QR code
-that opens your public storefront, or web ordering directly (built). Discord, Slack, and email — including over
-DMTAP — the mail profile of the
-[KOTVA](https://github.com/vul-os/kotva) substrate, and the option with no Meta
-or Google in the middle, though that one is **experimental** rather than
-scheduled — are the intended next
-adapters, not yet built. See [Status](#status) for exactly which is which.
+BeepBite does not process card payments. It records cash, card-machine and
+other tenders. WhatsApp messaging is optional and requires the restaurant's
+own credentials.
 
-> [!NOTE]
-> **Status: pre-1.0 and under active rebuild.** The POS, kitchen, inventory and
-> ordering surfaces are substantially built; several architectural changes are
-> in flight. Read [Status](#status) for an honest per-area breakdown before
-> deploying this anywhere real.
-
-## Screenshots
-
-<table>
-<tr>
-<td width="50%"><img src="docs/screenshots/pos-workspace.png" alt="POS till" width="400"/><br/><sub><em>POS till — table bar, menu grid, and a running cart.</em></sub></td>
-<td width="50%"><img src="docs/screenshots/kds-expo.png" alt="Kitchen display" width="400"/><br/><sub><em>Kitchen display — expo view, per-station routing, fire timers.</em></sub></td>
-</tr>
-<tr>
-<td width="50%"><img src="docs/screenshots/floor.png" alt="Floor plan" width="400"/><br/><sub><em>Floor plan — live table status, auto-refreshing every 15s.</em></sub></td>
-<td width="50%"><img src="docs/screenshots/menu.png" alt="Menu management" width="400"/><br/><sub><em>Menu management — items, cost and margin per dish.</em></sub></td>
-</tr>
-<tr>
-<td width="50%"><img src="docs/screenshots/inventory-purchase-orders.png" alt="Inventory" width="400"/><br/><sub><em>Inventory — purchase orders by supplier and status.</em></sub></td>
-<td width="50%"><img src="docs/screenshots/home-dark.png" alt="Dashboard, dark mode" width="400"/><br/><sub><em>Dashboard in dark mode — sales trend, busy hours, live orders.</em></sub></td>
-</tr>
-</table>
-
-<sub>Every shot above is a real seeded tenant ("The Copper Table"), captured from the actual running app by <code>npm run screenshots</code> — nothing is mocked up. Light and dark variants of every surface, and a note on what didn't make the cut and why, are in <a href="docs/screenshots.md">docs/screenshots.md</a>.</sub>
+> **Status:** pre-1.0 and under active development. Check the deployed
+> environment before relying on a workflow for live operations.
 
 ## Features
 
-| Front of house | Kitchen &amp; stock |
+| Restaurant operations | Orders and customers |
 |---|---|
-| Touch POS — tabs, splits, voids, comps, manager approval | Kitchen display with per-station routing and expo |
-| Floor plan and table management | Recipes, costing, and the 86 list |
-| Customer-facing display | Suppliers, purchase orders, goods receipts |
-| Reservations and waitlist | Invoice matching and waste tracking |
-| Gift cards, store credit, house accounts | Stock counts and reorder suggestions |
+| POS, tables and floor plan | Public storefront and web checkout |
+| Kitchen display and expo | Delivery, pickup and dine-in order modes |
+| Inventory, recipes and purchasing | Private customer order tracking |
+| Cash drawer and tender records | Optional WhatsApp link and notifications |
+| Reports, staff and permissions | Driver assignment and delivery status |
 
-| Money &amp; people | Ordering &amp; delivery |
-|---|---|
-| Cash drawer sessions and reconciliation | WhatsApp ordering, and a QR-code storefront / web ordering |
-| Tenders — cash, card, transfer, voucher | Delivery zones, driver app, order tracking |
-| Promotions, coupons, loyalty | Pickup slots and order status |
-| Invoicing and house-account billing | Public customer tracking page |
-| Time clock, payroll, tip pools | Discord, Slack, email/DMTAP ordering — planned, not built |
-
-**Infrastructure you can trust**
-
-- **Your database, your building.** Postgres you control. Nothing phones home,
-  and a fresh install makes no outbound network calls at all.
-- **No payment facilitator.** BeepBite records tenders; it never touches your
-  money. "Card" means your own card machine on your own counter. No PCI scope,
-  no settlement delay, no cut of your revenue.
-- **Row-level security**, with tenant scoping enforced server-side from the
-  authenticated identity — never from a filter the client supplies.
-- **Audit log and idempotency keys** throughout, so a retried request can't
-  double-charge.
-- **Every integration is optional.** WhatsApp, maps and AI are each off unless
-  you supply your own credentials.
-
-## What BeepBite is not
-
-- **Not a marketplace.** It will not bring you customers. It stops a
-  marketplace from owning the ones you already have.
-- **Not a payment processor.** It records what was tendered. Bring your own
-  card machine and your own bank.
-- **Not a hosted service.** No signup, no dashboard we operate, nobody to call.
-  You run it, you back it up, you own the consequences.
-- **Not finished.** See [Status](#status).
-
-## Quick start
-
-```bash
-# 1. Database
-createdb beepbite
-
-# 2. Configure — set DATABASE_URL and JWT_SECRET
-cp .env.example .env
-
-# 3. Migrate
-cd backend && go run ./cmd/migrate --env=local --up
-
-# 4. API
-go run ./cmd/server --env=local
-
-# 5. App
-cd .. && npm install && npm run dev        # http://localhost:5173
-```
-
-Want something to look at first?
-
-```bash
-cd backend && go run ./cmd/seedcopper --env=local --clean   # full demo restaurant, ~1500 orders, live KDS tickets
-# or: go run ./cmd/seeddemo --email owner@example.com       # lighter seed onto an existing org
-```
-
-`seedcopper` is also what generates every screenshot in this README — see
-`npm run screenshots` and [docs/screenshots.md](docs/screenshots.md).
-
-## How it works
+## Architecture
 
 ```mermaid
 flowchart LR
-  subgraph Customer
-    W["WhatsApp"]
-    Q["QR code /<br/>web storefront"]
-    T["Tracking page"]
-  end
-  subgraph "Your hardware"
-    API["Go API<br/><i>chi · pgx</i>"]
-    DB[("Postgres")]
-    UI["POS · KDS · Floor<br/><i>React</i>"]
-  end
-  D["Driver app"]
-  W --> API
-  Q --> API
-  UI --> API
-  API --> DB
-  API --> D
-  API --> T
-
-  classDef entry fill:#1e293b,stroke:#64748b,color:#e2e8f0
-  classDef subject fill:#0f766e,stroke:#5eead4,color:#f0fdfa
-  classDef downstream fill:#334155,stroke:#94a3b8,color:#e2e8f0
-  class W,Q,UI entry
-  class API subject
-  class DB,D,T downstream
-  linkStyle default stroke:#0d9488,stroke-width:2px
+  Browser[Staff and customer web app] --> CDN[CloudFront and S3]
+  Browser --> API[API Gateway]
+  API --> Lambda[Go Lambda functions]
+  Lambda --> DDB[(DynamoDB)]
+  Lambda --> S3[(Private S3 uploads and exports)]
+  Lambda --> Queue[SQS jobs]
+  Realtime[WebSocket API] --> RealtimeLambda[Realtime Lambda]
+  RealtimeLambda --> DDB
 ```
 
-Orders arrive from WhatsApp, a QR code that opens the web storefront, or the till,
-and land in one order stream. They route to the right kitchen station and, if
-they're going out, to a driver — with a tracking link for the customer. Live
-updates are server-sent events, so there is no polling and no message broker
-to operate.
+There is no PostgreSQL service, migration runner, or standalone Go HTTP server
+in the supported deployment. Tenant-scoped records are stored in DynamoDB
+partitions and accessed through the serverless API.
 
-## Configuration
+## Run the web app against development
 
-| Variable | Default | Description |
-|---|---|---|
-| `DATABASE_URL` | — | Postgres connection string. **Required.** |
-| `JWT_SECRET` | — | Signing key for access tokens. **Required.** |
-| `PORT` | `8080` | API listen port |
-| `WHATSAPP_ACCESS_TOKEN` | — | Meta Cloud API token. WhatsApp ordering stays off without it. |
-| `WHATSAPP_PHONE_NUMBER_ID` | — | Meta phone number ID |
-| `WHATSAPP_ORDER_FLOW_ID` | — | Optional published Meta Flow ID for the native in-WhatsApp order form |
-| `MAPBOX_TOKEN` | — | Delivery-zone geocoding. Optional. |
-
-See [docs/setup.md](docs/setup.md) for the full list.
-
-## Status
-
-An honest per-area account, because a feature that silently does nothing is
-worse than one that says it isn't built:
-
-| Area | State |
-|---|---|
-| POS, KDS, floor plan, orders | **Built** — substantially complete, covered by integration and e2e tests |
-| Inventory, purchasing, recipes | **Built** |
-| Gift cards, loyalty, house accounts | **Built** |
-| WhatsApp ordering | **Built** — direct Meta Cloud API integration, needs your own credentials |
-| QR-code storefront / web ordering | **Built.** A QR code opens the public storefront; it does not bind an order to a floor-plan table or session — there is no `table_number` or `table_id` anywhere in the ordering flow, and fulfilment is delivery or collection only. |
-| Channel-adapter seam | **Built.** `internal/channel` is one interface every ordering rail implements, with a capability model and a shared text degradation. The chatbot depends on it and holds no Meta types; `internal/channel/whatsapp` is the first adapter. |
-| Discord, Slack, email ordering | **Not built.** The seam makes each one an adapter rather than a second integration — that lowers the cost of adding one, it does not add the feature. |
-| Ordering / replication over DMTAP &amp; KOTVA | **Experimental.** A research direction, not a scheduled feature. The KOTVA sync engine is now in the tree — `backend/internal/sync/substrate` runs it, and CI drives all 24 frozen SYNC conformance vectors through it — but nothing reaches it: the server never imports it, no runtime path depends on it, and the default merge engine is unchanged. Every further stage is gated behind named preconditions in [ROADMAP.md](ROADMAP.md), and the one that matters (a merge suite comparing the two engines under partition) does not exist. It may still not land. |
-| Delivery zones, driver, tracking | **Built.** The customer tracking page (`/track/:token`) works end to end — the order-progress stepper and the ETA both render. The flat-vs-nested payload mismatch that used to break this was fixed in `7739452` by `normalizeTracking()` (`src/services/tracking.js`). The map only renders once an order reaches `out_for_delivery`, and the driver's own live position is withheld from anonymous (no-login) tracking links by a server-side privacy gate. |
-| Payments | **Tender recording only, by design.** Card processing was deliberately removed |
-| Currency &amp; locale neutrality | **Built.** Currency, tax convention, timezone, locale and dial code all resolve per location from configuration; no hardcoded ZAR/South-Africa defaults remain in application logic |
-| Single binary + SQLite | **Planned, not done.** Postgres is required today |
-| Offline-first sync between sites | **Not implemented.** Some client-side scaffolding exists (`src/offline/`) but nothing in the app uses it yet |
-| Node identity (Ed25519) | **Library only, unwired.** `internal/nodeid` — keypair generation and persistence, domain-separated signing. Nothing calls it yet; prerequisite for the row below. |
-| Merge algebra (HLC oplog) | **Library only, unwired.** `internal/oplog` — hybrid logical clock with a drift bound, LWW register, add-only set, version vectors, convergence-tested. No persistence, no transport, not wired into the server, and explicitly not an implementation of any external sync spec. |
-| Multi-branch sync | **Designed, not built.** Each branch would run its own copy and stay the single writer for its own orders, drawer and shifts, with the menu and stock ledger replicating between them over a hybrid-logical-clock oplog — manual peer enrolment, and a shared folder or USB stick as a valid transport. Today two instances do not talk to each other. |
-| A BeepBite cloud | **Does not exist, deliberately.** No hosted tier, no account, nothing to sign up for. If you want the till reachable from outside the shop, that is a second machine *you* deploy — a VPS, or a reachability broker such as [Ephor](https://github.com/vul-os/ephor) that your box dials out to. Your node either way. |
-| Vulos OS integration | **Optional, never required.** BeepBite runs standalone against your own Postgres; the OS is the long-term answer to sharing one menu and one set of books across branches. A hard runtime dependency on the OS, its control plane or KOTVA is forbidden. |
-| Runs on | **Linux and macOS**, x86-64 and ARM — four release binaries. Windows is not built. |
-| Receipt/kitchen printing | **Network ESC/POS printers work today** — `backend/internal/escpos` sends real ESC/POS over TCP to the printer's IP (port 9100), including the cash-drawer kick. **USB is a stub**: the handler always reports `{sent: true, error: "usb: send via pos agent"}` and no "pos agent" component exists anywhere in the repo. Browser `window.print()` is a working fallback for any printer your OS already knows about. |
-| Screenshots | **Real**, captured from a live seeded instance — see [Screenshots](#screenshots) and [docs/screenshots.md](docs/screenshots.md) |
-
-## Development
+Install Node.js 20+, copy `.env.example` to `.env`, and run:
 
 ```bash
-npm run dev              # frontend on :5173
-npm run build            # production bundle
-npm run test:unit        # vitest
-npm run test:e2e         # playwright
-npm run screenshots      # regenerate docs/screenshots/ against a real seeded instance
-cd backend && go test ./...
-cd backend && go run ./cmd/tests     # integration + pentest suites
+cd web
+npm ci
+npm run dev
 ```
 
-## Documentation
+The example points to the shared development API. Local browser development
+therefore uses the development DynamoDB data; avoid destructive testing against
+shared records. For isolated changes, use a dedicated AWS development stack.
 
-The published viewer groups these the same way, owner-facing chapters first and
-the developer material last. Nothing here is written by hand into the site —
-`npm run docs:sync` copies `docs/` into `site/docs/`, and CI fails if the two
-drift apart.
+## Checks
 
-**Start here — running a restaurant with it**
+```bash
+cd backend
+go test ./cmd/serverless/... ./pkg/...
+go vet ./cmd/serverless/... ./pkg/...
 
-| Doc | |
-|---|---|
-| [Setup](docs/setup.md) | What you are signing up for, install, first login, backups |
-| [User guide](docs/user-guide.md) | Running a service day to day, front to back |
-| [FAQ](docs/faq.md) | Cost, hosting, countries and currencies, hardware, support |
-| [Features](docs/features.md) | What each surface does, and what is deliberately not a feature |
+cd ../web
+npm run typecheck
+npm run test:unit
+```
 
-**Your data and obligations**
+CI builds the Lambda packages and frontend on every push and pull request.
+Merged changes to `develop` deploy through the
+[development workflow](.github/workflows/deploy-development.yml).
 
-| Doc | |
-|---|---|
-| [Security](SECURITY.md) | Reporting a vulnerability, verifying a release |
-| [Sub-processors](docs/sub-processors.md) | What each optional integration sends, and where |
+## More information
 
-**Developers and advanced**
-
-| Doc | |
-|---|---|
-| [API](docs/api.md) | HTTP contract, pagination, idempotency, webhooks |
-| [Development](docs/development.md) | Architecture, RLS, the ownership model, adding a surface |
-| [Online payments](docs/ONLINE-PAYMENTS.md) | The opt-in gateway path, and why it is off by default |
-| [Troubleshooting](docs/troubleshooting.md) | Operator runbook for when it misbehaves |
-| [Screenshots](docs/screenshots.md) | How the gallery is generated, and what's excluded and why |
-| [Roadmap](ROADMAP.md) | Gap analysis and what's next |
-| [Changelog](CHANGELOG.md) | What changed, and why |
-
-## Contributing
-
-Issues and pull requests welcome. Read [ROADMAP.md](ROADMAP.md) first — some
-gaps are deliberate design choices and some are simply unbuilt, and the
-difference matters.
-
-## Brand
-
-The mark in [`brand/`](brand/) is the source of truth. Every icon this repo
-ships — favicon, PWA and app icons, the mark in the README and on the site — is
-rendered from `brand/logo.svg` rather than redrawn, so there is one approved
-drawing and no second copy to drift.
-
-Copy it outward, never edit a derived copy, and never edit `brand/` to match
-something downstream.
-
-## License
-
-[MIT](LICENSE-MIT) OR [Apache-2.0](LICENSE-APACHE) — © VulOS. BeepBite is a VulOS project; source and issues at [github.com/vul-os/beepbite](https://github.com/vul-os/beepbite).
-
----
-
-<p align="center">
-  <a href="https://vulos.org"><img src="docs/assets/vulos-logo.png" alt="vulos" height="20"></a><br>
-  <sub><a href="https://vulos.org"><b>vulos</b></a> — open by design</sub>
-</p>
+- [AWS deployment and infrastructure](infra/aws/README.md)
+- [Development guide](docs/development.md)
+- [User guide](docs/user-guide.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [Features and current limits](docs/features.md)

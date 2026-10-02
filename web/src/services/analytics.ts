@@ -31,9 +31,24 @@ interface ReportOrder {
   created_at?: string;
   order_type?: string;
   status?: string;
+  payment_status?: string;
   subtotal_cents?: number | string;
   discount_cents?: number | string;
   total_cents?: number | string;
+  customer_id?: string;
+  customer_name?: string;
+  order_number?: string;
+  completed_at?: string;
+  updated_at?: string;
+  [key: string]: unknown;
+}
+
+interface ReportTicket {
+  order_id?: string;
+  fired_at?: string;
+  ready_at?: string;
+  status?: string;
+  [key: string]: unknown;
 }
 
 export interface AnalyticsData {
@@ -56,11 +71,11 @@ export interface AnalyticsData {
 }
 
 /**
- * Analytics service — reads from reporting views via the REST data layer.
- *
- * Views available (migration 22):
- *   daily_sales_summary, hourly_sales_heatmap, menu_engineering,
- *   labor_hours_daily, theoretical_vs_actual_cogs, revenue_by_payment_method
+ * Analytics service — reads optional reporting aggregates through the data
+ * layer and derives the core sales metrics from tenant-scoped order records
+ * when those aggregates are absent (the serverless/DynamoDB deployment).
+ * The aggregate table names remain for compatibility with deployments that
+ * materialize them; they are not required for the reports page to work.
  */
 class AnalyticsService {
   private _locationId: string | null;
@@ -155,32 +170,63 @@ class AnalyticsService {
 
   async _fetchByDateRange(locationId: string, { from, to }: { from: Date; to: Date }): Promise<AnalyticsData> {
     const dailyRows = await this.getDailySalesSummary({ from, to }, locationId);
-
-    // The heatmap is a PostgreSQL view and is not materialized by the
-    // DynamoDB-backed development API. Its absence must not hide sales data.
-    const hourlyRes = await api.request<HourlySalesHeatmapRow[]>(
-      'GET',
-      `/data/hourly_sales_heatmap?eq=location_id,${encodeURIComponent(locationId)}`
+    const startDate = format(from, 'yyyy-MM-dd');
+    const endDate = format(to, 'yyyy-MM-dd');
+    const common = `eq=location_id,${encodeURIComponent(locationId)}`;
+    const start = startOfDay(from);
+    const endExclusive = addDays(startOfDay(to), 1);
+    const [ordersRes, legacyOrdersRes, ticketsRes, customersRes, reviewsRes, hourlyRes] = await Promise.all([
+      api.request<ReportOrder[]>('GET', `/data/orders?${common}&gte=business_date,${startDate}&lte=business_date,${endDate}&order=created_at.desc`),
+      api.request<ReportOrder[]>('GET', `/data/orders?${common}&gte=created_at,${encodeURIComponent(addDays(start, -1).toISOString())}&lt=created_at,${encodeURIComponent(addDays(endExclusive, 1).toISOString())}`),
+      // Tickets inherit tenant scope from the authenticated data endpoint, but
+      // do not carry location_id themselves; location is resolved through the
+      // corresponding scoped order below.
+      api.request<ReportTicket[]>('GET', '/data/kds_tickets?limit=1000'),
+      api.request<Array<{ id?: string; created_at?: string; first_order_at?: string }>>('GET', `/data/customers?${common}`),
+      api.request<Array<{ rating?: number | string; created_at?: string }>>('GET', `/data/reviews?${common}&gte=created_at,${encodeURIComponent(startOfDay(from).toISOString())}&lte=created_at,${encodeURIComponent(addDays(startOfDay(to), 1).toISOString())}`),
+      api.request<HourlySalesHeatmapRow[]>('GET', `/data/hourly_sales_heatmap?${common}`),
+    ]);
+    if (ordersRes.error && legacyOrdersRes.error) throw new Error(ordersRes.error.message || legacyOrdersRes.error.message || 'No se pudieron cargar los pedidos del reporte.');
+    const byID = new Map<string, ReportOrder>();
+    for (const order of [...(ordersRes.data || []), ...(legacyOrdersRes.data || [])]) {
+      byID.set(order.id || `${order.created_at}:${order.order_type}`, order);
+    }
+    const reportOrders = [...byID.values()].filter(order => {
+      if (order.business_date) return order.business_date >= startDate && order.business_date <= endDate;
+      if (!order.created_at) return false;
+      const at = new Date(order.created_at);
+      return Number.isFinite(+at) && at >= addDays(start, -1) && at < addDays(endExclusive, 1);
+    });
+    return this._transform(
+      dailyRows,
+      hourlyRes.error ? [] : hourlyRes.data || [],
+      { from, to },
+      reportOrders,
+      ticketsRes.error ? [] : ticketsRes.data || [],
+      customersRes.error ? [] : customersRes.data || [],
+      reviewsRes.error ? [] : reviewsRes.data || [],
     );
-
-    const hourlyRows = hourlyRes.error ? [] : hourlyRes.data || [];
-
-    return this._transform(dailyRows, hourlyRows, { from, to });
   }
 
   // ------------------------------------------------------------------
   // Data transformation — produces the same shape the UI expects
   // ------------------------------------------------------------------
 
-  _transform(dailyRows: DailySalesSummaryRow[], hourlyRows: HourlySalesHeatmapRow[], { from, to }: { from: Date; to: Date }): AnalyticsData {
+  _transform(
+    dailyRows: DailySalesSummaryRow[],
+    hourlyRows: HourlySalesHeatmapRow[],
+    { from, to }: { from: Date; to: Date },
+    orders: ReportOrder[] = [],
+    tickets: ReportTicket[] = [],
+    customers: Array<{ id?: string; created_at?: string; first_order_at?: string }> = [],
+    reviews: Array<{ rating?: number | string }> = [],
+  ): AnalyticsData {
     // ---- summary metrics from daily_sales_summary ----
-    const totalOrders = dailyRows.reduce((s, r) => s + Number(r.order_count || 0), 0);
+    const reportedOrderCount = dailyRows.reduce((s, r) => s + Number(r.order_count || 0), 0);
+    const totalOrders = reportedOrderCount || orders.filter(order => order.status !== 'cancelled').length;
     // Use net_sales as a proxy for "revenue"; avg ticket approximated.
 
     // ---- responseTimeTrend: one entry per day in the range ----
-    // daily_sales_summary has no response-time column — we produce order counts
-    // per day and set avgResponse = 0.
-    // TODO: requires new view (response_time per day not in reporting views)
     const days = eachDayOfInterval({ start: from, end: to });
     const dailyByDate = new Map<string, { orders: number; net: number }>();
     for (const r of dailyRows) {
@@ -196,7 +242,7 @@ class AnalyticsService {
       const row = dailyByDate.get(key) || { orders: 0, net: 0 };
       return {
         date: format(d, 'MMM d'),
-        avgResponse: 0, // TODO: requires new view
+        avgResponse: 0,
         orders: row.orders,
       };
     });
@@ -222,36 +268,92 @@ class AnalyticsService {
       cur.revenue += Number(r.total_revenue_cents || 0);
       hourMap.set(h, cur);
     }
+    // The pre-aggregated heatmap is optional on a new tenant. Derive a useful
+    // location- and date-scoped chart from the primary orders when it is empty.
+    if (hourMap.size === 0) {
+      for (const order of orders) {
+        if (!order.created_at) continue;
+        const createdAt = new Date(order.created_at);
+        if (!Number.isFinite(+createdAt) || createdAt < startOfDay(from) || createdAt >= addDays(startOfDay(to), 1)) continue;
+        const hour = createdAt.getHours();
+        const cur = hourMap.get(hour) || { orders: 0, revenue: 0 };
+        cur.orders += 1;
+        cur.revenue += Number(order.total_cents || 0);
+        hourMap.set(hour, cur);
+      }
+    }
+    const responseByHour = new Map<number, { seconds: number; count: number }>();
+    const responseByDate = new Map<string, { seconds: number; count: number }>();
+    const responseByOrder = new Map<string, number>();
+    const reportOrderIds = new Set(orders.map(order => order.id).filter((id): id is string => Boolean(id)));
+    for (const ticket of tickets) {
+      if (!ticket.order_id || !reportOrderIds.has(ticket.order_id)) continue;
+      const firedAt = ticket.fired_at ? new Date(ticket.fired_at) : null;
+      const readyAt = ticket.ready_at ? new Date(ticket.ready_at) : null;
+      if (!firedAt || !readyAt || !Number.isFinite(+firedAt) || !Number.isFinite(+readyAt) || +readyAt < +firedAt) continue;
+      const seconds = (+readyAt - +firedAt) / 1000;
+      const hour = firedAt.getHours();
+      const hourMetric = responseByHour.get(hour) || { seconds: 0, count: 0 };
+      hourMetric.seconds += seconds;
+      hourMetric.count += 1;
+      responseByHour.set(hour, hourMetric);
+      const date = format(firedAt, 'yyyy-MM-dd');
+      const dayMetric = responseByDate.get(date) || { seconds: 0, count: 0 };
+      dayMetric.seconds += seconds;
+      dayMetric.count += 1;
+      responseByDate.set(date, dayMetric);
+      responseByOrder.set(ticket.order_id, seconds);
+    }
     const performanceByHour = Array.from({ length: 24 }, (_, h) => {
       const cur = hourMap.get(h) || { orders: 0, revenue: 0 };
+      const response = responseByHour.get(h);
+      const avgTimeMinutes = response?.count ? response.seconds / response.count / 60 : 0;
       const hourLabel = h === 0 ? '12am' : h < 12 ? `${h}am` : h === 12 ? '12pm' : `${h - 12}pm`;
       return {
         hour:           hourLabel,
         orders:         cur.orders,
-        avgTimeMinutes: 0, // TODO: requires new view (no response_time in heatmap)
-        avgTime:        '0m 0s',
-        responseTime:   0,
+        avgTimeMinutes,
+        avgTime:        `${Math.floor(avgTimeMinutes)}m ${Math.round(avgTimeMinutes % 1 * 60)}s`,
+        responseTime:   avgTimeMinutes * 60,
       };
     }).filter(r => r.orders > 0);
 
-    // ---- orderStatusDistribution ----
-    // TODO: requires new view (no order status breakdown in reporting views)
-    const orderStatusDistribution: unknown[] = [];
-
-    // ---- recentOrders ----
-    // TODO: requires new view (no per-order detail in reporting views)
-    const recentOrders: unknown[] = [];
-
-    // ---- averageRating, completionRate ----
-    // TODO: requires new view (not in reporting views)
-    const averageRating   = { rating: 0, trend: 'N/A', trendDirection: 'up' };
-    const completionRate  = { percentage: 0, trend: 'N/A', trendDirection: 'up' };
+    const statusCounts = new Map<string, number>();
+    for (const order of orders) {
+      const status = order.status || 'desconocido';
+      statusCounts.set(status, (statusCounts.get(status) || 0) + 1);
+    }
+    const statusLabels: Record<string, string> = { completed: 'Completado', delivered: 'Entregado', confirmed: 'Confirmado', preparing: 'En preparación', ready: 'Listo', cancelled: 'Cancelado', pending: 'Pendiente', pending_on_delivery: 'Pendiente de cobro' };
+    const orderStatusDistribution: unknown[] = [...statusCounts].map(([status, count]) => ({ name: statusLabels[status] || status, status, value: count, count }));
+    const recentOrders: unknown[] = [...orders]
+      .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
+      .slice(0, 10)
+      .map(order => ({ ...order, responseTimeSeconds: order.id ? responseByOrder.get(order.id) ?? null : null }));
+    const ratings = reviews.map(review => Number(review.rating)).filter(rating => Number.isFinite(rating) && rating > 0);
+    const averageRating = { rating: ratings.length ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length : 0, trend: '—', trendDirection: 'up' };
+    const completeCount = orders.filter(order => ['completed', 'delivered'].includes(order.status || '')).length;
+    const completionRate = { percentage: orders.length ? completeCount / orders.length * 100 : 0, trend: '—', trendDirection: 'up' };
+    const responseTotal = [...responseByDate.values()].reduce((sum, row) => sum + row.seconds, 0);
+    const responseCount = [...responseByDate.values()].reduce((sum, row) => sum + row.count, 0);
+    const averageResponseSeconds = responseCount ? responseTotal / responseCount : 0;
+    for (const trend of responseTimeTrend) {
+      const date = days.find(day => format(day, 'MMM d') === trend.date);
+      const metric = date ? responseByDate.get(format(date, 'yyyy-MM-dd')) : undefined;
+      trend.avgResponse = metric?.count ? metric.seconds / metric.count : 0;
+    }
+    const customersWithOrders = new Set(orders.map(order => order.customer_id).filter((id): id is string => Boolean(id)));
+    const newCustomerCutoff = startOfDay(from).getTime();
+    const newCustomers = customers.filter(customer => {
+      const created = customer.first_order_at || customer.created_at;
+      return created ? new Date(created).getTime() >= newCustomerCutoff && new Date(created).getTime() <= to.getTime() : false;
+    }).length;
+    const returningCustomers = [...customersWithOrders].filter(id => orders.filter(order => order.customer_id === id).length > 1).length;
 
     return {
       averageResponseTime: {
-        minutes:        0,   // TODO: requires new view
-        seconds:        0,
-        trend:          'N/A',
+        minutes:        Math.floor(averageResponseSeconds / 60),
+        seconds:        Math.round(averageResponseSeconds % 60),
+        trend:          responseCount ? 'Período seleccionado' : 'Sin datos de cocina',
         trendDirection: 'up',
       },
       totalOrders: {
@@ -267,12 +369,11 @@ class AnalyticsService {
       orderStatusDistribution,
       weeklyOrderVolume,
       customerAnalytics: {
-        // TODO: requires new view
-        totalCustomers:        0,
-        newCustomers:          0,
-        returningCustomers:    0,
-        avgOrdersPerCustomer:  0,
-        retentionRate:         0,
+        totalCustomers:        customers.length,
+        newCustomers,
+        returningCustomers,
+        avgOrdersPerCustomer:  customersWithOrders.size ? orders.length / customersWithOrders.size : 0,
+        retentionRate:         customersWithOrders.size ? returningCustomers / customersWithOrders.size * 100 : 0,
       },
     };
   }
@@ -305,12 +406,11 @@ class AnalyticsService {
       `gte=business_date,${startDate}`,
       `lte=business_date,${endDate}`,
       'neq=status,cancelled',
-      'select=id,business_date,created_at,order_type,status,subtotal_cents,discount_cents,total_cents',
+      'select=id,business_date,created_at,order_type,status,payment_status,subtotal_cents,discount_cents,total_cents',
       'order=business_date.asc',
-      // The serverless data API already reads the complete tenant partition
-      // before applying filters and caps explicit limits at 1000. Omitting
-      // the limit keeps reporting compatible with both the PostgreSQL and
-      // DynamoDB-backed deployments instead of returning "invalid limit".
+      // The serverless data API reads the tenant partition before applying
+      // filters and caps explicit limits at 1000. Omitting limit lets the API
+      // apply its own safe maximum.
     ].join('&');
     const businessDateOrders = await api.request<ReportOrder[]>('GET', `/data/orders?${ordersQuery}`);
     const start = startOfDay(from);
@@ -320,7 +420,7 @@ class AnalyticsService {
       `gte=created_at,${encodeURIComponent(addDays(start, -1).toISOString())}`,
       `lt=created_at,${encodeURIComponent(endExclusive.toISOString())}`,
       'neq=status,cancelled',
-      'select=id,business_date,created_at,order_type,status,subtotal_cents,discount_cents,total_cents',
+      'select=id,business_date,created_at,order_type,status,payment_status,subtotal_cents,discount_cents,total_cents',
     ].join('&');
     const createdAtOrders = await api.request<ReportOrder[]>(
       'GET', `/data/orders?${createdAtQuery}`,
@@ -348,6 +448,9 @@ class AnalyticsService {
     const rangeStartDate = format(start, 'yyyy-MM-dd');
     const rangeEndDate = format(startOfDay(to), 'yyyy-MM-dd');
     for (const order of orders.values()) {
+      const hasLifecycle = Boolean(order.status || order.payment_status);
+      const recognizedSale = ['completed', 'delivered', 'paid'].includes(order.status || '') || ['paid', 'completed'].includes(order.payment_status || '');
+      if (hasLifecycle && !recognizedSale) continue;
       const date = order.business_date || (order.created_at ? localDate(order.created_at) : '');
       if (!date || date < rangeStartDate || date > rangeEndDate) continue;
       const orderType = order.order_type || 'sin_tipo';
@@ -402,22 +505,16 @@ class AnalyticsService {
     return this.getDailySalesSummary({ from, to }, locationId);
   }
 
-  // TODO: requires new view — no order status distribution in reporting
-  // views. Promise.resolve() instead of `async` (no await in the body) —
-  // keeps the Promise<unknown[]> contract callers already `await` without
-  // an async function that never actually awaits anything.
-  getOrderStatusDistribution(_timeRange = '7d'): Promise<unknown[]> {
-    return Promise.resolve([]);
+  async getOrderStatusDistribution(timeRange = '7d'): Promise<unknown[]> {
+    return (await this.getAnalyticsData(timeRange)).orderStatusDistribution;
   }
 
-  // TODO: requires new view — no per-order response-time detail in reporting views
-  getRecentOrdersWithResponseTimes(_limit = 10): Promise<unknown[]> {
-    return Promise.resolve([]);
+  async getRecentOrdersWithResponseTimes(limit = 10): Promise<unknown[]> {
+    return (await this.getAnalyticsData('30d')).recentOrders.slice(0, limit);
   }
 
-  // TODO: requires new view — no customer analytics in reporting views
-  getCustomerAnalytics(_timeRange = '30d'): Promise<Record<string, unknown>> {
-    return Promise.resolve({});
+  async getCustomerAnalytics(timeRange = '30d'): Promise<Record<string, unknown>> {
+    return (await this.getAnalyticsData(timeRange)).customerAnalytics;
   }
 }
 

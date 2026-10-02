@@ -32,21 +32,10 @@ export interface UserProfile {
   [key: string]: unknown;
 }
 
-export interface PendingInvite {
-  invite_id: string;
-  [key: string]: unknown;
-}
-
 export interface OrganizationMembership {
   organization_id: string;
   role?: string;
   capabilities?: Record<string, boolean> | string[] | string | null;
-}
-
-interface RespondInvitationResult {
-  success: boolean;
-  error?: string;
-  message?: string;
 }
 
 // Mirrors backend/internal/auth/handlers.go userDTO (id, email, email_verified),
@@ -73,9 +62,6 @@ export interface AuthContextValue {
   setHasLoadedOrganizations: (v: boolean) => void;
   hasLoadedLocations: boolean;
   setHasLoadedLocations: (v: boolean) => void;
-  pendingInvites: PendingInvite[];
-  hasLoadedInvites: boolean;
-  setHasLoadedInvites: (v: boolean) => void;
   needsOnboarding: boolean;
   switchOrganization: (organizationId: string) => Organization | undefined;
   switchOrganizationBySlug: (slug: string) => void;
@@ -89,9 +75,6 @@ export interface AuthContextValue {
   fetchOrganizations: () => Promise<void>;
   fetchLocations: () => Promise<void>;
   refreshToken: () => Promise<string | null>;
-  fetchInvites: () => Promise<void>;
-  acceptInvite: (inviteId: string) => Promise<{ success: boolean; message?: string; error?: string }>;
-  rejectInvite: (inviteId: string) => Promise<{ success: boolean; message?: string; error?: string }>;
   fetchUserProfile: () => Promise<void>;
 }
 
@@ -165,8 +148,6 @@ export function AuthProvider({ children, onNavigate, pathname }: {
   const [activeLocation, setActiveLocation] = useState<Location | null>(null);
   const [hasLoadedOrganizations, setHasLoadedOrganizations] = useState(false);
   const [hasLoadedLocations, setHasLoadedLocations] = useState(false);
-  const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
-  const [hasLoadedInvites, setHasLoadedInvites] = useState(false);
   // needsOnboarding: true only after orgs have finished loading and the user has none
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
 
@@ -371,7 +352,6 @@ export function AuthProvider({ children, onNavigate, pathname }: {
         } as AuthUser);
         setHasLoadedOrganizations(false);
         setHasLoadedLocations(false);
-        setHasLoadedInvites(false);
 
         // Redirect to dashboard after successful sign in. /home is the
         // authenticated landing; / is the marketing landing page.
@@ -399,8 +379,6 @@ export function AuthProvider({ children, onNavigate, pathname }: {
       setActiveLocation(null);
       setHasLoadedOrganizations(true);
       setHasLoadedLocations(true);
-      setPendingInvites([]);
-      setHasLoadedInvites(true);
       setNeedsOnboarding(false); // Reset onboarding state on signout
 
       // Clear localStorage on signout
@@ -475,90 +453,6 @@ export function AuthProvider({ children, onNavigate, pathname }: {
     }
   }, []);
 
-  const fetchInvites = useCallback(async () => {
-    if (!user) {
-      setPendingInvites([]);
-      setHasLoadedInvites(true);
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase.rpc<PendingInvite[]>('check_invites', { p_user_id: user.id });
-
-      if (error) {
-        console.error('Error fetching invites:', error);
-        throw error;
-      }
-
-      setPendingInvites(data || []);
-    } catch (error) {
-      console.error('Error fetching invites:', error);
-      setPendingInvites([]);
-    } finally {
-      setHasLoadedInvites(true);
-    }
-  }, [user]);
-
-  const acceptInvite = useCallback(async (inviteId: string) => {
-    try {
-      // Get the organization_id from the pending invite
-      const currentInvite = pendingInvites.find(invite => invite.invite_id === inviteId);
-      if (!currentInvite) {
-        throw new Error('No se encontró la invitación');
-      }
-
-      const { data, error } = await supabase.rpc<RespondInvitationResult>('respond_invitation', {
-        p_user_id: user?.id,
-        p_invite_id: currentInvite.invite_id,
-        p_accept: true
-      });
-
-      if (error) throw error;
-
-      if (!data?.success) {
-        throw new Error(data?.error || 'No se pudo aceptar la invitación');
-      }
-
-      // Refresh invites and organizations after accepting
-      await Promise.all([fetchInvites(), fetchOrganizations()]);
-
-      return { success: true, message: data.message };
-    } catch (error) {
-      console.error('Error accepting invite:', error);
-      return { success: false, error: (error as Error)?.message };
-    }
-  }, [pendingInvites, fetchInvites, fetchOrganizations]);
-
-  const rejectInvite = useCallback(async (inviteId: string) => {
-    try {
-      // Get the organization_id from the pending invite
-      const currentInvite = pendingInvites.find(invite => invite.invite_id === inviteId);
-      if (!currentInvite) {
-        throw new Error('No se encontró la invitación');
-      }
-
-      const { data, error } = await supabase.rpc<RespondInvitationResult>('respond_invitation', {
-        p_user_id: user?.id,
-        p_invite_id: currentInvite.invite_id,
-        p_accept: false
-      });
-
-      if (error) throw error;
-
-      if (!data?.success) {
-        throw new Error(data?.error || 'No se pudo rechazar la invitación');
-      }
-
-      // Refresh invites after rejecting
-      await fetchInvites();
-
-      return { success: true, message: data.message };
-    } catch (error) {
-      console.error('Error rejecting invite:', error);
-      return { success: false, error: (error as Error)?.message };
-    }
-  }, [pendingInvites, fetchInvites]);
-
   // Initialize auth state
   useEffect(() => {
     const initializeAuth = async () => {
@@ -619,13 +513,6 @@ export function AuthProvider({ children, onNavigate, pathname }: {
     void fetchUserProfile();
   }, [fetchUserProfile]);
 
-  // Fetch invites when user changes  
-  useEffect(() => {
-    if (!hasLoadedInvites) {
-      void fetchInvites();
-    }
-  }, [user, hasLoadedInvites, fetchInvites]);
-
   // Add token refresh function
   const refreshToken = async () => {
     console.log("Attempting to refresh token...");
@@ -680,9 +567,6 @@ export function AuthProvider({ children, onNavigate, pathname }: {
     setHasLoadedOrganizations,
     hasLoadedLocations,
     setHasLoadedLocations,
-    pendingInvites,
-    hasLoadedInvites,
-    setHasLoadedInvites,
     needsOnboarding,
     switchOrganization,
     switchOrganizationBySlug,
@@ -696,9 +580,6 @@ export function AuthProvider({ children, onNavigate, pathname }: {
     fetchOrganizations,
     fetchLocations,
     refreshToken,
-    fetchInvites,
-    acceptInvite,
-    rejectInvite,
     fetchUserProfile,
   }), [
     loading,
@@ -711,8 +592,6 @@ export function AuthProvider({ children, onNavigate, pathname }: {
     activeLocation,
     hasLoadedOrganizations,
     hasLoadedLocations,
-    pendingInvites,
-    hasLoadedInvites,
     needsOnboarding,
     switchOrganization,
     switchOrganizationBySlug,
@@ -726,9 +605,6 @@ export function AuthProvider({ children, onNavigate, pathname }: {
     fetchOrganizations,
     fetchLocations,
     refreshToken,
-    fetchInvites,
-    acceptInvite,
-    rejectInvite,
     fetchUserProfile,
   ]);
 

@@ -270,6 +270,78 @@ func (a *application) adjustPOSOrder(ctx context.Context, orgID, actorID, orderI
 				refunded += value
 			}
 		}
+		if rawSelection, selected := input["selected_items"]; selected {
+			selection, valid := rawSelection.([]any)
+			if !valid || len(selection) == 0 {
+				return errorResponse(400, "selected_items must contain at least one item")
+			}
+			orderItems, itemsErr := a.queryDataRows(ctx, orgID, "order_items")
+			if itemsErr != nil {
+				return dataAccessError(itemsErr)
+			}
+			byID := map[string]map[string]any{}
+			baseTotal := int64(0)
+			for _, line := range orderItems {
+				if displayString(line["order_id"]) != orderID {
+					continue
+				}
+				byID[displayString(line["id"])] = line
+				lineTotal, _ := integerValue(valueOr(line, "line_total_cents", line["total_price_cents"]))
+				baseTotal += maxInt64(lineTotal, 0)
+			}
+			priorQty, priorAmount := map[string]int64{}, map[string]int64{}
+			for _, old := range existing {
+				if displayString(old["order_id"]) != orderID || displayString(old["adjustment_type"]) != "refund" || displayString(old["approval_status"]) == "rejected" {
+					continue
+				}
+				oldLines, _ := old["selected_items"].([]any)
+				for _, raw := range oldLines {
+					line, _ := raw.(map[string]any)
+					id := displayString(line["order_item_id"])
+					qty, _ := integerValue(line["quantity"])
+					cents, _ := integerValue(line["amount_cents"])
+					priorQty[id] += qty
+					priorAmount[id] += cents
+				}
+			}
+			seen := map[string]bool{}
+			selectedLines := make([]map[string]any, 0, len(selection))
+			amount = 0
+			for _, raw := range selection {
+				requested, _ := raw.(map[string]any)
+				itemID := strings.TrimSpace(displayString(requested["order_item_id"]))
+				quantity, qtyValid := integerValue(requested["quantity"])
+				line := byID[itemID]
+				if line == nil || !qtyValid || quantity < 1 || seen[itemID] {
+					return errorResponse(400, "selected item or quantity is invalid")
+				}
+				seen[itemID] = true
+				ordered, _ := integerValue(line["quantity"])
+				if ordered < 1 || priorQty[itemID]+quantity > ordered {
+					return errorResponse(409, "selected quantity exceeds the refundable quantity")
+				}
+				lineTotal, _ := integerValue(valueOr(line, "line_total_cents", line["total_price_cents"]))
+				if baseTotal <= 0 || lineTotal <= 0 {
+					return errorResponse(422, "selected item has no refundable value")
+				}
+				cumulativeBase := float64(lineTotal) * float64(priorQty[itemID]+quantity) / float64(ordered)
+				previousBase := float64(lineTotal) * float64(priorQty[itemID]) / float64(ordered)
+				cumulativeRefund := int64(math.Round(float64(paid) * cumulativeBase / float64(baseTotal)))
+				previousRefund := priorAmount[itemID]
+				if previousRefund == 0 && priorQty[itemID] > 0 {
+					previousRefund = int64(math.Round(float64(paid) * previousBase / float64(baseTotal)))
+				}
+				lineRefund := cumulativeRefund - previousRefund
+				if lineRefund <= 0 {
+					return errorResponse(422, "selected quantity has no refundable balance")
+				}
+				amount += lineRefund
+				selectedLines = append(selectedLines, map[string]any{"order_item_id": itemID, "quantity": quantity, "amount_cents": lineRefund})
+			}
+			input["amount_cents"] = amount
+			adjustment["selected_items"] = selectedLines
+			ok = true
+		}
 		if !ok {
 			// The current POS return flow represents a full refund and does not
 			// send amount_cents. Keep partial refunds explicit while making that
@@ -336,6 +408,13 @@ func (a *application) adjustPOSOrder(ctx context.Context, orgID, actorID, orderI
 	return mustJSONResponse(201, created)
 }
 
+func maxInt64(a, b int64) int64 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
 func (a *application) recalculatePOSOrder(ctx context.Context, orgID string, order map[string]any) events.APIGatewayV2HTTPResponse {
 	rows, err := a.queryDataRows(ctx, orgID, "order_items")
 	if err != nil {
@@ -373,8 +452,12 @@ func (a *application) markPOSPaidOnDelivery(ctx context.Context, orgID, actorID,
 	if err != nil {
 		return errorResponse(404, "order not found")
 	}
-	if fmt.Sprint(order["status"]) != "pending_on_delivery" {
-		return errorResponse(409, "order is not in pending_on_delivery status")
+	status := fmt.Sprint(order["status"])
+	existingPaymentMethod := displayString(order["payment_method"])
+	methodOnDelivery := existingPaymentMethod == "cash_on_delivery" || existingPaymentMethod == "card_on_delivery" || existingPaymentMethod == "cash" || existingPaymentMethod == "card_machine"
+	legacyPending := status == "pending_on_delivery"
+	if (!legacyPending && !methodOnDelivery) || fmt.Sprint(order["payment_status"]) == "paid" || status == "cancelled" {
+		return errorResponse(409, "order is not awaiting payment on delivery")
 	}
 	var input map[string]any
 	if decodeDataObject(body, &input) != nil {
@@ -408,12 +491,19 @@ func (a *application) markPOSPaidOnDelivery(ctx context.Context, orgID, actorID,
 			_, _ = a.createStoredRow(ctx, orgID, "cash_drawer_session_payments", map[string]any{"cash_drawer_session_id": sessionID, "order_payment_id": payment["id"], "payment_id": payment["id"]})
 		}
 	}
-	order["status"], order["payment_status"], order["payment_method"] = "completed", "paid", methodCode
+	// Settling the amount must not close the fulfilment lifecycle. Older orders
+	// used pending_on_delivery as both states; treat this explicit settlement as
+	// proof of hand-off only for those legacy rows.
+	if legacyPending {
+		status = "delivered"
+		order["status"] = status
+	}
+	order["payment_status"], order["payment_method"] = "paid", methodCode
 	order["updated_at"] = time.Now().UTC().Format(time.RFC3339Nano)
 	if err := a.putDataRow(ctx, orgID, "orders", order, false); err != nil {
 		return dataAccessError(err)
 	}
-	return mustJSONResponse(200, map[string]any{"order_id": orderID, "payment_id": payment["id"], "status": "completed"})
+	return mustJSONResponse(200, map[string]any{"order_id": orderID, "payment_id": payment["id"], "status": status, "payment_status": "paid"})
 }
 
 func (a *application) getCashOutReport(ctx context.Context, orgID, sessionID string) events.APIGatewayV2HTTPResponse {

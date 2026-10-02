@@ -12,6 +12,7 @@ interface LiveOrdersPanelProps {
   setOrderStatusFilter: (filter: string) => void;
   filteredOrders: HomeOrder[];
   updateOrderStatus: (orderId: string, newStatus: string) => void;
+  refreshOrders: () => void;
 }
 
 /**
@@ -30,6 +31,7 @@ export default function LiveOrdersPanel({
   setOrderStatusFilter,
   filteredOrders,
   updateOrderStatus,
+  refreshOrders,
 }: LiveOrdersPanelProps) {
   // Status progression reads as a gradient of meaning, not six arbitrary
   // hues: "needs attention" (warning) → "acknowledged, in flow" (primary,
@@ -48,15 +50,16 @@ export default function LiveOrdersPanel({
     }
   };
 
-  const getNextStatus = (currentStatus: string): string | undefined => {
-    const flow: Record<string, string> = {
-      pending:          'confirmed',
-      confirmed:        'preparing',
-      preparing:        'ready',
-      ready:            'out_for_delivery',
-      out_for_delivery: 'delivered',
+  const getNextStatus = (order: HomeOrder): string | undefined => {
+    const fulfillment = order.fulfillment_type || order.order_type;
+    const flow: Record<string, string | undefined> = {
+      pending: 'confirmed',
+      confirmed: 'preparing',
+      preparing: 'ready',
+      ready: fulfillment === 'delivery' ? 'out_for_delivery' : 'completed',
+      out_for_delivery: fulfillment === 'delivery' ? 'delivered' : undefined,
     };
-    return flow[currentStatus];
+    return flow[order.status];
   };
 
   const getStatusLabel = (status: string): string => {
@@ -112,6 +115,7 @@ export default function LiveOrdersPanel({
           setOrderStatusFilter={setOrderStatusFilter}
           filteredOrders={filteredOrders}
           updateOrderStatus={updateOrderStatus}
+          refreshOrders={refreshOrders}
           setEditingOrder={() => {}}
           setIsOrderEditModalOpen={() => {}}
           viewOrderDetails={() => {}}

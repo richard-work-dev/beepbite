@@ -1,5 +1,5 @@
 import { api } from '../lib/api-client';
-import { format, subDays, eachDayOfInterval } from 'date-fns';
+import { addDays, format, startOfDay, subDays, eachDayOfInterval } from 'date-fns';
 
 export interface DailySalesSummaryRow {
   location_id: string;
@@ -13,6 +13,7 @@ export interface DailySalesSummaryRow {
   delivery_fee_total_cents: number;
   net_sales_cents: number;
   gross_profit_cents: number;
+  gross_profit_available?: boolean;
   [key: string]: unknown;
 }
 
@@ -22,6 +23,17 @@ export interface HourlySalesHeatmapRow {
   order_count: number;
   total_revenue_cents: number;
   [key: string]: unknown;
+}
+
+interface ReportOrder {
+  id?: string;
+  business_date?: string;
+  created_at?: string;
+  order_type?: string;
+  status?: string;
+  subtotal_cents?: number | string;
+  discount_cents?: number | string;
+  total_cents?: number | string;
 }
 
 export interface AnalyticsData {
@@ -142,26 +154,16 @@ class AnalyticsService {
   }
 
   async _fetchByDateRange(locationId: string, { from, to }: { from: Date; to: Date }): Promise<AnalyticsData> {
-    const startDate = format(from, 'yyyy-MM-dd');
-    const endDate   = format(to,   'yyyy-MM-dd');
+    const dailyRows = await this.getDailySalesSummary({ from, to }, locationId);
 
-    // Fetch daily_sales_summary and hourly_sales_heatmap in parallel.
-    const [dailyRes, hourlyRes] = await Promise.all([
-      api.request<DailySalesSummaryRow[]>(
-        'GET',
-        `/data/daily_sales_summary?eq=location_id,${locationId}&gte=sale_date,${startDate}&lte=sale_date,${endDate}&order=sale_date.asc`
-      ),
-      api.request<HourlySalesHeatmapRow[]>(
-        'GET',
-        `/data/hourly_sales_heatmap?eq=location_id,${locationId}`
-      ),
-    ]);
+    // The heatmap is a PostgreSQL view and is not materialized by the
+    // DynamoDB-backed development API. Its absence must not hide sales data.
+    const hourlyRes = await api.request<HourlySalesHeatmapRow[]>(
+      'GET',
+      `/data/hourly_sales_heatmap?eq=location_id,${encodeURIComponent(locationId)}`
+    );
 
-    if (dailyRes.error)  throw new Error(dailyRes.error.message);
-    if (hourlyRes.error) throw new Error(hourlyRes.error.message);
-
-    const dailyRows  = dailyRes.data  || [];
-    const hourlyRows = hourlyRes.data || [];
+    const hourlyRows = hourlyRes.error ? [] : hourlyRes.data || [];
 
     return this._transform(dailyRows, hourlyRows, { from, to });
   }
@@ -282,6 +284,7 @@ class AnalyticsService {
   async getDailySalesSummary(
     { from, to }: { from: Date; to: Date },
     locationId?: string,
+    timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
   ): Promise<DailySalesSummaryRow[]> {
     const resolvedLocationId = locationId || await this.getLocationId();
     if (!resolvedLocationId) throw new Error('No se encontró un local para consultar los reportes.');
@@ -302,28 +305,51 @@ class AnalyticsService {
       `gte=business_date,${startDate}`,
       `lte=business_date,${endDate}`,
       'neq=status,cancelled',
-      'select=business_date,order_type,status,subtotal_cents,discount_cents,total_cents',
+      'select=id,business_date,created_at,order_type,status,subtotal_cents,discount_cents,total_cents',
       'order=business_date.asc',
       // The serverless data API already reads the complete tenant partition
       // before applying filters and caps explicit limits at 1000. Omitting
       // the limit keeps reporting compatible with both the PostgreSQL and
       // DynamoDB-backed deployments instead of returning "invalid limit".
     ].join('&');
-    const fallback = await api.request<Array<{
-      business_date?: string;
-      order_type?: string;
-      subtotal_cents?: number | string;
-      discount_cents?: number | string;
-      total_cents?: number | string;
-    }>>('GET', `/data/orders?${ordersQuery}`);
-    if (fallback.error) {
-      throw new Error(error?.message || fallback.error.message);
+    const businessDateOrders = await api.request<ReportOrder[]>('GET', `/data/orders?${ordersQuery}`);
+    const start = startOfDay(from);
+    const endExclusive = addDays(startOfDay(to), 2);
+    const createdAtQuery = [
+      `eq=location_id,${encodeURIComponent(resolvedLocationId)}`,
+      `gte=created_at,${encodeURIComponent(addDays(start, -1).toISOString())}`,
+      `lt=created_at,${encodeURIComponent(endExclusive.toISOString())}`,
+      'neq=status,cancelled',
+      'select=id,business_date,created_at,order_type,status,subtotal_cents,discount_cents,total_cents',
+    ].join('&');
+    const createdAtOrders = await api.request<ReportOrder[]>(
+      'GET', `/data/orders?${createdAtQuery}`,
+    );
+    if (businessDateOrders.error && createdAtOrders.error) {
+      throw new Error(error?.message || businessDateOrders.error.message || createdAtOrders.error.message);
     }
 
     const grouped = new Map<string, DailySalesSummaryRow>();
-    for (const order of fallback.data || []) {
-      const date = order.business_date || '';
-      if (!date) continue;
+    const orders = new Map<string, ReportOrder>();
+    for (const order of [...(businessDateOrders.data || []), ...(createdAtOrders.data || [])]) {
+      orders.set(order.id || `${order.created_at || order.business_date}:${order.order_type}`, order);
+    }
+    const localDate = (timestamp: string): string => {
+      try {
+        const parts = new Intl.DateTimeFormat('en-CA', {
+          timeZone, year: 'numeric', month: '2-digit', day: '2-digit',
+        }).formatToParts(new Date(timestamp));
+        const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+        return `${values.year}-${values.month}-${values.day}`;
+      } catch {
+        return timestamp.slice(0, 10);
+      }
+    };
+    const rangeStartDate = format(start, 'yyyy-MM-dd');
+    const rangeEndDate = format(startOfDay(to), 'yyyy-MM-dd');
+    for (const order of orders.values()) {
+      const date = order.business_date || (order.created_at ? localDate(order.created_at) : '');
+      if (!date || date < rangeStartDate || date > rangeEndDate) continue;
       const orderType = order.order_type || 'sin_tipo';
       const key = `${date}:${orderType}`;
       const row = grouped.get(key) || {
@@ -338,13 +364,14 @@ class AnalyticsService {
         delivery_fee_total_cents: 0,
         net_sales_cents: 0,
         gross_profit_cents: 0,
+        gross_profit_available: false,
       };
       const subtotal = Number(order.subtotal_cents || 0);
       const discount = Number(order.discount_cents || 0);
       row.order_count += 1;
       row.gross_subtotal_cents += subtotal;
       row.discount_total_cents += discount;
-      row.net_sales_cents += order.total_cents == null ? subtotal - discount : Number(order.total_cents);
+      row.net_sales_cents += subtotal - discount;
       grouped.set(key, row);
     }
     return [...grouped.values()].sort((a, b) => a.sale_date.localeCompare(b.sale_date));
@@ -354,14 +381,7 @@ class AnalyticsService {
     const locationId = await this.getLocationId();
     if (!locationId) throw new Error('No location found for user');
     const { from, to } = this._periodToRange(timeRange);
-    const startDate = format(from, 'yyyy-MM-dd');
-    const endDate   = format(to,   'yyyy-MM-dd');
-    const { data, error } = await api.request<DailySalesSummaryRow[]>(
-      'GET',
-      `/data/daily_sales_summary?eq=location_id,${locationId}&gte=sale_date,${startDate}&lte=sale_date,${endDate}`
-    );
-    if (error) throw new Error(error.message);
-    return data || [];
+    return this.getDailySalesSummary({ from, to }, locationId);
   }
 
   async getOrdersByHour(): Promise<HourlySalesHeatmapRow[]> {
@@ -379,14 +399,7 @@ class AnalyticsService {
     const locationId = await this.getLocationId();
     if (!locationId) throw new Error('No location found for user');
     const { from, to } = this._periodToRange(timeRange);
-    const startDate = format(from, 'yyyy-MM-dd');
-    const endDate   = format(to,   'yyyy-MM-dd');
-    const { data, error } = await api.request<DailySalesSummaryRow[]>(
-      'GET',
-      `/data/daily_sales_summary?eq=location_id,${locationId}&gte=sale_date,${startDate}&lte=sale_date,${endDate}&order=sale_date.asc`
-    );
-    if (error) throw new Error(error.message);
-    return data || [];
+    return this.getDailySalesSummary({ from, to }, locationId);
   }
 
   // TODO: requires new view — no order status distribution in reporting

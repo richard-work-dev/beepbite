@@ -61,7 +61,7 @@ function csvCell(value: string | number) {
 
 export default function ReportsPage() {
   const { activeLocation } = useAuth();
-  const { locale } = useLocale();
+  const { locale, timezone } = useLocale();
   const { format: formatMoney } = useMoney();
   const [period, setPeriod] = useState('7d');
   const [customRange, setCustomRange] = useState<DateRange | undefined>();
@@ -88,6 +88,7 @@ export default function ReportsPage() {
       const data = await analyticsService.getDailySalesSummary(
         { from: startOfDay(from), to: startOfDay(to) },
         activeLocation.id,
+        timezone,
       );
       setRows(data);
     } catch (err) {
@@ -96,7 +97,7 @@ export default function ReportsPage() {
     } finally {
       setLoading(false);
     }
-  }, [activeLocation?.id, period, customRange]);
+  }, [activeLocation?.id, period, customRange, timezone]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -105,6 +106,7 @@ export default function ReportsPage() {
   const orderCount = rows.reduce((total, row) => total + Number(row.order_count || 0), 0);
   const netSalesCents = rows.reduce((total, row) => total + Number(row.net_sales_cents || 0), 0);
   const grossProfitCents = rows.reduce((total, row) => total + Number(row.gross_profit_cents || 0), 0);
+  const grossProfitAvailable = rows.length > 0 && rows.every((row) => row.gross_profit_available !== false);
   const averageTicketCents = orderCount > 0 ? Math.round(netSalesCents / orderCount) : 0;
 
   const handlePeriodChange = (value: string) => {
@@ -189,7 +191,12 @@ export default function ReportsPage() {
           <>
             <StatCard label="Pedidos" value={orderCount.toLocaleString(locale)} icon={ShoppingBag} />
             <StatCard label="Ventas netas" value={formatMoney(netSalesCents)} icon={Wallet} />
-            <StatCard label="Utilidad bruta estimada" value={formatMoney(grossProfitCents)} icon={TrendingUp} />
+            <StatCard
+              label="Utilidad bruta estimada"
+              value={grossProfitAvailable ? formatMoney(grossProfitCents) : '—'}
+              hint={grossProfitAvailable ? undefined : 'Costos no disponibles para estimar la utilidad'}
+              icon={TrendingUp}
+            />
             <StatCard label="Promedio por pedido" value={formatMoney(averageTicketCents)} icon={ReceiptText} />
           </>
         )}
@@ -222,7 +229,7 @@ export default function ReportsPage() {
                         <td className="px-5 py-3">{dateLabel(day.date)}</td>
                         <td className="px-4 py-3 text-right tabular-nums">{day.orders.toLocaleString(locale)}</td>
                         <td className="px-4 py-3 text-right tabular-nums">{formatMoney(day.netSalesCents)}</td>
-                        <td className="px-5 py-3 text-right tabular-nums">{formatMoney(day.grossProfitCents)}</td>
+                        <td className="px-5 py-3 text-right tabular-nums">{grossProfitAvailable ? formatMoney(day.grossProfitCents) : '—'}</td>
                       </tr>
                     ))}
                   </tbody>

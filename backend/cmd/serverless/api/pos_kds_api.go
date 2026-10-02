@@ -420,8 +420,9 @@ func (a *application) createPOSOrder(ctx context.Context, orgID, body string) ev
 		total += tax
 	}
 	now := time.Now().UTC()
+	businessDate := marketplaceLocationTime(now, location).Format("2006-01-02")
 	order := map[string]any{
-		"location_id": locationID, "order_type": orderType, "status": "confirmed",
+		"location_id": locationID, "business_date": businessDate, "order_type": orderType, "status": "confirmed",
 		"order_number":   "POS-" + now.Format("060102150405") + "-" + strconv.FormatInt(now.UnixNano()%1000, 10),
 		"subtotal_cents": subtotal, "tax_cents": tax, "gratuity_cents": int64(0), "total_cents": total,
 		"currency_code": valueOr(location, "currency_code", "USD"), "currency_decimals": int64(2),

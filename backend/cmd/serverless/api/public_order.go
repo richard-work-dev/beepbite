@@ -154,9 +154,10 @@ type publicOrderLine struct {
 type publicOrderQuote struct {
 	lines                               []publicOrderLine
 	subtotal, tax, delivery, total, tip int64
+	zone                                deliverySelection
 }
 
-func pricePublicOrder(input, location map[string]any, catalog []map[string]any, rate float64, inclusive bool, now time.Time) (publicOrderQuote, error) {
+func pricePublicOrder(input, location map[string]any, catalog []map[string]any, rate float64, inclusive bool, now time.Time, zones []map[string]any) (publicOrderQuote, error) {
 	q := publicOrderQuote{}
 	mode := displayString(input["fulfillment_type"])
 	if !publicOrderModeEnabled(location, mode) {
@@ -220,12 +221,12 @@ func pricePublicOrder(input, location map[string]any, catalog []map[string]any, 
 		q.tax = int64(math.Round(float64(q.subtotal) * rate / 100))
 		q.total += q.tax
 	}
-	if mode == "delivery" {
-		threshold := publicOrderMoney(location["free_delivery_threshold"], currency)
-		if threshold == 0 || q.subtotal < threshold {
-			q.delivery = publicOrderMoney(location["delivery_fee"], currency)
-		}
+	var deliveryErr error
+	q.zone, deliveryErr = priceDelivery(input, location, zones, q.subtotal)
+	if deliveryErr != nil {
+		return q, deliveryErr
 	}
+	q.delivery = q.zone.fee
 	q.tip, ok = integerValue(valueOr(input, "tip_cents", int64(0)))
 	if !ok || q.tip < 0 || q.tip > q.subtotal*3 {
 		return q, errors.New("La propina no es válida.")
@@ -383,7 +384,14 @@ func (a *application) createMarketplaceOrder(ctx context.Context, slug, body, so
 	}
 	now := time.Now().UTC()
 	businessNow := marketplaceLocationTime(now, location.row)
-	quote, err := pricePublicOrder(input, location.row, publicCatalog, rate, inclusive, businessNow)
+	var zones []map[string]any
+	if displayString(input["fulfillment_type"]) == "delivery" {
+		zones, err = a.queryDataRows(ctx, orgID, "delivery_zones")
+		if err != nil {
+			return dataAccessError(err)
+		}
+	}
+	quote, err := pricePublicOrder(input, location.row, publicCatalog, rate, inclusive, businessNow, zones)
 	if err != nil {
 		return errorResponse(409, err.Error())
 	}
@@ -428,6 +436,7 @@ func (a *application) createMarketplaceOrder(ctx context.Context, slug, body, so
 	}
 	if mode == "delivery" {
 		order["delivery_address"] = strings.TrimSpace(displayString(input["delivery_address"]))
+		setDeliverySnapshot(order, quote.zone)
 	}
 	if mode == "dine_in" {
 		order["table_label"] = nullableString(input["table_label"])

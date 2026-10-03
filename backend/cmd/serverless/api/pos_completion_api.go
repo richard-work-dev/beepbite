@@ -150,6 +150,7 @@ func (a *application) getPOSReceipt(ctx context.Context, orgID, orderID string) 
 		"order_id": orderID, "order_number": valueOr(order, "order_number", ""), "created_at": order["created_at"],
 		"line_items": lineItems, "subtotal_cents": valueOr(order, "subtotal_cents", valueOr(order, "subtotal_amount_cents", 0)), "tax_cents": valueOr(order, "tax_cents", valueOr(order, "tax_amount_cents", 0)),
 		"tip_cents": tipCents, "total_cents": valueOr(order, "total_cents", valueOr(order, "total_amount_cents", 0)), "currency_code": valueOr(order, "currency_code", ""),
+		"delivery_fee_cents": integerOr(order, "delivery_fee_cents", 0), "delivery_zone_name": valueOr(order, "delivery_zone_name", nil),
 		"payments": payments, "fiscal_receipt_number": valueOr(order, "fiscal_receipt_number", nil),
 	})
 }
@@ -439,6 +440,7 @@ func (a *application) recalculatePOSOrder(ctx context.Context, orgID string, ord
 	}
 	gratuity, _ := integerValue(order["gratuity_cents"])
 	total += gratuity
+	total += integerOr(order, "delivery_fee_cents", 0)
 	order["subtotal_cents"], order["tax_cents"], order["total_cents"] = subtotal, tax, total
 	order["updated_at"] = time.Now().UTC().Format(time.RFC3339Nano)
 	if err := a.putDataRow(ctx, orgID, "orders", order, false); err != nil {

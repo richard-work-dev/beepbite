@@ -19,7 +19,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Ban, Banknote, BarChart3, ChefHat, CreditCard, Filter, Home, ListOrdered, Loader2, Lock, LogOut, MapPin, MoreHorizontal, Plus, Receipt, RotateCcw, Scissors, Search, Settings2, ShoppingBag, Unlock, User as UserIcon, UserCheck, Utensils, X } from 'lucide-react';
+import { ArrowRight, Ban, Banknote, BarChart3, ChefHat, CreditCard, Filter, Home, ListOrdered, Loader2, Lock, LogOut, MapPin, MoreHorizontal, Plus, Receipt, RotateCcw, Scissors, Search, Settings2, ShoppingBag, Truck, Unlock, User as UserIcon, UserCheck, Utensils, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -81,6 +81,9 @@ import SplitBySeat from './components/split-by-seat';
 import ModifierPicker, { useItemHasModifiers, type Modifier } from './components/modifier-picker';
 import ReceiptModal from './components/receipt-modal';
 import OrderDetailsDialog, { type OrderDetails } from './components/order-details-dialog';
+import { useDeliveryZones } from '@/pages/settings/delivery-zones/hooks/use-delivery-zones';
+import { deliveryPrice } from '@/services/public-order';
+import type { StoreDetail } from '@/services/marketplace';
 import ItemNoteDialog from './components/item-note-dialog';
 
 // ---------------------------------------------------------------------------
@@ -151,6 +154,9 @@ interface WorkspaceSentOrder {
 }
 
 interface WorkspaceTicket {
+  fulfillment?: 'takeaway' | 'delivery';
+  deliveryAddress?: string;
+  deliveryZoneID?: string;
   id: string;
   kind: 'walkin' | 'table';
   label?: string;
@@ -298,7 +304,8 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { activeLocation, activeMembership, user, userProfile, signOut } = useAuth();
-  const { format, scale } = useMoney();
+  const { format, scale, currency } = useMoney();
+  const { zones: deliveryZones, loading: loadingDeliveryZones, error: deliveryZonesError, refresh: refreshDeliveryZones } = useDeliveryZones(activeLocation?.id);
   const { today } = useDateTime();
   // The store's local trading date, not the browser's UTC one.
   const todayStr = today();
@@ -737,6 +744,23 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
   }, [items, categoryId, search]);
 
   const activeTicket = activeTicketId ? tickets[activeTicketId] : null;
+  const orderDetailsValue = useMemo(() => ({
+    customerId: activeTicket?.customerId, customerName: activeTicket?.customerName, customerPhone: activeTicket?.customerPhone, notes: activeTicket?.notes,
+    fulfillment: activeTicket?.fulfillment, deliveryAddress: activeTicket?.deliveryAddress, deliveryZoneID: activeTicket?.deliveryZoneID,
+  }), [activeTicket?.customerId, activeTicket?.customerName, activeTicket?.customerPhone, activeTicket?.notes, activeTicket?.fulfillment, activeTicket?.deliveryAddress, activeTicket?.deliveryZoneID]);
+  const isDeliveryTicket = activeTicket?.kind === 'walkin' && activeTicket.fulfillment === 'delivery';
+  const deliveryStore: StoreDetail = {
+    id: activeLocation?.id || '', name: activeLocation?.name || '', slug: null, city: null, country: null, address: null, description: null,
+    offers_delivery: Boolean(activeLocation?.accepts_delivery ?? activeLocation?.offers_delivery) || deliveryZones.length > 0 || isDeliveryTicket,
+    offers_collection: true, currency_code: currency,
+    estimated_prep_time_minutes: 30, avg_rating: null, review_count: 0, categories: [], online_payment_available: false,
+    delivery_zones: deliveryZones.filter(zone => zone.is_active !== false), delivery_zones_required: deliveryZones.length > 0,
+    delivery_fee_cents: Math.round(Number(activeLocation?.delivery_fee || 0) * scale),
+    free_delivery_threshold_cents: Math.round(Number(activeLocation?.free_delivery_threshold || 0) * scale),
+  };
+  const draftProductsCents = activeTicket?.newItems.reduce((sum, item) => sum + Math.round(item.price * scale) * item.qty, 0) || 0;
+  const deliveryQuote = deliveryPrice(deliveryStore, draftProductsCents, isDeliveryTicket ? 'delivery' : 'collection', isDeliveryTicket ? activeTicket.deliveryZoneID : '');
+  const deliveryError = !isDeliveryTicket ? '' : loadingDeliveryZones ? 'Cargando tarifas de envío…' : deliveryZonesError ? 'No pudimos cargar las tarifas. Volvé a abrir Datos para actualizar.' : deliveryQuote.pending ? 'Elegí una zona de entrega en Datos.' : !deliveryQuote.ready ? `Agregá productos hasta alcanzar el mínimo de ${format(deliveryQuote.minimum)} para esta zona.` : (activeTicket.deliveryAddress?.trim().length || 0) < 8 ? 'Completá la dirección de entrega en Datos.' : '';
 	const editingNoteItem = activeTicket?.newItems.find((item) => item.id === editingNoteItemId);
 
 	const handleSaveOrderDetails = useCallback((details: OrderDetails) => {
@@ -931,6 +955,14 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
     setActiveTicketId(t.id);
   }, [walkInCounter]);
 
+  const handleAddDelivery = () => {
+    const ticket = { ...makeWalkInTicket(walkInCounter), fulfillment: 'delivery' as const };
+    setWalkInCounter(n => n + 1);
+    setTickets(previous => ({ ...previous, [ticket.id]: ticket }));
+    setActiveTicketId(ticket.id);
+    setShowOrderDetails(true);
+  };
+
   // commitAddItem — called directly (no modifiers) or after modifier picker confirms.
   const commitAddItem = useCallback((item: MenuItem, { extraCents = 0, selectedModifiers = [], linePriceCents = null }: {
     extraCents?: number;
@@ -1031,12 +1063,16 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
 
   const handleSend = useCallback(async () => {
     if (!activeTicket || activeTicket.newItems.length === 0) return;
+    if (deliveryError) { toast({ variant: 'destructive', title: 'Revisá la entrega', description: deliveryError }); setShowOrderDetails(true); return; }
     if (isStaffSession && !registerSession) { setIsOpenRegisterOpen(true); return; }
     setSending(true);
     try {
       const result = await submitPosOrder({
         locationId: activeLocation!.id,
-        orderType: activeTicket.kind === 'table' ? 'dine_in' : 'takeaway',
+        orderType: activeTicket.kind === 'table' ? 'dine_in' : activeTicket.fulfillment || 'takeaway',
+        deliveryAddress: activeTicket.deliveryAddress,
+        deliveryZoneID: activeTicket.deliveryZoneID,
+        expectedDeliveryFeeCents: deliveryQuote.fee,
         tableNumber: activeTicket.kind === 'table' ? String(activeTicket.table_number || activeTicket.label || '') : undefined,
         tableSessionId: activeTicket.kind === 'table' ? activeTicket.sessionId : undefined,
         registerSessionId: registerSession?.id,
@@ -1081,7 +1117,7 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
         payment_status: 'pending',
         paid_cents: 0,
         kitchen_status: result.kds_ticket_ids.length > 0 ? 'fired' : 'pending',
-        total_cents: typeof result.total === 'number'
+        total_cents: typeof result.total_minor === 'number' ? result.total_minor : typeof result.total === 'number'
           ? Math.round(result.total * scale)
           : sentItems.reduce((s, it) => s + it.total_cents, 0),
         items: sentItems,
@@ -1101,7 +1137,7 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
     } finally {
       setSending(false);
     }
-	}, [activeTicket, registerSession, activeLocation?.id, toast, scale]);
+  }, [activeTicket, registerSession, activeLocation?.id, toast, scale, deliveryError, deliveryQuote.fee]);
 
   const handleOpenCharge = () => {
     if (!activeTicket || activeTicket.sentOrders.length === 0) return;
@@ -1338,7 +1374,7 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
         .reduce((s, o) => s + Math.max(0, (o.total_cents || 0) - (o.paid_cents || 0)), 0)
     : 0;
   const newItemCount = activeTicket?.newItems.reduce((sum, item) => sum + item.qty, 0) || 0;
-  const newTotalCents = activeTicket?.newItems.reduce((sum, item) => sum + Math.round(parseFloat(String(item.price || 0)) * scale) * item.qty, 0) || 0;
+  const newTotalCents = draftProductsCents + (newItemCount ? deliveryQuote.fee : 0);
 
   return (
     <div className={cn('pos-workspace flex flex-col overflow-hidden bg-gradient-to-br from-background to-primary/5 dark:to-primary/10', embedded ? 'h-full' : 'h-[100dvh]')}>
@@ -1556,6 +1592,7 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
                       <span className="text-base font-bold text-foreground">Para llevar</span>
                       <span className="text-[11px] text-muted-foreground">Mostrador</span>
                     </button>
+                    {deliveryStore.offers_delivery && <button type="button" onClick={handleAddDelivery} aria-label="Iniciar pedido de delivery" className="col-span-2 flex min-h-14 items-center justify-center gap-3 rounded-2xl border-2 bg-card px-3 py-3 font-bold hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-ring"><Truck className="h-6 w-6 text-primary" />Delivery <span className="text-xs font-normal text-muted-foreground">Dirección y tarifa por zona</span></button>}
                 </div>
               </div>
             )}
@@ -1661,6 +1698,7 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
 
         {/* Active ticket */}
         <ActiveTicketPanel
+          delivery={isDeliveryTicket ? { fee: deliveryQuote.fee, zoneName: deliveryQuote.zone?.name, error: deliveryError, address: activeTicket.deliveryAddress } : undefined}
           className={cn('md:flex', mobileView === 'ticket' ? 'flex' : 'hidden')}
           ticket={activeTicket}
           newItems={activeTicket?.newItems || []}
@@ -1670,7 +1708,7 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
           onEditItemNotes={setEditingNoteItemId}
           onSend={handleSend}
           onCharge={handleOpenCharge}
-			onEditDetails={() => setShowOrderDetails(true)}
+			onEditDetails={() => { if (isDeliveryTicket) void refreshDeliveryZones(); setShowOrderDetails(true); }}
           onAdjustSuccess={() => {
             // Inline adjustment succeeded — refresh sent orders for the active ticket.
             toast({ title: 'Ajuste aplicado' });
@@ -1709,13 +1747,11 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
 			open={showOrderDetails}
 			onOpenChange={setShowOrderDetails}
 			orderLabel={activeTicket?.label || (activeTicket?.kind === 'table' ? `Mesa ${activeTicket.table_number || ''}` : 'Pedido de mostrador')}
-			orderType={activeTicket?.kind === 'table' ? 'dine_in' : 'takeaway'}
-			value={{
-				customerId: activeTicket?.customerId,
-				customerName: activeTicket?.customerName,
-				customerPhone: activeTicket?.customerPhone,
-				notes: activeTicket?.notes,
-			}}
+			orderType={activeTicket?.kind === 'table' ? 'dine_in' : activeTicket?.fulfillment || 'takeaway'}
+			deliveryStore={deliveryStore}
+			subtotal={draftProductsCents}
+			deliveryLocked={Boolean(activeTicket?.sentOrders.length)}
+			value={orderDetailsValue}
 			onSave={handleSaveOrderDetails}
 		/>
 		<ItemNoteDialog

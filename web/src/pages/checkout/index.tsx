@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import { FulfillmentPicker, OrderSummary } from '@/components/public-order';
+import { DeliveryZonePicker, FulfillmentPicker, OrderSummary } from '@/components/public-order';
 import { getStore, createOrder, clearCart, readCart, readCartMeta, writeCart, writeCartMeta, type StoreDetail, type CheckoutOrderPayload, type Order } from '@/services/marketplace';
 import { fulfillmentOptions, fulfillmentLabels, paymentLabel, orderTotals, publicMoney, reconcileCart, readSession, saveSession, checkoutRequestID, finishCheckout, type CheckoutDraft, type OrderLine } from '@/services/public-order';
 import { currencyScale } from '@/lib/currency';
@@ -33,9 +33,12 @@ function Checkout({ slug }: { slug: string }) {
   const sending = useRef(false);
   const [draft, setDraft] = useState<CheckoutDraft>(() => {
     const meta = readCartMeta(slug);
-    return readSession<CheckoutDraft>('bb.checkout-draft.' + slug) || {
+    const saved = readSession<CheckoutDraft>('bb.checkout-draft.' + slug);
+    return {
       customer_name: '', customer_phone: '', notes: '', delivery_address: meta.delivery_address || '',
-      table_label: meta.table_label || '', fulfillment_type: meta.fulfillment_type || 'collection', on_delivery_method: '',
+      table_label: meta.table_label || '', on_delivery_method: '', ...saved,
+      fulfillment_type: meta.fulfillment_type || saved?.fulfillment_type || 'collection',
+      delivery_zone_id: meta.delivery_zone_id ?? saved?.delivery_zone_id ?? '',
     };
   });
 
@@ -53,6 +56,7 @@ function Checkout({ slug }: { slug: string }) {
       const modes = fulfillmentOptions(data);
       const methods = data.on_delivery_payment_methods || [];
       setDraft(prev => ({ ...prev,
+        delivery_zone_id: data.delivery_zones?.some(zone => zone.id === prev.delivery_zone_id) ? prev.delivery_zone_id : '',
         fulfillment_type: modes.includes(prev.fulfillment_type) ? prev.fulfillment_type : modes[0] || 'collection',
         on_delivery_method: methods.includes(prev.on_delivery_method) ? prev.on_delivery_method : methods[0] || '',
       }));
@@ -64,7 +68,7 @@ function Checkout({ slug }: { slug: string }) {
   useEffect(() => {
     if (result) return;
     saveSession('bb.checkout-draft.' + slug, draft);
-    writeCartMeta(slug, { fulfillment_type: draft.fulfillment_type, delivery_address: draft.delivery_address, table_label: draft.table_label });
+    writeCartMeta(slug, { fulfillment_type: draft.fulfillment_type, delivery_address: draft.delivery_address, delivery_zone_id: draft.delivery_zone_id, table_label: draft.table_label });
   }, [draft, slug, result]);
 
   function update<K extends keyof CheckoutDraft>(key: K, value: CheckoutDraft[K]) {
@@ -74,6 +78,7 @@ function Checkout({ slug }: { slug: string }) {
   function advanceCheckout(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (step === 'details') {
+      if (store && !orderTotals(items, store, draft.fulfillment_type, draft.delivery_zone_id).deliveryReady) { setError('Elegí una zona habilitada y alcanzá su pedido mínimo para continuar.'); return; }
       if (draft.fulfillment_type === 'dine_in' && !draft.table_label.trim()) { setError('Ingresá el número de mesa para identificar tu pedido.'); return; }
       if (draft.fulfillment_type !== 'dine_in' && draft.customer_name.trim().length < 2) { setError('Ingresá tu nombre para identificar el pedido.'); return; }
       if (draft.fulfillment_type !== 'dine_in' && draft.customer_phone.replace(/\D/g, '').length < 8) { setError('Ingresá un teléfono válido, con código de área.'); return; }
@@ -94,6 +99,7 @@ function Checkout({ slug }: { slug: string }) {
   }
   async function submit() {
     if (!store || sending.current || !items.length) return;
+    if (!orderTotals(items, store, draft.fulfillment_type, draft.delivery_zone_id).deliveryReady) { setError('Revisá la zona de entrega y su pedido mínimo.'); setStep('details'); return; }
     sending.current = true;
     setSubmitting(true);
     setError('');
@@ -102,10 +108,10 @@ function Checkout({ slug }: { slug: string }) {
       customer_phone: draft.fulfillment_type === 'dine_in' ? '' : draft.customer_phone.trim(),
       fulfillment_type: draft.fulfillment_type, on_delivery_method: draft.on_delivery_method,
       notes: draft.notes.trim(),
-      ...(draft.fulfillment_type === 'delivery' ? { delivery_address: draft.delivery_address.trim() } : {}),
+      ...(draft.fulfillment_type === 'delivery' ? { delivery_address: draft.delivery_address.trim(), delivery_zone_id: draft.delivery_zone_id || undefined } : {}),
       ...(draft.fulfillment_type === 'dine_in' ? { table_label: draft.table_label.trim() } : {}),
       items: items.map(i => ({ item_id: i.id, quantity: i.quantity, notes: i.notes })),
-      expected_total_cents: orderTotals(items, store, draft.fulfillment_type).total,
+      expected_total_cents: orderTotals(items, store, draft.fulfillment_type, draft.delivery_zone_id).total,
     };
     payload.request_id = checkoutRequestID(slug, payload);
     try {
@@ -143,12 +149,15 @@ function Checkout({ slug }: { slug: string }) {
   const isDineIn = draft.fulfillment_type === 'dine_in';
   const canUseMode = store.accepting_orders !== false && fulfillmentOptions(store).includes(draft.fulfillment_type);
   const paymentReady = (Boolean(draft.on_delivery_method) || isDineIn) && (draft.on_delivery_method !== 'eft' || Boolean(store.transfer_details?.account_holder && (store.transfer_details.alias || store.transfer_details.cbu)));
-  const canOrder = canUseMode && paymentReady;
+  const totals = orderTotals(items, store, draft.fulfillment_type, draft.delivery_zone_id);
+  const canOrder = canUseMode && paymentReady && totals.deliveryReady;
   const canAdvance = canUseMode && (step !== 'payment' || paymentReady);
-  const total = orderTotals(items, store, draft.fulfillment_type).total;
+  const total = totals.total;
   const itemCount = items.reduce((count, item) => count + item.quantity, 0);
   const reviewDetails: [string, string][] = [
     ['Modalidad', fulfillmentLabels[draft.fulfillment_type]],
+    ...(totals.deliveryZone && draft.fulfillment_type === 'delivery' ? [['Zona de entrega', totals.deliveryZone.name]] as [string, string][] : []),
+    ...(draft.fulfillment_type === 'delivery' ? [['Costo de envío', totals.delivery ? publicMoney(totals.delivery, store) : 'Sin cargo']] as [string, string][] : []),
     ...(!isDineIn ? [['Nombre', draft.customer_name], ['Teléfono', draft.customer_phone]] as [string, string][] : []),
     [isDineIn ? 'Número de mesa' : draft.fulfillment_type === 'delivery' ? 'Dirección de entrega' : 'Retiro en', isDineIn ? draft.table_label : draft.fulfillment_type === 'delivery' ? draft.delivery_address : store.address || store.name],
     ['Pago', draft.on_delivery_method ? paymentLabel(draft.on_delivery_method, draft.fulfillment_type) : (isDineIn ? 'A pagar al final en caja' : draft.on_delivery_method)],
@@ -174,7 +183,7 @@ function Checkout({ slug }: { slug: string }) {
           <span>Tu pedido <span className="font-normal text-muted-foreground">· {itemCount} productos</span></span>
           <span className="shrink-0 tabular-nums">{publicMoney(total, store)}</span>
         </summary>
-        <div className="pt-2"><OrderSummary items={items} store={store} mode={draft.fulfillment_type} /></div>
+        <div className="pt-2"><OrderSummary items={items} store={store} mode={draft.fulfillment_type} zoneID={draft.delivery_zone_id} /></div>
       </details>
       <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
         {step !== 'review' ? <form id="checkout-step-form" onSubmit={advanceCheckout} className="min-w-0 space-y-6 rounded-2xl border bg-card p-4 sm:p-6">
@@ -182,6 +191,7 @@ function Checkout({ slug }: { slug: string }) {
           {step === 'details' && <p className="flex items-start gap-2 rounded-xl bg-muted/60 p-3 text-sm text-muted-foreground"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span>{isDineIn ? 'El local recibe tu número de mesa y los datos necesarios para preparar el pedido; no pedimos nombre ni teléfono.' : 'Sin cuenta ni datos de tarjeta. El local recibe tu teléfono y, si elegís delivery, tu dirección para coordinar el pedido.'} <Link className="underline" to="/legal/privacy">Ver privacidad</Link>.</span></p>}
           {step === 'details' && <>
           <FulfillmentPicker store={store} value={draft.fulfillment_type} onChange={value => update('fulfillment_type', value)} />
+          {draft.fulfillment_type === 'delivery' && <DeliveryZonePicker store={store} value={draft.delivery_zone_id || ''} subtotal={totals.subtotal} onChange={value => update('delivery_zone_id', value)} />}
           {draft.fulfillment_type !== 'dine_in' ? <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2"><Label htmlFor="customer-name">Nombre del cliente</Label><Input id="customer-name" autoComplete="name" autoCapitalize="words" required minLength={2} maxLength={100} placeholder="¿A nombre de quién?" value={draft.customer_name} onChange={e => update('customer_name', e.target.value)} className="h-12 text-base" /></div>
             <div className="space-y-2"><Label htmlFor="customer-phone">Teléfono de contacto</Label><Input id="customer-phone" type="tel" inputMode="tel" autoComplete="tel" required maxLength={24} placeholder="Código de área + número" value={draft.customer_phone} onChange={e => update('customer_phone', e.target.value)} className="h-12 text-base" /><p className="text-xs text-muted-foreground">Solo para coordinar este pedido. Incluí el código de área.</p></div>
@@ -208,13 +218,13 @@ function Checkout({ slug }: { slug: string }) {
           <Button type="button" variant="outline" disabled={submitting} onClick={goBack} className="hidden h-11 w-full xl:flex">Volver a pago</Button>
           <p className="text-center text-xs text-muted-foreground">Después de confirmar vas a poder seguir el estado desde esta web.</p>
         </section>}
-        <aside className="hidden min-w-0 self-start rounded-2xl border bg-card p-5 xl:sticky xl:top-5 xl:block"><div className="flex justify-between gap-2"><h2 className="text-lg font-bold">Tu pedido</h2><Link to={menuURL} className="text-sm text-primary underline">Editar</Link></div><OrderSummary items={items} store={store} mode={draft.fulfillment_type} /></aside>
+        <aside className="hidden min-w-0 self-start rounded-2xl border bg-card p-5 xl:sticky xl:top-5 xl:block"><div className="flex justify-between gap-2"><h2 className="text-lg font-bold">Tu pedido</h2><Link to={menuURL} className="text-sm text-primary underline">Editar</Link></div><OrderSummary items={items} store={store} mode={draft.fulfillment_type} zoneID={draft.delivery_zone_id} /></aside>
       </div>
     </main>
     <div className="fixed inset-x-0 bottom-0 z-20 border-t bg-background/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur xl:hidden">
       {step === 'review' ? <div className="mx-auto flex max-w-5xl gap-2">
         <Button type="button" variant="outline" disabled={submitting} onClick={goBack} className="h-14 shrink-0 rounded-xl px-4"><ArrowLeft className="mr-1 h-4 w-4" />Volver</Button>
-        <Button type="button" onClick={() => void submit()} disabled={submitting || !canOrder} className="h-14 min-w-0 flex-1 justify-between gap-2 rounded-xl px-3 text-sm sm:px-5">{submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Enviando…</> : <><span className="min-w-0 truncate">Confirmar pedido</span><span className="shrink-0 text-xs tabular-nums sm:text-sm">{publicMoney(total, store)}</span></>}</Button>
+        <Button type="button" onClick={() => void submit()} disabled={submitting || !canOrder} aria-label={submitting ? 'Enviando pedido' : 'Confirmar pedido · ' + publicMoney(total, store)} className="h-14 min-w-0 flex-1 justify-between gap-2 rounded-xl px-3 text-sm sm:px-5">{submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Enviando…</> : <><span className="min-w-0 truncate"><span className="sm:hidden">Confirmar</span><span className="hidden sm:inline">Confirmar pedido</span></span><span className="shrink-0 text-xs tabular-nums sm:text-sm">{publicMoney(total, store)}</span></>}</Button>
       </div> : <div className="mx-auto flex max-w-5xl gap-2">
         {step === 'payment' && <Button type="button" variant="outline" onClick={goBack} className="h-14 shrink-0 rounded-xl px-4"><ArrowLeft className="mr-1 h-4 w-4" />Volver</Button>}
         <Button type="submit" form="checkout-step-form" disabled={!canAdvance} className="h-14 min-w-0 flex-1 justify-between rounded-xl px-4 sm:px-5">

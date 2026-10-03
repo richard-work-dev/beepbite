@@ -7,30 +7,41 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import CustomerSearch from './customer-search';
 import type { CustomerSearchResult } from '@/services/customers';
+import { DeliveryZonePicker } from '@/components/public-order';
+import type { StoreDetail } from '@/services/marketplace';
 
 export interface OrderDetails {
   customerId?: string;
   customerName?: string;
   customerPhone?: string;
   notes?: string;
+  fulfillment?: 'takeaway' | 'delivery';
+  deliveryAddress?: string;
+  deliveryZoneID?: string;
 }
 
 interface OrderDetailsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   orderLabel: string;
-  orderType: 'dine_in' | 'takeaway';
+  orderType: 'dine_in' | 'takeaway' | 'delivery';
+  deliveryStore?: StoreDetail;
+  subtotal?: number;
+  deliveryLocked?: boolean;
   value: OrderDetails;
   onSave: (value: OrderDetails) => void;
 }
 
 export default function OrderDetailsDialog({
-  open, onOpenChange, orderLabel, orderType, value, onSave,
+  open, onOpenChange, orderLabel, orderType, value, onSave, deliveryStore, subtotal = 0, deliveryLocked = false,
 }: OrderDetailsDialogProps) {
   const [customerId, setCustomerId] = useState<string | undefined>();
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [notes, setNotes] = useState('');
+  const [fulfillment, setFulfillment] = useState<'takeaway' | 'delivery'>('takeaway');
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [zoneID, setZoneID] = useState('');
 
   useEffect(() => {
     if (!open) return;
@@ -38,7 +49,10 @@ export default function OrderDetailsDialog({
     setCustomerName(value.customerName || '');
     setCustomerPhone(value.customerPhone || '');
     setNotes(value.notes || '');
-  }, [open, value]);
+    setFulfillment(orderType === 'delivery' ? 'delivery' : 'takeaway');
+    setDeliveryAddress(value.deliveryAddress || '');
+    setZoneID(value.deliveryZoneID || '');
+  }, [open, value, orderType]);
 
   const selectCustomer = (customer: CustomerSearchResult) => {
     setCustomerId(customer.id);
@@ -58,6 +72,7 @@ export default function OrderDetailsDialog({
       customerName: customerName.trim() || undefined,
       customerPhone: customerPhone.trim() || undefined,
       notes: notes.trim() || undefined,
+      ...(orderType !== 'dine_in' ? { fulfillment, deliveryAddress: deliveryAddress.trim(), deliveryZoneID: zoneID } : {}),
     });
     onOpenChange(false);
   };
@@ -68,7 +83,7 @@ export default function OrderDetailsDialog({
         <DialogHeader className="shrink-0 border-b border-border px-4 py-4 pr-12 text-left sm:px-6 sm:py-5 sm:pr-12">
           <DialogTitle>Datos del pedido</DialogTitle>
           <DialogDescription>
-            {orderLabel} · {orderType === 'dine_in' ? 'Consumo en el local' : 'Para llevar'}. Estos datos aparecerán en la comanda de cocina.
+            {orderLabel} · {orderType === 'dine_in' ? 'Consumo en el local' : orderType === 'delivery' ? 'Delivery' : 'Para llevar'}. Estos datos aparecerán en la comanda de cocina.
           </DialogDescription>
           <div className="grid grid-cols-3 gap-2 pt-2 text-center text-[11px]" aria-label="Paso actual del pedido">
             <div className="rounded-md border border-primary/30 bg-primary/10 px-2 py-1.5 font-semibold text-primary"><span className="mr-1">1</span> Productos</div>
@@ -77,6 +92,16 @@ export default function OrderDetailsDialog({
           </div>
         </DialogHeader>
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-5">
+          {orderType !== 'dine_in' && deliveryStore?.offers_delivery && <section className="space-y-3">
+            <Label htmlFor="pos-fulfillment">Modalidad del pedido</Label>
+            <select id="pos-fulfillment" disabled={deliveryLocked} value={fulfillment} onChange={event => setFulfillment(event.target.value as 'takeaway' | 'delivery')} className="h-12 w-full rounded-xl border bg-background px-3 text-base focus-visible:ring-2 focus-visible:ring-ring"><option value="takeaway">Para llevar</option><option value="delivery">Delivery</option></select>
+            {deliveryLocked && <p className="text-xs text-muted-foreground">La modalidad de los pedidos enviados no se cambia. Abrí una cuenta nueva para otra modalidad.</p>}
+            {fulfillment === 'delivery' && <>
+              <DeliveryZonePicker store={deliveryStore} value={zoneID} onChange={setZoneID} subtotal={subtotal} />
+              <Label htmlFor="pos-delivery-address">Dirección de entrega</Label>
+              <Textarea id="pos-delivery-address" value={deliveryAddress} onChange={event => setDeliveryAddress(event.target.value)} maxLength={500} placeholder="Calle, altura, piso/depto y localidad" autoComplete="street-address" />
+            </>}
+          </section>}
           <section className="space-y-3" aria-labelledby="order-customer-heading">
             <div>
               <h3 id="order-customer-heading" className="font-semibold text-foreground">Cliente</h3>

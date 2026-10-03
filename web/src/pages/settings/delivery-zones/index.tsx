@@ -94,9 +94,9 @@ export default function DeliveryZonesPage() {
     if (!toDelete) return;
     try {
       await deleteZone(toDelete.id);
-      toast({ title: 'Zona desactivada.' });
+      toast({ title: 'Zona eliminada.' });
     } catch (err) {
-      toast({ variant: 'destructive', title: 'No se pudo desactivar', description: err instanceof Error ? err.message : 'Error desconocido' });
+      toast({ variant: 'destructive', title: 'No se pudo eliminar', description: err instanceof Error ? err.message : 'Error desconocido' });
     } finally {
       setToDelete(null);
     }
@@ -123,7 +123,7 @@ export default function DeliveryZonesPage() {
       <PageHeader
         eyebrow="Configuración"
         title="Zonas de entrega"
-        description={`Definí las áreas de entrega, sus costos y tiempos estimados para ${activeLocation.name}.`}
+        description={`Configurá el precio de cada barrio o zona de ${activeLocation.name}. El cliente elige su zona y el envío se agrega al total.`}
         icon={MapPin}
         actions={
           <Button onClick={openNew} className="gap-2">
@@ -171,9 +171,9 @@ export default function DeliveryZonesPage() {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[200px]">Nombre</TableHead>
-                <TableHead>Fee</TableHead>
+                <TableHead>Costo de envío</TableHead>
                 <TableHead>Pedido mínimo</TableHead>
-                <TableHead>ETA</TableHead>
+                <TableHead>Tiempo estimado</TableHead>
                 <TableHead>Prioridad</TableHead>
                 <TableHead className="text-center">Activo</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
@@ -185,7 +185,7 @@ export default function DeliveryZonesPage() {
                   <TableCell className="font-medium">{zone.name}</TableCell>
                   <TableCell className="text-sm">
                     {zone.delivery_fee_cents === 0
-                      ? <Badge variant="outline" className="text-green-700 border-green-400">Free</Badge>
+                      ? <Badge variant="outline" className="text-green-700 border-green-400">Sin cargo</Badge>
                       : fmtCents(zone.delivery_fee_cents)
                     }
                   </TableCell>
@@ -201,8 +201,8 @@ export default function DeliveryZonesPage() {
                   <TableCell className="text-center">
                     <Switch
                       checked={zone.is_active}
-                      onCheckedChange={() => toggleActive(zone)}
-                      aria-label="Cambiar estado activo"
+                      onCheckedChange={() => { void toggleActive(zone).catch(err => toast({ variant: 'destructive', title: 'No se pudo cambiar el estado', description: err instanceof Error ? err.message : 'Volvé a intentar' })); }}
+                      aria-label={`Habilitar zona ${zone.name}`}
                     />
                   </TableCell>
                   <TableCell className="text-right">
@@ -210,18 +210,20 @@ export default function DeliveryZonesPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-8 w-8 p-0"
+                        className="h-11 w-11 p-0"
                         onClick={() => openEdit(zone)}
                         title="Editar"
+                        aria-label={`Editar zona ${zone.name}`}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                        className="h-11 w-11 p-0 text-destructive hover:text-destructive"
                         onClick={() => setToDelete(zone)}
-                        title="Desactivar"
+                        title="Eliminar"
+                        aria-label={`Eliminar zona ${zone.name}`}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -264,10 +266,9 @@ export default function DeliveryZonesPage() {
       <AlertDialog open={Boolean(toDelete)} onOpenChange={(v) => !v && setToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Desactivar zona?</AlertDialogTitle>
+            <AlertDialogTitle>¿Eliminar zona?</AlertDialogTitle>
             <AlertDialogDescription>
-              "{toDelete?.name}" will be deactivated and hidden from delivery lookups.
-              You can re-enable it later from the table.
+              Se eliminará la zona «{toDelete?.name}» de los nuevos pedidos. Los pedidos ya creados conservan su tarifa. Para pausarla temporalmente, usá el interruptor de la tabla.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -276,7 +277,7 @@ export default function DeliveryZonesPage() {
               onClick={confirmDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Desactivar
+              Eliminar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

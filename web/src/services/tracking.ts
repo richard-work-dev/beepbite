@@ -31,6 +31,8 @@ type TrackingStatus =
   | 'delivered' | 'completed' | 'cancelled';
 
 interface RawTracking {
+  delivery_fee_cents?: number;
+  delivery_zone_name?: string;
   order_number?: string;
   total_cents?: number;
   currency_code?: string;
@@ -60,6 +62,8 @@ interface RawTracking {
 }
 
 export interface TrackingPayload {
+  deliveryFeeCents?: number;
+  deliveryZoneName?: string;
   orderNumber?: string;
   totalCents?: number;
   currency?: string;
@@ -91,6 +95,7 @@ function normalizeTracking(raw: RawTracking | null): TrackingPayload | null {
   }
 
   return {
+    deliveryFeeCents: raw.delivery_fee_cents, deliveryZoneName: raw.delivery_zone_name,
     orderNumber: raw.order_number, totalCents: raw.total_cents, currency: raw.currency_code,
     locale: raw.locale, paymentStatus: raw.payment_status, paymentMethod: raw.payment_method,
     transferDetails: raw.transfer_details,

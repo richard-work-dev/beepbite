@@ -36,6 +36,8 @@ export interface Receipt {
   created_at: string;
   line_items: ReceiptLineItem[];
   subtotal_cents: number;
+  delivery_fee_cents?: number;
+  delivery_zone_name?: string;
   tax_cents: number;
   tip_cents: number;
   total_cents: number;

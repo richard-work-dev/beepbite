@@ -13,7 +13,7 @@ const products = Array.from({ length: 12 }, (_, index) => ({
   preparation_time_minutes: 20, remaining_today: 30,
 }));
 const org = { id: 'test-org', name: 'RikoPollo', slug: 'rikopollo', is_active: true };
-const location = { id: 'test-location', organization_id: org.id, name: 'RikoPollo Centro', slug: 'rikopollo', is_active: true, service_style: 'takeaway', currency_code: 'ARS', locale: 'es-AR', timezone: 'America/Argentina/Buenos_Aires' };
+const location = { id: 'test-location', organization_id: org.id, name: 'RikoPollo Centro', slug: 'rikopollo', is_active: true, accepts_delivery: true, service_style: 'takeaway', currency_code: 'ARS', locale: 'es-AR', timezone: 'America/Argentina/Buenos_Aires' };
 const store = { ...location, name: 'RikoPollo', address: 'Av. Las Américas 650, Misiones', description: '', offers_collection: true, offers_delivery: true, offers_dine_in: true, accepting_orders: true, estimated_prep_time_minutes: 30, on_delivery_payment_methods: ['cash', 'eft'], online_payment_available: false, transfer_details: { account_holder: 'RikoPollo', alias: 'riko.pollo' }, tax_rate: 0, categories: [{ id: 'combos', name: 'Pollos y combos', items: products }] };
 const sizes = [
   ['teléfono compacto', { width: 320, height: 568 }],
@@ -23,9 +23,16 @@ const sizes = [
   ['teléfono horizontal', { width: 844, height: 390 }],
   ['laptop', { width: 1366, height: 768 }],
 ];
+const zones = [
+  { id: 'centro', location_id: location.id, name: 'Centro', delivery_fee_cents: 150000, min_order_cents: 0, estimated_eta_minutes: 30, is_active: true },
+  { id: 'norte', location_id: location.id, name: 'Zona norte', delivery_fee_cents: 300000, min_order_cents: 2000000, estimated_eta_minutes: 45, is_active: true },
+];
+store.delivery_zones = zones;
+store.delivery_zones_required = true;
 
-async function mockApp(page, authenticated = false) {
+async function mockApp(page, authenticated = false, onSubmit = () => {}) {
   const errors = [];
+  const configuredZones = [...zones];
   page.on('pageerror', error => errors.push(error.message));
   await page.addInitScript(() => localStorage.setItem('bb.cookie-consent', JSON.stringify({ necessary: true, analytics: false, marketing: false })));
   if (authenticated) await page.addInitScript(({ org, location }) => {
@@ -38,7 +45,19 @@ async function mockApp(page, authenticated = false) {
     if (!['fetch', 'xhr'].includes(request.resourceType())) return route.continue();
     const path = new URL(request.url()).pathname;
     let data = [];
-    if (path.endsWith('/stores/rikopollo')) data = store;
+    if (request.method() === 'POST' && (path.endsWith('/stores/rikopollo/orders') || path.endsWith('/pos/orders'))) {
+      const body = request.postDataJSON();
+      onSubmit(body);
+      const fee = zones.find(zone => zone.id === body.delivery_zone_id)?.delivery_fee_cents || 0;
+      const total = body.items.reduce((sum, line) => sum + Number(products.find(product => product.id === line.item_id)?.price || 0) * 100 * line.quantity, 0) + fee;
+      data = { order_id: 'new-order', order_number: 'WEB-DELIVERY', total_cents: total, total_minor: total, total: total / 100, currency_code: 'ARS', kds_ticket_ids: [], items: [], payment_method: 'cash', status: 'confirmed' };
+    } else if (path.endsWith('/delivery-zones') && request.method() === 'POST') {
+      const body = request.postDataJSON();
+      onSubmit(body);
+      data = { ...body, id: 'new-zone' };
+      configuredZones.push(data);
+    } else if (path.endsWith('/delivery-zones')) data = configuredZones;
+    else if (path.endsWith('/stores/rikopollo')) data = store;
     else if (path.endsWith('/me/preferences')) data = { last_view_pos: 'full', last_view_kds: 'station' };
     else if (path.endsWith('/auth/me')) data = { id: 'test-user', email: 'ux@example.test' };
     else if (path.endsWith('/data/organization_members')) data = [{ organization_id: org.id, profile_id: 'test-user', role: 'owner', capabilities: {} }];
@@ -68,6 +87,32 @@ async function withinScreen(page, locator) {
 }
 
 for (const [name, viewport] of sizes) {
+  test(`delivery por zona: total y confirmación — ${name}`, async ({ page }, testInfo) => {
+    await page.setViewportSize(viewport);
+    let submitted;
+    const errors = await mockApp(page, false, body => { submitted = body; });
+    await page.goto('/store/rikopollo', { waitUntil: 'domcontentloaded' });
+    await page.getByText('Delivery', { exact: true }).click();
+    await page.getByLabel('Zona de entrega', { exact: true }).selectOption('centro');
+    await page.getByRole('button', { name: `Agregar ${products[0].name}`, exact: true }).click();
+    if (viewport.width < 1024) await page.getByRole('button', { name: /Ver pedido · 1/ }).click();
+    const cart = viewport.width < 1024 ? page.getByRole('dialog') : page.getByRole('complementary', { name: 'Tu pedido' });
+    await expect(cart.getByText('Envío · Centro', { exact: true })).toBeVisible();
+    await cart.getByRole('link', { name: 'Continuar', exact: true }).click();
+    await expect(page.getByLabel('Zona de entrega', { exact: true })).toHaveValue('centro');
+    await page.getByLabel('Nombre del cliente').fill('María López');
+    await page.getByLabel('Teléfono de contacto').fill('3755123456');
+    await page.getByLabel('Dirección de entrega', { exact: true }).fill('Av. Las Américas 650, Centro');
+    await page.getByRole('button', { name: /Continuar al pago/ }).filter({ visible: true }).click();
+    await page.getByRole('button', { name: /Revisar pedido/ }).filter({ visible: true }).click();
+    await expect(page.getByText('Centro', { exact: true })).toBeVisible();
+    await noHorizontalOverflow(page);
+    await page.screenshot({ path: testInfo.outputPath('delivery.png'), animations: 'disabled' });
+    await page.getByRole('button', { name: /Confirmar pedido/ }).filter({ visible: true }).click();
+    await expect(page.getByRole('heading', { name: '¡Pedido recibido!' })).toBeVisible();
+    expect(submitted).toMatchObject({ fulfillment_type: 'delivery', delivery_zone_id: 'centro', expected_total_cents: 1400000 });
+    expect(errors).toEqual([]);
+  });
   test(`menú y checkout adaptables — ${name}`, async ({ page }, testInfo) => {
     await page.setViewportSize(viewport);
     const errors = await mockApp(page);
@@ -157,3 +202,42 @@ for (const [name, viewport] of sizes) {
     expect(errors).toEqual([]);
   });
 }
+
+test('configurar precio de zona en pesos sin mapa', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  let submitted;
+  const errors = await mockApp(page, true, body => { submitted = body; });
+  await page.goto('/settings/delivery-zones', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Nueva zona', exact: true }).first().click();
+  await page.getByLabel('Nombre de la zona *', { exact: true }).fill('Barrio sur');
+  await page.getByLabel('Costo de envío (ARS)', { exact: true }).fill('2500');
+  await page.getByLabel('Pedido mínimo (ARS)', { exact: true }).fill('10000');
+  await page.getByRole('button', { name: 'Crear zona', exact: true }).click();
+  await expect(page.getByText('Barrio sur', { exact: true })).toBeVisible();
+  expect(submitted).toMatchObject({ name: 'Barrio sur', delivery_fee_cents: 250000, min_order_cents: 1000000, polygon: null });
+  await noHorizontalOverflow(page);
+  expect(errors).toEqual([]);
+});
+
+test('POS delivery suma tarifa antes de enviar a cocina', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  let submitted;
+  const errors = await mockApp(page, true, body => { submitted = body; });
+  await page.goto('/pos/workspace', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Iniciar pedido de delivery', exact: true }).click();
+  await page.getByLabel('Zona de entrega', { exact: true }).selectOption('centro');
+  await page.getByLabel('Dirección de entrega', { exact: true }).fill('Av. Las Américas 650, Centro');
+  await page.getByLabel('Nombre del cliente').fill('María López');
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click();
+  await page.getByRole('button', { name: /^Agregar Combo de pollo/ }).click();
+  await page.getByRole('button', { name: /Revisar pedido · 1/ }).click();
+  await expect(page.getByText('Envío · Centro', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: /Revisar y enviar 1/ }).click();
+  const review = page.getByRole('alertdialog');
+  await expect(review.getByText('Av. Las Américas 650, Centro', { exact: true })).toBeVisible();
+  await review.getByRole('button', { name: 'Confirmar y enviar', exact: true }).click();
+  await expect(page.getByText(/Pedido n.º WEB-DELIVERY enviado a cocina/)).toBeVisible();
+  expect(submitted).toMatchObject({ order_type: 'delivery', delivery_zone_id: 'centro', expected_delivery_fee_cents: 150000, delivery_address: 'Av. Las Américas 650, Centro' });
+  await noHorizontalOverflow(page);
+  expect(errors).toEqual([]);
+});

@@ -61,6 +61,7 @@ import CourseSelect, { type Course } from './course-select';
 // ---------------------------------------------------------------------------
 
 export interface TicketLike {
+  fulfillment?: 'takeaway' | 'delivery';
   // `string & {}` (not bare `string`) keeps 'walkin'/'table' from being
   // swallowed by the wider type — IDE autocomplete still suggests them,
   // while any other string is still accepted.
@@ -157,7 +158,7 @@ function TicketHeader({ ticket, onAdjustGuests, onEditDetails }: TicketHeaderPro
 					<p className="truncate text-base font-bold text-gray-900 dark:text-white">{title}</p>
 				</div>
 				{walkIn ? (
-					<span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-400"><Receipt className="h-3 w-3" />Para llevar</span>
+					<span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-400"><Receipt className="h-3 w-3" />{ticket.fulfillment === 'delivery' ? 'Delivery' : 'Para llevar'}</span>
 				) : onAdjustGuests ? (
 					<button type="button" onClick={onAdjustGuests} aria-label={`Ajustar cantidad de comensales: ${ticket.party_size || 1}`} className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Users className="h-3.5 w-3.5" />{ticket.party_size || 1} {(ticket.party_size || 1) === 1 ? 'comensal' : 'comensales'}</button>
 				) : null}
@@ -505,7 +506,15 @@ function NewSection({ newItems, onBumpQty, onRemove, onEditNotes, courses, onSet
 // Footer — totals + Send + Charge
 // ---------------------------------------------------------------------------
 
+interface TicketDelivery {
+  fee: number;
+  zoneName?: string;
+  error?: string;
+  address?: string;
+}
+
 interface TicketFooterProps {
+  delivery?: TicketDelivery;
   ticket: TicketLike | null;
   newSubtotalCents: number;
   sentSubtotalCents: number;
@@ -520,6 +529,7 @@ interface TicketFooterProps {
 }
 
 function TicketFooter({
+  delivery,
   ticket,
   newSubtotalCents,
   sentSubtotalCents,
@@ -535,7 +545,7 @@ function TicketFooter({
   const { format, scale } = useMoney();
   const [reviewOpen, setReviewOpen] = useState(false);
   const editDetailsAfterClose = useRef(false);
-  const canSend = newItemsCount > 0 && !sending && Boolean(ticket);
+  const canSend = newItemsCount > 0 && !sending && Boolean(ticket) && !delivery?.error;
   const canCharge = hasUnpaidOrders && !sending && Boolean(ticket);
 
   return (
@@ -564,6 +574,8 @@ function TicketFooter({
         <span className="text-2xl font-bold text-gray-900 dark:text-white tabular-nums tracking-tight">{format(totalCents)}</span>
       </div>
 
+      {delivery && newItemsCount > 0 && <div className="flex justify-between gap-2 text-sm"><span>Envío{delivery.zoneName ? ` · ${delivery.zoneName}` : ''}</span><strong className="shrink-0 tabular-nums">{format(delivery.fee)}</strong></div>}
+      {delivery?.error && newItemsCount > 0 && <p role="status" className="text-xs text-destructive">{delivery.error}</p>}
       {/* Send / Charge — min-height 56px for thumb-friendly tap targets */}
       <div className="grid grid-cols-1 gap-2">
 		<AlertDialog open={reviewOpen} onOpenChange={setReviewOpen}>
@@ -586,7 +598,8 @@ function TicketFooter({
 				</AlertDialogHeader>
 				<div className="min-h-0 min-w-0 space-y-3 overflow-y-auto overscroll-contain">
 				<div className="min-w-0 space-y-2 rounded-lg border bg-muted/40 p-3 text-sm">
-					<div className="grid min-w-0 grid-cols-[minmax(5.5rem,auto)_minmax(0,1fr)] gap-x-3 gap-y-2"><span>Destino</span><strong className="min-w-0 break-words text-right">{ticket?.kind === 'table' ? `Mesa ${ticket.table_number || ''}` : 'Para llevar'}</strong></div>
+					<div className="grid min-w-0 grid-cols-[minmax(5.5rem,auto)_minmax(0,1fr)] gap-x-3 gap-y-2"><span>Destino</span><strong className="min-w-0 break-words text-right">{ticket?.kind === 'table' ? `Mesa ${ticket.table_number || ''}` : delivery ? 'Delivery' : 'Para llevar'}</strong></div>
+                    {delivery && <><div className="flex justify-between gap-3"><span>Zona / envío</span><strong className="min-w-0 break-words text-right">{delivery.zoneName || 'Tarifa general'} · {format(delivery.fee)}</strong></div><p className="break-words text-sm">{delivery.address}</p><div className="flex justify-between gap-3"><span>Total nuevo</span><strong>{format(newSubtotalCents + delivery.fee)}</strong></div></>}
 					<div className="grid min-w-0 grid-cols-[minmax(5.5rem,auto)_minmax(0,1fr)] gap-x-3 gap-y-2"><span>Cliente</span><strong className="min-w-0 break-words text-right">{ticket?.customerName || 'Mostrador'}</strong></div>
 					<div className="grid min-w-0 grid-cols-[minmax(5.5rem,auto)_minmax(0,1fr)] gap-x-3 gap-y-2"><span>Teléfono</span><strong className="min-w-0 break-words text-right">{ticket?.customerPhone || 'Sin teléfono'}</strong></div>
 					<div className="grid min-w-0 grid-cols-[minmax(5.5rem,auto)_minmax(0,1fr)] gap-x-3 gap-y-2"><span>Productos</span><strong className="min-w-0 text-right">{newItemsCount}</strong></div>
@@ -628,6 +641,7 @@ function TicketFooter({
 // ---------------------------------------------------------------------------
 
 interface ActiveTicketPanelProps {
+  delivery?: TicketDelivery;
   className?: string;
   ticket: TicketLike | null;
   newItems?: NewTicketItem[];
@@ -647,6 +661,7 @@ interface ActiveTicketPanelProps {
 }
 
 export default function ActiveTicketPanel({
+  delivery,
   className,
   ticket,                // active ticket object or null
   newItems = [],         // unsent items: [{ id, item_id, name, price, qty, course_id, ... }]
@@ -678,7 +693,7 @@ export default function ActiveTicketPanel({
       return lineSum + Math.round((parseFloat(String(it.unit_price ?? 0)) * (it.quantity || 0)) * scale);
     }, 0);
   }, 0);
-  const totalCents = newSubtotalCents + sentSubtotalCents;
+  const totalCents = newSubtotalCents + sentSubtotalCents + (newItems.length ? delivery?.fee || 0 : 0);
 
   const hasUnpaidOrders = sentOrders.some((o) => o.payment_status !== 'paid');
 
@@ -709,6 +724,7 @@ export default function ActiveTicketPanel({
       </div>
 
       <TicketFooter
+        delivery={delivery}
         ticket={ticket}
         newSubtotalCents={newSubtotalCents}
         sentSubtotalCents={sentSubtotalCents}

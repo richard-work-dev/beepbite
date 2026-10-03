@@ -8,13 +8,13 @@ export interface GeoJSONPolygon {
   coordinates: number[][][];
 }
 
-// Mirrors backend/migrations/001_baseline.sql `delivery_zones` table.
+// Tenant-scoped DynamoDB delivery zone record.
 export interface DeliveryZone {
   id: string;
   organization_id: string;
   location_id: string;
   name: string;
-  polygon: GeoJSONPolygon;
+  polygon?: GeoJSONPolygon | null;
   delivery_fee_cents: number;
   min_order_cents: number;
   estimated_eta_minutes: number;
@@ -38,7 +38,7 @@ export function useDeliveryZones(locationId: string | undefined) {
       if (err) throw new Error(err.message);
       setZones(data || []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load delivery zones');
+      setError(e instanceof Error ? e.message : 'No pudimos cargar las zonas de entrega');
     } finally {
       setLoading(false);
     }

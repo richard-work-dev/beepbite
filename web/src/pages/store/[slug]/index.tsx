@@ -4,7 +4,7 @@ import { ArrowRight, Clock, MapPin, Plus, Search, ShieldCheck, ShoppingBag, Stic
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
-import { FulfillmentPicker, QuantityControl } from '@/components/public-order';
+import { DeliveryZonePicker, FulfillmentPicker, QuantityControl } from '@/components/public-order';
 import { getStore, readCart, writeCart, readCartMeta, writeCartMeta, type StoreDetail, type MarketplaceMenuItem } from '@/services/marketplace';
 import { fulfillmentLabels, fulfillmentOptions, orderTotals, publicMoney, reconcileCart, type OrderLine, type Fulfillment } from '@/services/public-order';
 import { currencyScale } from '@/lib/currency';
@@ -26,6 +26,7 @@ function Storefront({ slug }: { slug: string }) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('all');
   const [tableLabel, setTableLabel] = useState('');
+  const [zoneID, setZoneID] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -40,6 +41,7 @@ function Storefront({ slug }: { slug: string }) {
       const requested = table ? 'dine_in' : meta.fulfillment_type;
       setMode(requested && available.includes(requested) ? requested : available[0] || 'collection');
       setTableLabel(table);
+      setZoneID(data.delivery_zones?.some(zone => zone.id === meta.delivery_zone_id) ? meta.delivery_zone_id || '' : '');
       setItems(cart.items);
       if (cart.changed) setNotice('Actualizamos tu carrito con los precios y productos disponibles.');
       setStore(data);
@@ -50,8 +52,8 @@ function Storefront({ slug }: { slug: string }) {
   useEffect(() => {
     if (!store) return;
     writeCart(slug, items);
-    writeCartMeta(slug, { ...readCartMeta(slug), fulfillment_type: mode, table_label: tableLabel });
-  }, [items, mode, slug, store, tableLabel]);
+    writeCartMeta(slug, { ...readCartMeta(slug), fulfillment_type: mode, table_label: tableLabel, delivery_zone_id: zoneID });
+  }, [items, mode, slug, store, tableLabel, zoneID]);
 
   function add(item: MarketplaceMenuItem) {
     if (!items.some(i => i.id === item.id) && items.length >= 20) {
@@ -73,7 +75,7 @@ function Storefront({ slug }: { slug: string }) {
   const fulfillmentModes = fulfillmentOptions(store);
   const canOrder = store.accepting_orders !== false && fulfillmentModes.length > 0;
   const count = items.reduce((n, i) => n + i.quantity, 0);
-  const totals = orderTotals(items, store, mode);
+  const totals = orderTotals(items, store, mode, zoneID);
   const total = totals.total;
   const subtotal = totals.subtotal;
   const deliveryThreshold = store.free_delivery_threshold_cents ?? 0;
@@ -95,8 +97,8 @@ function Storefront({ slug }: { slug: string }) {
       <dl className="space-y-2 border-t pt-3 text-sm">
         <div className="flex justify-between gap-3"><dt>Productos</dt><dd>{publicMoney(totals.subtotal, store)}</dd></div>
         {totals.tax > 0 && <div className="flex justify-between gap-3"><dt>Impuestos</dt><dd>{publicMoney(totals.tax, store)}</dd></div>}
-        {mode === 'delivery' && <div className="flex justify-between gap-3"><dt>Envío</dt><dd>{totals.delivery > 0 ? publicMoney(totals.delivery, store) : 'Sin cargo'}</dd></div>}
-        <div className="flex justify-between gap-3 pt-1 text-lg font-bold"><dt>Total</dt><dd>{publicMoney(total, store)}</dd></div>
+        {mode === 'delivery' && <div className="flex justify-between gap-3"><dt>Envío{totals.deliveryZone ? ` · ${totals.deliveryZone.name}` : ''}</dt><dd>{totals.deliveryPending ? 'Elegí zona' : totals.delivery > 0 ? publicMoney(totals.delivery, store) : 'Sin cargo'}</dd></div>}
+        <div className="flex justify-between gap-3 pt-1 text-lg font-bold"><dt>{totals.deliveryPending ? 'Subtotal provisional' : 'Total'}</dt><dd>{publicMoney(total, store)}</dd></div>
       </dl>
       {mode === 'delivery' && deliveryThreshold > 0 && <p className="rounded-xl bg-primary/5 p-3 text-sm" role="status">{amountUntilFreeDelivery > 0 ? `Te faltan ${publicMoney(amountUntilFreeDelivery, store)} para obtener envío gratis.` : '¡Tu envío es gratis con este pedido!'}</p>}
       <Button asChild className="h-14 w-full rounded-xl text-base"><Link to={'/store/' + encodeURIComponent(slug) + '/checkout'} aria-disabled={!canOrder} onClick={e => { if (!canOrder) e.preventDefault(); }}>Continuar <ArrowRight className="h-4 w-4" /></Link></Button>
@@ -119,6 +121,7 @@ function Storefront({ slug }: { slug: string }) {
       {!canOrder && <p role="status" className="rounded-xl border bg-muted p-4">Por el momento el local no recibe pedidos online. Podés consultar el menú y volver más tarde.</p>}
       {notice && <p role="status" className="rounded-xl bg-primary/10 p-3 text-sm">{notice}</p>}
       {fulfillmentModes.length > 1 && <FulfillmentPicker store={store} value={mode} onChange={setMode} />}
+      {mode === 'delivery' && <DeliveryZonePicker store={store} value={zoneID} onChange={setZoneID} subtotal={subtotal} />}
       {mode === 'dine_in' && tableLabel && <p className="text-sm text-primary">Mesa: {tableLabel}. Podés cambiarla al confirmar.</p>}
       <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="min-w-0">

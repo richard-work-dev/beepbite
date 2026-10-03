@@ -247,6 +247,8 @@ interface FetchError extends Error {
 // underlying store call). *_minor fields are exact integer minor units;
 // subtotal/tax/gratuity/total are float major-unit compatibility fields.
 export interface CreatedOrder {
+  delivery_fee_cents?: number;
+  delivery_zone_name?: string;
   order_id: string;
   order_number: string;
   subtotal_minor: number;
@@ -283,6 +285,9 @@ export async function submitPosOrder({
 	customerPhone,
   items,
   notes,
+  deliveryAddress,
+  deliveryZoneID,
+  expectedDeliveryFeeCents,
 }: {
   locationId: string;
   orderType?: string;
@@ -294,6 +299,9 @@ export async function submitPosOrder({
 	customerPhone?: string;
   items: unknown[];
   notes?: string;
+  deliveryAddress?: string;
+  deliveryZoneID?: string;
+  expectedDeliveryFeeCents?: number;
 }): Promise<CreatedOrder> {
   const body: {
     location_id: string;
@@ -306,6 +314,9 @@ export async function submitPosOrder({
     items: unknown[];
     table_number?: string;
     notes?: string;
+    delivery_address?: string;
+    delivery_zone_id?: string;
+    expected_delivery_fee_cents?: number;
   } = {
     location_id: locationId,
     order_type: orderType,
@@ -318,6 +329,11 @@ export async function submitPosOrder({
 	if (customerName) body.customer_name = customerName;
 	if (customerPhone) body.customer_phone = customerPhone;
   if (notes) body.notes = notes;
+  if (orderType === 'delivery') {
+    body.delivery_address = deliveryAddress;
+    body.delivery_zone_id = deliveryZoneID || undefined;
+    body.expected_delivery_fee_cents = expectedDeliveryFeeCents;
+  }
 
   const { data, error } = await api.request<CreatedOrder>('POST', '/pos/orders', { body });
   if (error) {

@@ -308,7 +308,8 @@ func (a *application) createPOSOrder(ctx context.Context, orgID, body string) ev
 	if locationID == "" || (orderType != "dine_in" && orderType != "pickup" && orderType != "delivery") {
 		return errorResponse(400, "location_id and valid order_type required")
 	}
-	if _, err := a.dataRowByID(ctx, orgID, "locations", locationID); err != nil {
+	location, err := a.dataRowByID(ctx, orgID, "locations", locationID)
+	if err != nil {
 		return errorResponse(404, "location not found")
 	}
 	tableSessionID := strings.TrimSpace(displayString(input["table_session_id"]))
@@ -404,7 +405,27 @@ func (a *application) createPOSOrder(ctx context.Context, orgID, body string) ev
 		}
 	}
 
-	location, _ := a.dataRowByID(ctx, orgID, "locations", locationID)
+	var zones []map[string]any
+	if orderType == "delivery" {
+		address := strings.TrimSpace(displayString(input["delivery_address"]))
+		if len(address) < 8 || len(address) > 500 {
+			return errorResponse(400, "Completá una dirección de entrega válida.")
+		}
+		zones, err = a.queryDataRows(ctx, orgID, "delivery_zones")
+		if err != nil {
+			return dataAccessError(err)
+		}
+	}
+	delivery, deliveryErr := priceDelivery(map[string]any{"fulfillment_type": orderType, "delivery_zone_id": input["delivery_zone_id"]}, location, zones, subtotal)
+	if deliveryErr != nil {
+		return errorResponse(422, deliveryErr.Error())
+	}
+	if expected, exists := input["expected_delivery_fee_cents"]; exists {
+		fee, valid := integerValue(expected)
+		if !valid || fee != delivery.fee {
+			return errorResponse(409, "La tarifa de envío cambió. Actualizá las zonas y revisá el pedido.")
+		}
+	}
 	taxRate, _ := numericValue(location["tax_rate"])
 	taxInclusive, _ := location["tax_inclusive"].(bool)
 	tax := int64(0)
@@ -419,6 +440,7 @@ func (a *application) createPOSOrder(ctx context.Context, orgID, body string) ev
 	if !taxInclusive {
 		total += tax
 	}
+	total += delivery.fee
 	now := time.Now().UTC()
 	businessDate := marketplaceLocationTime(now, location).Format("2006-01-02")
 	order := map[string]any{
@@ -431,6 +453,10 @@ func (a *application) createPOSOrder(ctx context.Context, orgID, body string) ev
 		"register_session_id": valueOr(input, "register_session_id", nil), "customer_id": nullableString(customerID),
 		"customer_name": nullableString(customerName), "customer_phone": nullableString(customerPhone),
 		"notes": valueOr(input, "notes", nil), "party_size": valueOr(input, "party_size", 1), "held_at": nil,
+	}
+	setDeliverySnapshot(order, delivery)
+	if orderType == "delivery" {
+		order["delivery_address"] = strings.TrimSpace(displayString(input["delivery_address"]))
 	}
 	created, err := a.createStoredRow(ctx, orgID, "orders", order)
 	if err != nil {
@@ -460,6 +486,7 @@ func posOrderResponse(order map[string]any, ticketIDs []string, orderItems []map
 	return map[string]any{
 		"order_id": order["id"], "order_number": order["order_number"],
 		"subtotal_minor": subtotal, "tax_minor": tax, "gratuity_minor": gratuity, "total_minor": total,
+		"delivery_fee_cents": integerOr(order, "delivery_fee_cents", 0), "delivery_zone_name": valueOr(order, "delivery_zone_name", nil),
 		"subtotal": float64(subtotal) / 100, "tax": float64(tax) / 100, "gratuity": float64(gratuity) / 100, "total": float64(total) / 100,
 		"currency_code": order["currency_code"], "currency_decimals": valueOr(order, "currency_decimals", 2),
 		"tax_rate": valueOr(order, "tax_rate", 0), "tax_inclusive": valueOr(order, "tax_inclusive", false), "tax_label": valueOr(order, "tax_label", "Tax"),
@@ -571,6 +598,7 @@ func (a *application) modifyPOSOrder(ctx context.Context, orgID, orderID, body s
 	if !taxInclusive {
 		total += tax
 	}
+	total += integerOr(order, "delivery_fee_cents", 0) + integerOr(order, "gratuity_cents", 0)
 	order["subtotal_cents"], order["tax_cents"], order["total_cents"] = subtotal, tax, total
 	order["updated_at"] = time.Now().UTC().Format(time.RFC3339Nano)
 	if err := a.putDataRow(ctx, orgID, "orders", order, false); err != nil {

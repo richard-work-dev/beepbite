@@ -93,6 +93,7 @@ export interface StoreDetail {
   offers_dine_in?: boolean;
   accepting_orders?: boolean;
   on_delivery_payment_methods?: string[];
+  transfer_details?: { account_holder: string; alias?: string; cbu?: string } | null;
   locale?: string | null;
   phone_country_code?: string | null;
   whatsapp_number?: string | null;

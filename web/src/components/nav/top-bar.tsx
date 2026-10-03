@@ -256,7 +256,7 @@ const TopBar = () => {
 
               {/* Desktop Navigation - Show for authenticated users */}
               {user && (
-                <nav className="hidden md:flex items-center gap-0.5 lg:gap-1.5" aria-label="Navegación principal">
+                <nav className="hidden lg:flex items-center gap-0.5 lg:gap-1.5" aria-label="Navegación principal">
                   {availablePrimaryItems.map((item) => {
                     const Icon = item.icon;
                     const isActive = isActivePath(item.path);
@@ -399,7 +399,7 @@ const TopBar = () => {
 
       {showAppNavigation && (
         <nav
-          className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_-18px_rgba(0,0,0,0.45)] backdrop-blur md:hidden"
+          className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_-18px_rgba(0,0,0,0.45)] backdrop-blur lg:hidden"
           aria-label="Navegación principal móvil"
         >
           <div

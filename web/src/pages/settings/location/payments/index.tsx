@@ -5,6 +5,10 @@ import { useAuth } from '@/context/auth-context';
 import { PageHeader, PageContainer } from '@/components/ui/page-header';
 import { OnDeliverySection } from './on-delivery-section';
 
+function textSetting(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
 /**
  * LocationPaymentsPage — how a location takes payment.
  *
@@ -14,7 +18,7 @@ import { OnDeliverySection } from './on-delivery-section';
  */
 export default function LocationPaymentsPage() {
   const { locationId } = useParams();
-  const { locations } = useAuth();
+  const { locations, fetchLocations } = useAuth();
 
   const location = locations?.find((l) => l.id === locationId);
   const locationName = location?.name ?? locationId ?? 'este local';
@@ -35,7 +39,7 @@ export default function LocationPaymentsPage() {
       <PageHeader
         eyebrow="Configuración"
         title={`Opciones de pago de ${locationName}`}
-        description="Elegí cómo pueden pagar los clientes al recibir su pedido. Los cobros se registran en el punto de venta; RikoPollo no procesa pagos con tarjeta en línea."
+        description="Configurá efectivo, tarjeta al entregar o transferencia bancaria para los pedidos online. Las transferencias se verifican manualmente; BeepBite no procesa pagos ni conecta con bancos."
         icon={CreditCard}
       />
 
@@ -43,7 +47,10 @@ export default function LocationPaymentsPage() {
         <OnDeliverySection
           locationId={locationId}
           initialMethods={methods}
-          onMethodsChange={setMethods}
+          initialTransferAccountHolder={textSetting(location?.transfer_account_holder)}
+          initialTransferAlias={textSetting(location?.transfer_alias)}
+          initialTransferCBU={textSetting(location?.transfer_cbu)}
+          onMethodsChange={(nextMethods) => { setMethods(nextMethods); void fetchLocations(); }}
         />
       )}
     </PageContainer>

@@ -282,11 +282,19 @@ func (a *application) getMarketplaceStore(ctx context.Context, slug string) even
 		return dataAccessError(taxErr)
 	}
 	methods := publicOrderPaymentMethods(row)
+	var transferDetails any
+	for _, method := range methods {
+		if method == "eft" {
+			transferDetails = publicTransferDetails(row)
+			break
+		}
+	}
 	return mustJSONResponse(200, map[string]any{
 		"id": row["id"], "name": row["name"], "slug": valueOr(row, "slug", nil), "city": valueOr(row, "city", nil),
 		"country": valueOr(row, "country", nil), "address": valueOr(row, "address", nil), "description": valueOr(row, "description", nil),
 		"offers_delivery": publicOrderModeEnabled(row, "delivery"), "offers_collection": publicOrderModeEnabled(row, "collection"),
 		"offers_dine_in": publicOrderModeEnabled(row, "dine_in"), "on_delivery_payment_methods": methods,
+		"transfer_details": transferDetails,
 		"accepting_orders": len(methods) > 0 && currencyCode != "" && boolOr(row, "online_orders_enabled", true),
 		"locale":           valueOr(row, "locale", "es-AR"), "phone_country_code": valueOr(row, "phone_country_code", nil),
 		"tax_rate": rate, "tax_inclusive": inclusive,

@@ -6,7 +6,7 @@ export const fulfillmentLabels: Record<Fulfillment, string> = {
   collection: 'Para llevar', dine_in: 'Comer en el local', delivery: 'Delivery',
 };
 export const paymentLabels: Record<string, string> = {
-  cash: 'Efectivo', card_machine: 'Tarjeta al recibir',
+  cash: 'Efectivo', card_machine: 'Tarjeta al recibir', eft: 'Transferencia bancaria',
 };
 export interface OrderLine extends CartItem {
   id: string;

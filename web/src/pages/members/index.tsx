@@ -262,6 +262,8 @@ export default function Members() {
         </CardContent>
       </Card>
 
+      <Card className="border-border bg-card"><CardContent className="flex items-start gap-3 p-4"><Shield className="mt-0.5 h-5 w-5 shrink-0 text-primary" /><div className="space-y-1 text-sm"><p className="font-semibold">Jerarquía de acceso</p><p className="text-muted-foreground">{actorRole === 'owner' ? 'Como propietario, podés invitar administradores. Los administradores gestionan encargados y equipo operativo, pero no pueden cambiar al propietario ni a otros administradores.' : actorRole === 'admin' ? 'Tu rol permite invitar encargados y equipo operativo. Solo el propietario puede invitar, cambiar o quitar administradores.' : actorRole === 'manager' ? 'Podés invitar personal de caja, punto de venta y cocina. La administración de encargados y administradores queda reservada a roles superiores.' : 'Tu rol no puede administrar invitaciones ni cambiar roles. Pedile acceso a un administrador o al propietario.'}</p><p className="text-xs text-muted-foreground">Los permisos se validan también en el servidor; no se puede asignar un rol del mismo nivel o superior.</p></div></CardContent></Card>
+
       <Tabs defaultValue="active" className="space-y-4">
         <TabsList className="w-full sm:w-auto">
           <TabsTrigger value="active">Activos ({members.length})</TabsTrigger>
@@ -345,6 +347,7 @@ export default function Members() {
         <DialogContent className="sm:max-w-xl">
           <DialogHeader><DialogTitle>Invitar usuario</DialogTitle><DialogDescription>Elegí el rol inicial. La persona creará su propia contraseña desde un enlace seguro.</DialogDescription></DialogHeader>
           <div className="space-y-4">
+            {actorRole === 'owner' && role === 'admin' && <div role="note" className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm"><p className="font-semibold">Acceso de administrador</p><p className="mt-1 text-muted-foreground">Podrá gestionar el negocio, reportes, configuración y miembros por debajo de su nivel. No compartas la invitación con nadie más: queda vinculada al correo indicado.</p></div>}
             <div className="space-y-1.5"><Label htmlFor="member-email">Correo electrónico</Label><Input id="member-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="persona@correo.com" autoComplete="email" /></div>
             <div className="space-y-2"><Label>Rol inicial</Label><div className="grid gap-2 sm:grid-cols-2">{assignableRoles.map((item) => { const Icon = item.icon; const selected = role === item.value; return <button key={item.value} type="button" onClick={() => setRole(item.value)} className={`rounded-xl border p-3 text-left transition ${selected ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'border-border hover:bg-muted'}`} aria-pressed={selected}><div className="flex items-center gap-2 font-semibold"><Icon className="h-4 w-4 text-primary" />{item.label}</div><p className="mt-1 text-xs text-muted-foreground">{item.description}</p></button>; })}</div></div>
             <Button className="w-full" disabled={!email.trim().includes('@') || saving || assignableRoles.length === 0} onClick={() => void createInvite()}>{saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}Crear invitación</Button>

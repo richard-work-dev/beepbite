@@ -78,12 +78,52 @@ func publicOrderModeEnabled(location map[string]any, mode string) bool {
 func publicOrderPaymentMethods(location map[string]any) []string {
 	methods, _ := stringSlice(location["on_delivery_payment_methods"])
 	result := []string{}
+	seen := map[string]bool{}
 	for _, method := range methods {
-		if method == "cash" || method == "card_machine" {
+		if seen[method] {
+			continue
+		}
+		if method == "cash" || method == "card_machine" || (method == "eft" && publicTransferDetails(location) != nil) {
 			result = append(result, method)
+			seen[method] = true
 		}
 	}
 	return result
+}
+
+// publicTransferDetails returns only complete, customer-facing bank details.
+// An EFT option without a beneficiary and at least one usable destination is
+// intentionally not exposed as a valid checkout method.
+func publicTransferDetails(location map[string]any) map[string]any {
+	holder := strings.TrimSpace(displayString(location["transfer_account_holder"]))
+	alias := strings.TrimSpace(displayString(location["transfer_alias"]))
+	cbuInput := strings.TrimSpace(displayString(location["transfer_cbu"]))
+	cbu := strings.Map(func(r rune) rune {
+		if r >= '0' && r <= '9' {
+			return r
+		}
+		return -1
+	}, cbuInput)
+	if len(holder) == 0 || len(holder) > 100 {
+		return nil
+	}
+	if len(cbu) != 22 {
+		cbu = ""
+	}
+	if len(alias) > 40 {
+		alias = ""
+	}
+	if alias == "" && cbu == "" {
+		return nil
+	}
+	details := map[string]any{"account_holder": holder}
+	if alias != "" {
+		details["alias"] = alias
+	}
+	if cbu != "" {
+		details["cbu"] = cbu
+	}
+	return details
 }
 
 func publicOrderMoney(value any, currency string) int64 {
@@ -353,6 +393,11 @@ func (a *application) createMarketplaceOrder(ctx context.Context, slug, body, so
 		"gratuity_cents": quote.tip, "tax_rate": rate, "tax_inclusive": inclusive, "currency_code": currency,
 		"notes": nullableString(notes), "table_label": nil, "delivery_address": nil,
 		"business_date": businessDate, "estimated_prep_time": integerOr(location.row, "estimated_prep_time", 30),
+	}
+	if method == "eft" {
+		// Keep a snapshot so later edits to the store's transfer destination do
+		// not change where a customer is told to pay for an existing order.
+		order["transfer_details"] = publicTransferDetails(location.row)
 	}
 	if mode == "delivery" {
 		order["delivery_address"] = strings.TrimSpace(displayString(input["delivery_address"]))

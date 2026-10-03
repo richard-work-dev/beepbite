@@ -320,6 +320,11 @@ func (a *application) getMarketplaceTracking(ctx context.Context, encodedToken s
 		"store_lat":               valueOr(location, "latitude", nil), "store_lng": valueOr(location, "longitude", nil),
 		"delivery_address": valueOr(order, "delivery_address", nil),
 	}
+	if displayString(order["payment_method"]) == "eft" {
+		response["transfer_details"] = valueOr(order, "transfer_details", nil)
+		response["store_whatsapp_number"] = valueOr(location, "whatsapp_number", nil)
+		response["phone_country_code"] = valueOr(location, "phone_country_code", nil)
+	}
 	lines, err := a.queryDataRows(ctx, orgID, "order_items")
 	if err != nil {
 		return dataAccessError(err)

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, ShieldCheck, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, Copy, Loader2, ShieldCheck, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,6 +24,7 @@ function Checkout({ slug }: { slug: string }) {
   const [items, setItems] = useState<OrderLine[]>([]);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [copyMessage, setCopyMessage] = useState('');
   const [attempt, setAttempt] = useState(0);
   const [step, setStep] = useState<'details' | 'review'>('details');
   const [submitting, setSubmitting] = useState(false);
@@ -116,12 +117,17 @@ function Checkout({ slug }: { slug: string }) {
     }
   }
 
+  async function copyTransferValue(value: string) {
+    try { await navigator.clipboard.writeText(value); setCopyMessage('Dato copiado.'); }
+    catch { setCopyMessage('No se pudo copiar automáticamente; mantené presionado el dato para copiarlo.'); }
+  }
+
   const menuURL = slug ? '/store/' + encodeURIComponent(slug) : '/discover';
   if (!slug) return <main className="mx-auto max-w-lg space-y-4 p-6 py-20 text-center"><h1 className="text-2xl font-bold">Elegí un local para pedir</h1><Button asChild><Link to="/discover">Ver locales</Link></Button></main>;
   if (!store) return <main className="mx-auto max-w-lg space-y-4 p-6 py-20 text-center">{error ? <><p role="alert">{error}</p><Button onClick={() => setAttempt(n => n + 1)}>Volver a intentar</Button></> : <p role="status">Cargando tu pedido…</p>}<p><Link className="underline" to={menuURL}>Volver al menú</Link></p></main>;
-  if (result) return <main className="mx-auto max-w-lg space-y-5 p-6 py-16 text-center"><CheckCircle2 className="mx-auto h-16 w-16 text-success" /><h1 className="text-2xl font-bold">¡Pedido recibido!</h1><p className="break-all">{result.order_number}</p><p>Total: {publicMoney(result.total_cents ?? Math.round(result.total * currencyScale(store.currency_code)), store)}</p><p>El local recibió tu pedido. Pagás al recibir.</p><Button asChild><Link to={menuURL}>Volver al menú</Link></Button></main>;
+  if (result) return <main className="mx-auto max-w-lg space-y-5 p-6 py-16 text-center"><CheckCircle2 className="mx-auto h-16 w-16 text-success" /><h1 className="text-2xl font-bold">¡Pedido recibido!</h1><p className="break-all">{result.order_number}</p><p>Total: {publicMoney(result.total_cents ?? Math.round(result.total * currencyScale(store.currency_code)), store)}</p><p>{result.payment_method === 'eft' ? 'El pedido quedó recibido y la transferencia pendiente de verificación por el local.' : 'El local recibió tu pedido. Pagás al retirar o recibir.'}</p><Button asChild><Link to={menuURL}>Volver al menú</Link></Button></main>;
   if (!items.length) return <main className="mx-auto max-w-lg space-y-4 p-6 py-20 text-center"><ShoppingBag className="mx-auto h-12 w-12 text-primary" /><h1 className="text-2xl font-bold">Tu carrito está vacío</h1><p>Agregá productos del menú para continuar.</p><Button asChild><Link to={menuURL}>Elegir productos</Link></Button></main>;
-  const canOrder = store.accepting_orders !== false && fulfillmentOptions(store).includes(draft.fulfillment_type) && Boolean(draft.on_delivery_method);
+  const canOrder = store.accepting_orders !== false && fulfillmentOptions(store).includes(draft.fulfillment_type) && Boolean(draft.on_delivery_method) && (draft.on_delivery_method !== 'eft' || Boolean(store.transfer_details?.account_holder && (store.transfer_details.alias || store.transfer_details.cbu)));
   const total = orderTotals(items, store, draft.fulfillment_type).total;
 
   return <div className="min-h-dvh bg-muted/20 pb-10">
@@ -143,7 +149,7 @@ function Checkout({ slug }: { slug: string }) {
           {draft.fulfillment_type === 'delivery' && <div className="space-y-2"><Label htmlFor="delivery-address">Dirección de entrega</Label><Textarea id="delivery-address" autoComplete="street-address" required minLength={8} maxLength={500} placeholder="Calle, altura, piso/depto y localidad" value={draft.delivery_address} onChange={e => update('delivery_address', e.target.value)} /></div>}
           {draft.fulfillment_type === 'collection' && <p className="rounded-xl bg-muted/50 p-3 text-sm">Retirás en {store.address || store.name}.</p>}
           {draft.fulfillment_type === 'dine_in' && <div className="space-y-2"><Label htmlFor="table-label">Mesa o referencia (opcional)</Label><Input id="table-label" maxLength={60} placeholder="Por ejemplo: Mesa 4" value={draft.table_label} onChange={e => update('table_label', e.target.value)} /></div>}
-          <fieldset className="space-y-3"><legend className="font-semibold">¿Cómo vas a pagar?</legend><p className="text-sm text-muted-foreground">Pagás al recibir o en el local.</p><div className="flex flex-wrap gap-3">{(store.on_delivery_payment_methods || []).map(method => <label key={method} className="flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-4 py-3 text-sm"><input type="radio" name="payment" required value={method} checked={draft.on_delivery_method === method} onChange={() => update('on_delivery_method', method)} />{paymentLabels[method] || method}</label>)}</div></fieldset>
+          <fieldset className="space-y-3"><legend className="font-semibold">¿Cómo vas a pagar?</legend><p className="text-sm text-muted-foreground">Elegí el medio que te resulte más cómodo.</p><div className="grid gap-2 sm:grid-cols-2">{(store.on_delivery_payment_methods || []).map(method => <label key={method} className={'flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-sm ' + (draft.on_delivery_method === method ? 'border-primary bg-primary/5 ring-1 ring-primary' : '')}><input type="radio" name="payment" required value={method} checked={draft.on_delivery_method === method} onChange={() => update('on_delivery_method', method)} />{paymentLabels[method] || method}</label>)}</div>{draft.on_delivery_method === 'eft' && store.transfer_details && <div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-4"><div><p className="font-semibold">Datos para transferir</p><p className="text-sm text-muted-foreground">El pago queda pendiente hasta que el local lo verifique.</p></div><dl className="space-y-2 text-sm">{[['Titular', store.transfer_details.account_holder], ['Alias', store.transfer_details.alias], ['CBU / CVU', store.transfer_details.cbu]].filter((entry): entry is [string, string] => Boolean(entry[1])).map(([label, value]) => <div key={label} className="flex flex-wrap items-center justify-between gap-2"><dt className="text-muted-foreground">{label}</dt><dd className="flex items-center gap-2 break-all font-semibold">{value}<button type="button" className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-md border bg-background px-2 text-xs" onClick={() => void copyTransferValue(value)} aria-label={'Copiar ' + label}><Copy className="h-3.5 w-3.5" />Copiar</button></dd></div>)}</dl>{copyMessage && <p role="status" className="text-xs">{copyMessage}</p>}</div>}{!canOrder && draft.on_delivery_method === 'eft' && <p role="alert" className="text-sm text-destructive">El local todavía no configuró los datos de transferencia. Elegí otro medio o consultá al local.</p>}</fieldset>
           <div className="space-y-2"><Label htmlFor="order-notes">Aclaraciones del pedido (opcional)</Label><Textarea id="order-notes" maxLength={500} placeholder="Indicaciones para la entrega o el local" value={draft.notes} onChange={e => update('notes', e.target.value)} /></div>
           <Button type="submit" disabled={!canOrder} className="hidden h-12 w-full rounded-xl xl:flex">Revisar pedido · {publicMoney(total, store)} <ArrowRight className="ml-2 h-4 w-4" /></Button>
           <p className="text-center text-xs text-muted-foreground">Todavía no se envía: vas a revisar los datos y confirmar en el siguiente paso.</p>
@@ -153,6 +159,7 @@ function Checkout({ slug }: { slug: string }) {
           <dl className="space-y-3 rounded-xl bg-muted/40 p-4 text-sm">
             {[['Modalidad', fulfillmentLabels[draft.fulfillment_type]], ['Nombre', draft.customer_name], ['Teléfono', draft.customer_phone], [draft.fulfillment_type === 'delivery' ? 'Entregar en' : draft.fulfillment_type === 'dine_in' ? 'Mesa / referencia' : 'Retiro en', draft.fulfillment_type === 'delivery' ? draft.delivery_address : draft.fulfillment_type === 'dine_in' ? draft.table_label || 'Sin referencia' : store.address || store.name], ['Pago', paymentLabels[draft.on_delivery_method] || draft.on_delivery_method], ['Aclaraciones', draft.notes || 'Sin aclaraciones']].map(([label, value]) => <div key={label} className="grid grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)] gap-3"><dt className="text-muted-foreground">{label}</dt><dd className="break-words font-medium">{value}</dd></div>)}
           </dl>
+          {draft.on_delivery_method === 'eft' && <p className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm">Al confirmar, el pedido se enviará al local. La transferencia quedará pendiente de verificación hasta que el local confirme el pago.</p>}
           <div className="xl:hidden"><OrderSummary items={items} store={store} mode={draft.fulfillment_type} /></div>
           <Button type="button" onClick={() => void submit()} disabled={submitting || !canOrder} className="h-auto min-h-12 w-full whitespace-normal rounded-xl py-3">{submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Enviando pedido…</> : 'Confirmar pedido · ' + publicMoney(total, store)}</Button>
           <Button type="button" variant="outline" disabled={submitting} onClick={() => setStep('details')} className="h-11 w-full">Editar mis datos</Button>

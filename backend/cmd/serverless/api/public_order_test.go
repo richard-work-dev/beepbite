@@ -16,6 +16,39 @@ func TestMarketplaceLocationTimeUsesConfiguredBusinessDay(t *testing.T) {
 	}
 }
 
+func TestPublicOrderPaymentMethodsOnlyExposeConfiguredTransferWithValidDetails(t *testing.T) {
+	location := map[string]any{
+		"on_delivery_payment_methods": []any{"eft", "cash", "eft", "card_machine"},
+		"transfer_account_holder":     "Riko Pollo SRL",
+		"transfer_alias":              "rikopollo.mp",
+		"transfer_cbu":                "0000000000000000000000",
+	}
+	methods := publicOrderPaymentMethods(location)
+	if got, want := strings.Join(methods, ","), "eft,cash,card_machine"; got != want {
+		t.Fatalf("methods = %q, want %q", got, want)
+	}
+	details := publicTransferDetails(location)
+	if details["account_holder"] != "Riko Pollo SRL" || details["alias"] != "rikopollo.mp" || details["cbu"] != "0000000000000000000000" {
+		t.Fatalf("unexpected transfer details: %#v", details)
+	}
+
+	delete(location, "transfer_account_holder")
+	if got := strings.Join(publicOrderPaymentMethods(location), ","); got != "cash,card_machine" {
+		t.Fatalf("EFT without a beneficiary should be hidden; methods = %q", got)
+	}
+}
+
+func TestPublicTransferDetailsRequiresAliasOrTwentyTwoDigitCBU(t *testing.T) {
+	base := map[string]any{"transfer_account_holder": "Riko Pollo", "transfer_cbu": "1234-5678"}
+	if publicTransferDetails(base) != nil {
+		t.Fatal("incomplete account details must not be exposed")
+	}
+	base["transfer_alias"] = "riko.pollo"
+	if got := publicTransferDetails(base); got == nil || got["alias"] != "riko.pollo" {
+		t.Fatalf("a valid alias and holder should enable transfer, got %#v", got)
+	}
+}
+
 func TestPublicOrderRateLimitKeyIsWindowScopedAndDoesNotStoreIP(t *testing.T) {
 	base := time.Date(2026, time.October, 1, 12, 1, 0, 0, time.UTC)
 	first, firstExpiry := publicOrderRateLimitKey("store-1", "203.0.113.15", base)

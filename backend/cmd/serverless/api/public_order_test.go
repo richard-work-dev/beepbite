@@ -49,6 +49,40 @@ func TestPublicTransferDetailsRequiresAliasOrTwentyTwoDigitCBU(t *testing.T) {
 	}
 }
 
+func TestPublicOrderContactUsesTableInsteadOfNameAndPhoneForDineIn(t *testing.T) {
+	dineIn := map[string]any{"fulfillment_type": "dine_in", "table_label": "7"}
+	if err := validatePublicOrderContact(dineIn); err != nil {
+		t.Fatalf("dine-in order with a table should not require guest name or phone: %v", err)
+	}
+	if got, want := publicOrderCustomerName("dine_in", "Ignored Guest Name", "7"), "Mesa 7"; got != want {
+		t.Fatalf("dine-in order identity = %q, want %q", got, want)
+	}
+	delete(dineIn, "table_label")
+	if err := validatePublicOrderContact(dineIn); err == nil {
+		t.Fatal("dine-in order must require a table identifier")
+	}
+	if err := validatePublicOrderContact(map[string]any{"fulfillment_type": "dine_in", "table_label": "7", "customer_phone": "invalid"}); err == nil {
+		t.Fatal("an optional phone, when supplied, must still be valid")
+	}
+}
+
+func TestPublicOrderContactRequiresNameAndPhoneForPickupAndDelivery(t *testing.T) {
+	valid := map[string]any{"customer_name": "Lucía Pérez", "customer_phone": "+54 376 400 1234"}
+	for _, mode := range []string{"collection", "delivery"} {
+		input := map[string]any{"fulfillment_type": mode, "customer_phone": valid["customer_phone"]}
+		if err := validatePublicOrderContact(input); err == nil {
+			t.Fatalf("%s must require the customer's name", mode)
+		}
+		input["customer_name"] = valid["customer_name"]
+		if mode == "delivery" {
+			input["delivery_address"] = "Av. Siempre Viva 742"
+		}
+		if err := validatePublicOrderContact(input); err != nil {
+			t.Fatalf("valid %s contact was rejected: %v", mode, err)
+		}
+	}
+}
+
 func TestPublicOrderRateLimitKeyIsWindowScopedAndDoesNotStoreIP(t *testing.T) {
 	base := time.Date(2026, time.October, 1, 12, 1, 0, 0, time.UTC)
 	first, firstExpiry := publicOrderRateLimitKey("store-1", "203.0.113.15", base)

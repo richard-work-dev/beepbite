@@ -11,6 +11,7 @@ import { PageHeader, PageContainer } from "@/components/ui/page-header";
 import { Reveal, Stagger, StaggerItem } from "@/components/ui/motion";
 import {
   Building2,
+  CreditCard,
   MapPin,
   Save,
   CheckCircle,
@@ -411,7 +412,7 @@ const OrganizationSettings = () => {
                     <Stagger className="space-y-2.5">
                       {locations.map((location) => (
                         <StaggerItem key={location.id}>
-                          <div className="flex items-center justify-between gap-3 p-4 border border-border/60 rounded-xl hover:border-primary/30 hover:bg-primary/5 transition-all duration-150 group">
+                          <div className="flex flex-col gap-3 p-4 border border-border/60 rounded-xl hover:border-primary/30 hover:bg-primary/5 transition-all duration-150 group sm:flex-row sm:items-center sm:justify-between">
                             <div className="flex items-center gap-3 min-w-0">
                               <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                                 <MapPin className="w-4 h-4" />
@@ -435,16 +436,14 @@ const OrganizationSettings = () => {
                                 </div>
                               </div>
                             </div>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => navigate(`/settings/location/${location.id}`)}
-                              className="shrink-0 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg gap-1 group-hover:translate-x-0.5 transition-transform"
-                            >
-                              <Edit className="w-3.5 h-3.5" />
-                              <span className="hidden sm:inline text-xs">Editar</span>
-                              <ChevronRight className="w-3 h-3" />
-                            </Button>
+                            <div className="flex w-full gap-2 sm:w-auto sm:shrink-0">
+                              <Button size="sm" variant="outline" onClick={() => navigate(`/settings/location/${location.id}/payments`)} className="min-h-10 flex-1 gap-1.5 sm:flex-none">
+                                <CreditCard className="h-3.5 w-3.5" /><span className="text-xs">Pagos online</span>
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => navigate(`/settings/location/${location.id}`)} className="min-h-10 flex-1 gap-1 rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary sm:flex-none">
+                                <Edit className="h-3.5 w-3.5" /><span className="text-xs">Editar</span><ChevronRight className="h-3 w-3" />
+                              </Button>
+                            </div>
                           </div>
                         </StaggerItem>
                       ))}

@@ -241,21 +241,33 @@ func pricePublicOrder(input, location map[string]any, catalog []map[string]any, 
 }
 
 func validatePublicOrderContact(input map[string]any) error {
+	mode := strings.TrimSpace(displayString(input["fulfillment_type"]))
+	dineIn := mode == "dine_in"
 	name := strings.TrimSpace(displayString(input["customer_name"]))
 	phone := strings.TrimSpace(displayString(input["customer_phone"]))
-	digits := 0
-	for _, r := range phone {
-		if r >= '0' && r <= '9' {
-			digits++
-		} else if !strings.ContainsRune("+()- .", r) {
-			return errors.New("Ingresá un teléfono válido con código de área.")
+	table := strings.TrimSpace(displayString(input["table_label"]))
+	if dineIn {
+		if utf8.RuneCountInString(table) < 1 || utf8.RuneCountInString(table) > 60 {
+			return errors.New("Indicá el número de mesa para identificar el pedido.")
 		}
-	}
-	if utf8.RuneCountInString(name) < 2 || utf8.RuneCountInString(name) > 100 {
+		if utf8.RuneCountInString(name) > 100 {
+			return errors.New("El nombre no puede superar los 100 caracteres.")
+		}
+	} else if utf8.RuneCountInString(name) < 2 || utf8.RuneCountInString(name) > 100 {
 		return errors.New("Ingresá un nombre de entre 2 y 100 caracteres.")
 	}
-	if digits < 8 || digits > 15 || len(phone) > 24 {
-		return errors.New("Ingresá un teléfono válido con código de área.")
+	if !dineIn || phone != "" {
+		digits := 0
+		for _, r := range phone {
+			if r >= '0' && r <= '9' {
+				digits++
+			} else if !strings.ContainsRune("+()- .", r) {
+				return errors.New("Ingresá un teléfono válido con código de área.")
+			}
+		}
+		if digits < 8 || digits > 15 || len(phone) > 24 {
+			return errors.New("Ingresá un teléfono válido con código de área.")
+		}
 	}
 	if input["customer_id"] != nil && displayString(input["customer_id"]) != "" {
 		return errors.New("El pedido público debe incluir los datos de contacto, no una cuenta de cliente.")
@@ -270,6 +282,13 @@ func validatePublicOrderContact(input map[string]any) error {
 		return errors.New("Las aclaraciones o la referencia de mesa son demasiado largas.")
 	}
 	return nil
+}
+
+func publicOrderCustomerName(mode, name, table string) string {
+	if strings.TrimSpace(mode) == "dine_in" {
+		return "Mesa " + strings.TrimSpace(table)
+	}
+	return strings.TrimSpace(name)
 }
 
 func publicOrderHash(input map[string]any) string {
@@ -376,6 +395,7 @@ func (a *application) createMarketplaceOrder(ctx context.Context, slug, body, so
 	}
 	orderNumber := "WEB-" + now.Format("060102") + "-" + strings.ToUpper(orderID[:8])
 	mode := displayString(input["fulfillment_type"])
+	customerName := publicOrderCustomerName(mode, displayString(input["customer_name"]), displayString(input["table_label"]))
 	notes := strings.TrimSpace(displayString(input["notes"]))
 	if mode == "dine_in" && strings.TrimSpace(displayString(input["table_label"])) != "" {
 		notes = strings.TrimSpace("Mesa / referencia: " + strings.TrimSpace(displayString(input["table_label"])) + ". " + notes)
@@ -386,7 +406,7 @@ func (a *application) createMarketplaceOrder(ctx context.Context, slug, body, so
 	}
 	order := map[string]any{
 		"id": orderID, "location_id": locationID, "customer_id": customerID,
-		"customer_name": strings.TrimSpace(displayString(input["customer_name"])), "customer_phone": strings.TrimSpace(displayString(input["customer_phone"])),
+		"customer_name": customerName, "customer_phone": strings.TrimSpace(displayString(input["customer_phone"])),
 		"order_number": orderNumber, "order_type": mapMarketplaceFulfillment(mode), "fulfillment_type": mode,
 		"status": "confirmed", "payment_status": "pending", "payment_method": method, "source": "web",
 		"subtotal_cents": quote.subtotal, "tax_cents": quote.tax, "delivery_fee_cents": quote.delivery, "total_cents": quote.total,

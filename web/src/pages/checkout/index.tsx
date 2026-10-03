@@ -72,8 +72,9 @@ function Checkout({ slug }: { slug: string }) {
   }
   function review(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (draft.customer_name.trim().length < 2) { setError('Ingresá tu nombre para identificar el pedido.'); return; }
-    if (draft.customer_phone.replace(/\D/g, '').length < 8) { setError('Ingresá un teléfono válido, con código de área.'); return; }
+    if (draft.fulfillment_type === 'dine_in' && !draft.table_label.trim()) { setError('Ingresá el número de mesa para identificar tu pedido.'); return; }
+    if (draft.fulfillment_type !== 'dine_in' && draft.customer_name.trim().length < 2) { setError('Ingresá tu nombre para identificar el pedido.'); return; }
+    if (draft.fulfillment_type !== 'dine_in' && draft.customer_phone.replace(/\D/g, '').length < 8) { setError('Ingresá un teléfono válido, con código de área.'); return; }
     if (draft.fulfillment_type === 'delivery' && draft.delivery_address.trim().length < 8) { setError('Completá calle, altura y localidad para la entrega.'); return; }
     if (!draft.on_delivery_method) { setError('Elegí cómo vas a pagar.'); return; }
     setError('');
@@ -86,7 +87,8 @@ function Checkout({ slug }: { slug: string }) {
     setSubmitting(true);
     setError('');
     const payload: CheckoutOrderPayload = {
-      customer_name: draft.customer_name.trim(), customer_phone: draft.customer_phone.trim(),
+      customer_name: draft.fulfillment_type === 'dine_in' ? '' : draft.customer_name.trim(),
+      customer_phone: draft.fulfillment_type === 'dine_in' ? '' : draft.customer_phone.trim(),
       fulfillment_type: draft.fulfillment_type, on_delivery_method: draft.on_delivery_method,
       notes: draft.notes.trim(),
       ...(draft.fulfillment_type === 'delivery' ? { delivery_address: draft.delivery_address.trim() } : {}),
@@ -129,6 +131,14 @@ function Checkout({ slug }: { slug: string }) {
   if (!items.length) return <main className="mx-auto max-w-lg space-y-4 p-6 py-20 text-center"><ShoppingBag className="mx-auto h-12 w-12 text-primary" /><h1 className="text-2xl font-bold">Tu carrito está vacío</h1><p>Agregá productos del menú para continuar.</p><Button asChild><Link to={menuURL}>Elegir productos</Link></Button></main>;
   const canOrder = store.accepting_orders !== false && fulfillmentOptions(store).includes(draft.fulfillment_type) && Boolean(draft.on_delivery_method) && (draft.on_delivery_method !== 'eft' || Boolean(store.transfer_details?.account_holder && (store.transfer_details.alias || store.transfer_details.cbu)));
   const total = orderTotals(items, store, draft.fulfillment_type).total;
+  const isDineIn = draft.fulfillment_type === 'dine_in';
+  const reviewDetails: [string, string][] = [
+    ['Modalidad', fulfillmentLabels[draft.fulfillment_type]],
+    ...(!isDineIn ? [['Nombre', draft.customer_name], ['Teléfono', draft.customer_phone]] as [string, string][] : []),
+    [isDineIn ? 'Número de mesa' : draft.fulfillment_type === 'delivery' ? 'Dirección de entrega' : 'Retiro en', isDineIn ? draft.table_label : draft.fulfillment_type === 'delivery' ? draft.delivery_address : store.address || store.name],
+    ['Pago', paymentLabels[draft.on_delivery_method] || draft.on_delivery_method],
+    ['Aclaraciones', draft.notes || 'Sin aclaraciones'],
+  ];
 
   return <div className="min-h-dvh bg-muted/20 pb-10">
     <header className="border-b bg-background"><div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-4"><Link to={menuURL} aria-label="Volver al menú" className="rounded-lg p-2 hover:bg-muted"><ArrowLeft className="h-5 w-5" /></Link><div className="min-w-0"><p className="truncate font-bold">{store.name}</p><p className="text-xs text-muted-foreground">Finalizar pedido · Sin registro</p></div></div></header>
@@ -140,15 +150,15 @@ function Checkout({ slug }: { slug: string }) {
       <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
         {step === 'details' ? <form id="checkout-details-form" onSubmit={review} className="min-w-0 space-y-6 rounded-2xl border bg-card p-4 sm:p-6">
           <h1 className="text-2xl font-bold">Ya casi está.</h1>
-          <p className="flex items-start gap-2 rounded-xl bg-muted/60 p-3 text-sm text-muted-foreground"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span>Sin cuenta ni datos de tarjeta. El local recibe tu teléfono y, si elegís delivery, tu dirección para coordinar el pedido. <Link className="underline" to="/legal/privacy">Ver privacidad</Link>.</span></p>
+          <p className="flex items-start gap-2 rounded-xl bg-muted/60 p-3 text-sm text-muted-foreground"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span>{isDineIn ? 'El local recibe tu número de mesa y los datos necesarios para preparar el pedido; no pedimos nombre ni teléfono.' : 'Sin cuenta ni datos de tarjeta. El local recibe tu teléfono y, si elegís delivery, tu dirección para coordinar el pedido.'} <Link className="underline" to="/legal/privacy">Ver privacidad</Link>.</span></p>
           <FulfillmentPicker store={store} value={draft.fulfillment_type} onChange={value => update('fulfillment_type', value)} />
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2"><Label htmlFor="customer-name">Tu nombre</Label><Input id="customer-name" autoComplete="name" required minLength={2} maxLength={100} placeholder="¿A nombre de quién?" value={draft.customer_name} onChange={e => update('customer_name', e.target.value)} /></div>
+          {draft.fulfillment_type !== 'dine_in' ? <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2"><Label htmlFor="customer-name">Nombre del cliente</Label><Input id="customer-name" autoComplete="name" required minLength={2} maxLength={100} placeholder="¿A nombre de quién?" value={draft.customer_name} onChange={e => update('customer_name', e.target.value)} /></div>
             <div className="space-y-2"><Label htmlFor="customer-phone">Teléfono de contacto</Label><Input id="customer-phone" type="tel" inputMode="tel" autoComplete="tel" required maxLength={24} placeholder="Código de área + número" value={draft.customer_phone} onChange={e => update('customer_phone', e.target.value)} /><p className="text-xs text-muted-foreground">Solo para coordinar este pedido. Incluí el código de área.</p></div>
-          </div>
+          </div> : <p className="rounded-xl bg-muted/50 p-3 text-sm text-muted-foreground">Para comer en el local no hace falta dejar tu nombre ni teléfono: identificamos el pedido por el número de mesa.</p>}
           {draft.fulfillment_type === 'delivery' && <div className="space-y-2"><Label htmlFor="delivery-address">Dirección de entrega</Label><Textarea id="delivery-address" autoComplete="street-address" required minLength={8} maxLength={500} placeholder="Calle, altura, piso/depto y localidad" value={draft.delivery_address} onChange={e => update('delivery_address', e.target.value)} /></div>}
           {draft.fulfillment_type === 'collection' && <p className="rounded-xl bg-muted/50 p-3 text-sm">Retirás en {store.address || store.name}.</p>}
-          {draft.fulfillment_type === 'dine_in' && <div className="space-y-2"><Label htmlFor="table-label">Mesa o referencia (opcional)</Label><Input id="table-label" maxLength={60} placeholder="Por ejemplo: Mesa 4" value={draft.table_label} onChange={e => update('table_label', e.target.value)} /></div>}
+          {draft.fulfillment_type === 'dine_in' && <div className="space-y-2"><Label htmlFor="table-label">Número de mesa</Label><Input id="table-label" inputMode="numeric" autoComplete="off" required maxLength={60} placeholder="Por ejemplo: 4" value={draft.table_label} onChange={e => update('table_label', e.target.value)} /><p className="text-xs text-muted-foreground">Lo usamos para llevar el pedido a tu mesa.</p></div>}
           <fieldset className="space-y-3"><legend className="font-semibold">¿Cómo vas a pagar?</legend><p className="text-sm text-muted-foreground">Elegí el medio que te resulte más cómodo.</p><div className="grid gap-2 sm:grid-cols-2">{(store.on_delivery_payment_methods || []).map(method => <label key={method} className={'flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-sm ' + (draft.on_delivery_method === method ? 'border-primary bg-primary/5 ring-1 ring-primary' : '')}><input type="radio" name="payment" required value={method} checked={draft.on_delivery_method === method} onChange={() => update('on_delivery_method', method)} />{paymentLabels[method] || method}</label>)}</div>{draft.on_delivery_method === 'eft' && store.transfer_details && <div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-4"><div><p className="font-semibold">Datos para transferir</p><p className="text-sm text-muted-foreground">El pago queda pendiente hasta que el local lo verifique.</p></div><dl className="space-y-2 text-sm">{[['Titular', store.transfer_details.account_holder], ['Alias', store.transfer_details.alias], ['CBU / CVU', store.transfer_details.cbu]].filter((entry): entry is [string, string] => Boolean(entry[1])).map(([label, value]) => <div key={label} className="flex flex-wrap items-center justify-between gap-2"><dt className="text-muted-foreground">{label}</dt><dd className="flex items-center gap-2 break-all font-semibold">{value}<button type="button" className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-md border bg-background px-2 text-xs" onClick={() => void copyTransferValue(value)} aria-label={'Copiar ' + label}><Copy className="h-3.5 w-3.5" />Copiar</button></dd></div>)}</dl>{copyMessage && <p role="status" className="text-xs">{copyMessage}</p>}</div>}{!canOrder && draft.on_delivery_method === 'eft' && <p role="alert" className="text-sm text-destructive">El local todavía no configuró los datos de transferencia. Elegí otro medio o consultá al local.</p>}</fieldset>
           <div className="space-y-2"><Label htmlFor="order-notes">Aclaraciones del pedido (opcional)</Label><Textarea id="order-notes" maxLength={500} placeholder="Indicaciones para la entrega o el local" value={draft.notes} onChange={e => update('notes', e.target.value)} /></div>
           <Button type="submit" disabled={!canOrder} className="hidden h-12 w-full rounded-xl xl:flex">Revisar pedido · {publicMoney(total, store)} <ArrowRight className="ml-2 h-4 w-4" /></Button>
@@ -157,7 +167,7 @@ function Checkout({ slug }: { slug: string }) {
           <h1 className="text-2xl font-bold">Revisá y confirmá</h1>
           <p className="text-sm text-muted-foreground">Al confirmar, el pedido se envía al local para su preparación.</p>
           <dl className="space-y-3 rounded-xl bg-muted/40 p-4 text-sm">
-            {[['Modalidad', fulfillmentLabels[draft.fulfillment_type]], ['Nombre', draft.customer_name], ['Teléfono', draft.customer_phone], [draft.fulfillment_type === 'delivery' ? 'Entregar en' : draft.fulfillment_type === 'dine_in' ? 'Mesa / referencia' : 'Retiro en', draft.fulfillment_type === 'delivery' ? draft.delivery_address : draft.fulfillment_type === 'dine_in' ? draft.table_label || 'Sin referencia' : store.address || store.name], ['Pago', paymentLabels[draft.on_delivery_method] || draft.on_delivery_method], ['Aclaraciones', draft.notes || 'Sin aclaraciones']].map(([label, value]) => <div key={label} className="grid grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)] gap-3"><dt className="text-muted-foreground">{label}</dt><dd className="break-words font-medium">{value}</dd></div>)}
+            {reviewDetails.map(([label, value]) => <div key={label} className="grid grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)] gap-3"><dt className="text-muted-foreground">{label}</dt><dd className="break-words font-medium">{value}</dd></div>)}
           </dl>
           {draft.on_delivery_method === 'eft' && <p className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm">Al confirmar, el pedido se enviará al local. La transferencia quedará pendiente de verificación hasta que el local confirme el pago.</p>}
           <div className="xl:hidden"><OrderSummary items={items} store={store} mode={draft.fulfillment_type} /></div>

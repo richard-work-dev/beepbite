@@ -26,6 +26,7 @@ import type { KdsTicket, KdsSSEEvent } from './types';
 import type { SSEStatus } from './hooks/use-sse';
 
 const RECALL_WINDOW_MS = 30_000;
+const REFRESH_INTERVAL_MS = 10_000;
 
 interface LastBump {
   ticket: KdsTicket;
@@ -116,6 +117,17 @@ function StationContent({ embedded = false }: { embedded?: boolean }) {
     if (!stationId) return;
     setLoading(true);
     void refetch();
+  }, [stationId, refetch]);
+
+  // Refresh payment context too: payment is registered in POS and does not
+  // necessarily produce a kitchen-ticket event. This keeps other kitchen
+  // screens current without overwriting an in-flight optimistic action.
+  useEffect(() => {
+    if (!stationId) return;
+    const interval = window.setInterval(() => {
+      if (inFlightRef.current.size === 0) void refetch();
+    }, REFRESH_INTERVAL_MS);
+    return () => window.clearInterval(interval);
   }, [stationId, refetch]);
 
   // -------- SSE handler --------

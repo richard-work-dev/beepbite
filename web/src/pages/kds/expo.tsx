@@ -32,6 +32,8 @@ interface ExpoViewResponse {
 	max_priority?: number;
 	order_number?: string;
 	order_type?: string;
+	payment_status?: string;
+	payment_method?: string;
 	table_number?: string;
 	customer_name?: string | null;
 	customer_phone?: string | null;

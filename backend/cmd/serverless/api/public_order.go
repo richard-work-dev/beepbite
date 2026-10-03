@@ -284,6 +284,19 @@ func validatePublicOrderContact(input map[string]any) error {
 	return nil
 }
 
+func validatePublicOrderPaymentMethod(input, location map[string]any) error {
+	method := strings.TrimSpace(displayString(input["on_delivery_method"]))
+	if method == "" && strings.TrimSpace(displayString(input["fulfillment_type"])) == "dine_in" {
+		return nil
+	}
+	for _, allowed := range publicOrderPaymentMethods(location) {
+		if method == allowed {
+			return nil
+		}
+	}
+	return errors.New("Ese medio de pago no está habilitado. Actualizá los datos del local.")
+}
+
 func publicOrderCustomerName(mode, name, table string) string {
 	if strings.TrimSpace(mode) == "dine_in" {
 		return "Mesa " + strings.TrimSpace(table)
@@ -340,16 +353,10 @@ func (a *application) createMarketplaceOrder(ctx context.Context, slug, body, so
 	if !boolOr(location.row, "online_orders_enabled", true) {
 		return errorResponse(422, "El local pausó los pedidos online.")
 	}
-	method := displayString(input["on_delivery_method"])
-	validMethod := false
-	for _, allowed := range publicOrderPaymentMethods(location.row) {
-		if method == allowed {
-			validMethod = true
-		}
+	if err := validatePublicOrderPaymentMethod(input, location.row); err != nil {
+		return errorResponse(422, err.Error())
 	}
-	if !validMethod {
-		return errorResponse(422, "Ese medio de pago no está habilitado. Actualizá los datos del local.")
-	}
+	method := strings.TrimSpace(displayString(input["on_delivery_method"]))
 	catalog, err := a.queryDataRows(ctx, orgID, "items")
 	if err != nil {
 		return dataAccessError(err)

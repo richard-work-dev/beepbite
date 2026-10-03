@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { ExpoOrder, ExpoStationTicket, KdsTicketAction } from '../types';
 import { formatKitchenOrderNumber } from '../order-number';
+import { kdsPaymentDisplay, PAYMENT_TONE_CLASSES } from '../payment-display';
 
 // ---- Urgency thresholds (minutes) ------------------------------------------
 const AMBER_MIN = 5;
@@ -175,6 +176,7 @@ export function ExpoOrderCard({
   const fullOrderNumber = order.order_number || order.order_id;
   const displayId = formatKitchenOrderNumber(fullOrderNumber);
   const typeMeta = order.order_type ? ORDER_TYPE_BADGE[order.order_type] || null : null;
+  const payment = kdsPaymentDisplay(order.order_type, order.payment_status, order.payment_method);
 
   return (
     <div
@@ -241,6 +243,10 @@ export function ExpoOrderCard({
         <p><span className="font-bold text-sky-300">Cliente:</span> {order.customer_name || 'Mostrador' }{order.customer_phone ? ` · ${order.customer_phone}` : ''}</p>
         {order.delivery_address && <p><span className="font-bold text-sky-300">Entrega:</span> {order.delivery_address}</p>}
         {order.notes && <p className="font-semibold text-amber-300">Nota: {order.notes}</p>}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-gray-700 pt-1.5">
+          <p><span className="font-bold text-sky-300">Pago:</span> <span className={cn('rounded px-1.5 py-0.5 font-bold', PAYMENT_TONE_CLASSES[payment.tone])}>{payment.statusLabel}</span></p>
+          <p><span className="font-bold text-sky-300">Medio:</span> {payment.methodLabel}</p>
+        </div>
       </div>
 
       {/* ------------------------------------------------------------------ */}

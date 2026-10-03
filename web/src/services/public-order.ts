@@ -8,6 +8,17 @@ export const fulfillmentLabels: Record<Fulfillment, string> = {
 export const paymentLabels: Record<string, string> = {
   cash: 'Efectivo', card_machine: 'Tarjeta al recibir', eft: 'Transferencia bancaria',
 };
+export function paymentLabel(method: string, mode?: Fulfillment): string {
+  if (mode === 'dine_in') {
+    const dineInLabels: Record<string, string> = {
+      cash: 'Efectivo en caja',
+      card_machine: 'Tarjeta en caja',
+      eft: 'Transferencia bancaria',
+    };
+    return dineInLabels[method] || paymentLabels[method] || method;
+  }
+  return paymentLabels[method] || method;
+}
 export interface OrderLine extends CartItem {
   id: string;
   name: string;

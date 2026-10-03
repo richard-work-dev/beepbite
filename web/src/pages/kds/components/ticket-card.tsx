@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils';
 import { RecipeSection } from './recipe-section';
 import type { KdsTicket, KdsTicketDetail, KdsTicketItem } from '../types';
 import { formatKitchenOrderNumber } from '../order-number';
+import { kdsPaymentDisplay, PAYMENT_TONE_CLASSES } from '../payment-display';
 
 // Color thresholds (minutes since fired).
 const AMBER_MIN = 5;
@@ -172,6 +173,11 @@ export function TicketCard({
   const serviceLabel = ({ dine_in: 'En salón', pickup: 'Para retirar', takeaway: 'Para retirar', delivery: 'Envío a domicilio' } as Record<string, string>)[details?.order_type || ticket.order_type || ''] || label;
   const customerContext = [details?.customer_name ?? ticket.customer_name, details?.customer_phone ?? ticket.customer_phone].filter(Boolean).join(' · ');
   const deliveryAddress = details?.delivery_address ?? ticket.delivery_address;
+  const payment = kdsPaymentDisplay(
+    details?.order_type || ticket.order_type,
+    ticket.payment_status ?? details?.payment_status,
+    ticket.payment_method ?? details?.payment_method,
+  );
 
   return (
     <div
@@ -239,6 +245,10 @@ export function TicketCard({
           <p><span className="font-bold text-sky-300">Modalidad:</span> {serviceLabel}</p>
           <p><span className="font-bold text-sky-300">Cliente:</span> {customerContext || 'Mostrador'}</p>
           {deliveryAddress && <p><span className="font-bold text-sky-300">Entrega:</span> {deliveryAddress}</p>}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-sky-800/50 pt-1.5">
+            <p><span className="font-bold text-sky-300">Pago:</span> <span className={cn('rounded px-1.5 py-0.5 font-bold', PAYMENT_TONE_CLASSES[payment.tone])}>{payment.statusLabel}</span></p>
+            <p><span className="font-bold text-sky-300">Medio:</span> {payment.methodLabel}</p>
+          </div>
         </div>
         {/* Item list */}
         {items.length === 0 ? (

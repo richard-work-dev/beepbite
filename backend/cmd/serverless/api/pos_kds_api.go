@@ -1025,6 +1025,8 @@ func (a *application) listKDSTickets(ctx context.Context, orgID, stationID strin
 		if order := ordersByID[fmt.Sprint(ticket["order_id"])]; order != nil {
 			copy["order_number"] = order["order_number"]
 			copy["order_type"] = order["order_type"]
+			copy["payment_status"] = valueOr(order, "payment_status", "pending")
+			copy["payment_method"] = valueOr(order, "payment_method", "")
 			copy["table_number"] = order["table_number"]
 			copy["customer_name"] = valueOr(order, "customer_name", nil)
 			copy["customer_phone"] = valueOr(order, "customer_phone", nil)
@@ -1091,7 +1093,9 @@ func (a *application) getKDSTicketDetails(ctx context.Context, orgID, ticketID s
 	}
 	return mustJSONResponse(200, map[string]any{
 		"ticket_id": ticketID, "order_number": order["order_number"], "station_name": station["name"],
-		"table_number": order["table_number"], "order_type": order["order_type"], "fired_at": ticket["fired_at"],
+		"table_number": order["table_number"], "order_type": order["order_type"],
+		"payment_status": valueOr(order, "payment_status", "pending"), "payment_method": valueOr(order, "payment_method", ""),
+		"fired_at":      ticket["fired_at"],
 		"customer_name": valueOr(order, "customer_name", nil), "customer_phone": valueOr(order, "customer_phone", nil),
 		"delivery_address": valueOr(order, "delivery_address", nil), "notes": valueOr(order, "notes", ticket["notes"]),
 		"items": resultItems,
@@ -1358,7 +1362,7 @@ func (a *application) getKDSExpo(ctx context.Context, orgID, orderID string) eve
 	return mustJSONResponse(200, map[string]any{
 		"order_id": orderID, "order_number": order["order_number"], "order_type": order["order_type"], "table_number": order["table_number"],
 		"customer_name": valueOr(order, "customer_name", nil), "customer_phone": valueOr(order, "customer_phone", nil), "delivery_address": valueOr(order, "delivery_address", nil), "notes": valueOr(order, "notes", nil),
-		"order_status": order["status"], "payment_status": valueOr(order, "payment_status", "pending"),
+		"order_status": order["status"], "payment_status": valueOr(order, "payment_status", "pending"), "payment_method": valueOr(order, "payment_method", ""),
 		"earliest_fired_at": earliest, "station_tickets": stationTickets, "max_priority": maxPriority, "all_ready": allReady, "any_in_progress": anyProgress,
 	})
 }

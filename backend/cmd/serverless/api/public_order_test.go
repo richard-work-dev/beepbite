@@ -83,6 +83,24 @@ func TestPublicOrderContactRequiresNameAndPhoneForPickupAndDelivery(t *testing.T
 	}
 }
 
+func TestPublicOrderPaymentMethodMayBeDeferredOnlyForDineIn(t *testing.T) {
+	location := map[string]any{"on_delivery_payment_methods": []any{"cash", "card_machine"}}
+	if err := validatePublicOrderPaymentMethod(map[string]any{"fulfillment_type": "dine_in"}, location); err != nil {
+		t.Fatalf("dine-in payment may be selected at the end: %v", err)
+	}
+	if err := validatePublicOrderPaymentMethod(map[string]any{"fulfillment_type": "dine_in", "on_delivery_method": "cash"}, location); err != nil {
+		t.Fatalf("configured dine-in payment method was rejected: %v", err)
+	}
+	if err := validatePublicOrderPaymentMethod(map[string]any{"fulfillment_type": "dine_in", "on_delivery_method": "bitcoin"}, location); err == nil {
+		t.Fatal("dine-in orders must not accept an unconfigured method")
+	}
+	for _, mode := range []string{"collection", "delivery"} {
+		if err := validatePublicOrderPaymentMethod(map[string]any{"fulfillment_type": mode}, location); err == nil {
+			t.Fatalf("%s order must require a configured payment method", mode)
+		}
+	}
+}
+
 func TestPublicOrderRateLimitKeyIsWindowScopedAndDoesNotStoreIP(t *testing.T) {
 	base := time.Date(2026, time.October, 1, 12, 1, 0, 0, time.UTC)
 	first, firstExpiry := publicOrderRateLimitKey("store-1", "203.0.113.15", base)

@@ -126,13 +126,13 @@ function Checkout({ slug }: { slug: string }) {
 
   return <div className="min-h-dvh bg-muted/20 pb-10">
     <header className="border-b bg-background"><div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-4"><Link to={menuURL} aria-label="Volver al menú" className="rounded-lg p-2 hover:bg-muted"><ArrowLeft className="h-5 w-5" /></Link><div className="min-w-0"><p className="truncate font-bold">{store.name}</p><p className="text-xs text-muted-foreground">Finalizar pedido · Sin registro</p></div></div></header>
-    <main className="mx-auto max-w-5xl space-y-5 p-4 sm:p-6">
+    <main className="mx-auto max-w-5xl space-y-5 p-4 pb-32 sm:p-6 sm:pb-32 xl:pb-6">
       <ol aria-label="Pasos del pedido" className="flex flex-wrap gap-3 text-sm"><li className="text-muted-foreground">1. Productos</li><li aria-current={step === 'details' ? 'step' : undefined} className={step === 'details' ? 'font-bold text-primary' : ''}>2. Tus datos</li><li aria-current={step === 'review' ? 'step' : undefined} className={step === 'review' ? 'font-bold text-primary' : 'text-muted-foreground'}>3. Confirmar</li></ol>
       {notice && <p role="status" className="rounded-xl border bg-primary/5 p-4 text-sm">{notice}</p>}
       {error && <div role="alert" className="space-y-2 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive"><p>{error}</p><button className="underline" type="button" onClick={() => { setStore(null); setAttempt(n => n + 1); }}>Actualizar precios y disponibilidad</button></div>}
       {!canOrder && <p role="status" className="rounded-xl border p-4 text-sm">El local no está recibiendo pedidos con esta configuración. Volvé al menú o consultá al local.</p>}
-      <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
-        {step === 'details' ? <form onSubmit={review} className="min-w-0 space-y-6 rounded-2xl border bg-card p-4 sm:p-6">
+      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+        {step === 'details' ? <form id="checkout-details-form" onSubmit={review} className="min-w-0 space-y-6 rounded-2xl border bg-card p-4 sm:p-6">
           <h1 className="text-2xl font-bold">Ya casi está.</h1>
           <p className="flex items-start gap-2 rounded-xl bg-muted/60 p-3 text-sm text-muted-foreground"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span>Sin cuenta ni datos de tarjeta. El local recibe tu teléfono y, si elegís delivery, tu dirección para coordinar el pedido. <Link className="underline" to="/legal/privacy">Ver privacidad</Link>.</span></p>
           <FulfillmentPicker store={store} value={draft.fulfillment_type} onChange={value => update('fulfillment_type', value)} />
@@ -145,7 +145,7 @@ function Checkout({ slug }: { slug: string }) {
           {draft.fulfillment_type === 'dine_in' && <div className="space-y-2"><Label htmlFor="table-label">Mesa o referencia (opcional)</Label><Input id="table-label" maxLength={60} placeholder="Por ejemplo: Mesa 4" value={draft.table_label} onChange={e => update('table_label', e.target.value)} /></div>}
           <fieldset className="space-y-3"><legend className="font-semibold">¿Cómo vas a pagar?</legend><p className="text-sm text-muted-foreground">Pagás al recibir o en el local.</p><div className="flex flex-wrap gap-3">{(store.on_delivery_payment_methods || []).map(method => <label key={method} className="flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-4 py-3 text-sm"><input type="radio" name="payment" required value={method} checked={draft.on_delivery_method === method} onChange={() => update('on_delivery_method', method)} />{paymentLabels[method] || method}</label>)}</div></fieldset>
           <div className="space-y-2"><Label htmlFor="order-notes">Aclaraciones del pedido (opcional)</Label><Textarea id="order-notes" maxLength={500} placeholder="Indicaciones para la entrega o el local" value={draft.notes} onChange={e => update('notes', e.target.value)} /></div>
-          <Button type="submit" disabled={!canOrder} className="h-12 w-full rounded-xl">Revisar pedido · {publicMoney(total, store)} <ArrowRight className="ml-2 h-4 w-4" /></Button>
+          <Button type="submit" disabled={!canOrder} className="hidden h-12 w-full rounded-xl xl:flex">Revisar pedido · {publicMoney(total, store)} <ArrowRight className="ml-2 h-4 w-4" /></Button>
           <p className="text-center text-xs text-muted-foreground">Todavía no se envía: vas a revisar los datos y confirmar en el siguiente paso.</p>
         </form> : <section className="min-w-0 space-y-5 rounded-2xl border bg-card p-4 sm:p-6">
           <h1 className="text-2xl font-bold">Revisá y confirmá</h1>
@@ -153,13 +153,14 @@ function Checkout({ slug }: { slug: string }) {
           <dl className="space-y-3 rounded-xl bg-muted/40 p-4 text-sm">
             {[['Modalidad', fulfillmentLabels[draft.fulfillment_type]], ['Nombre', draft.customer_name], ['Teléfono', draft.customer_phone], [draft.fulfillment_type === 'delivery' ? 'Entregar en' : draft.fulfillment_type === 'dine_in' ? 'Mesa / referencia' : 'Retiro en', draft.fulfillment_type === 'delivery' ? draft.delivery_address : draft.fulfillment_type === 'dine_in' ? draft.table_label || 'Sin referencia' : store.address || store.name], ['Pago', paymentLabels[draft.on_delivery_method] || draft.on_delivery_method], ['Aclaraciones', draft.notes || 'Sin aclaraciones']].map(([label, value]) => <div key={label} className="grid grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)] gap-3"><dt className="text-muted-foreground">{label}</dt><dd className="break-words font-medium">{value}</dd></div>)}
           </dl>
-          <div className="lg:hidden"><OrderSummary items={items} store={store} mode={draft.fulfillment_type} /></div>
+          <div className="xl:hidden"><OrderSummary items={items} store={store} mode={draft.fulfillment_type} /></div>
           <Button type="button" onClick={() => void submit()} disabled={submitting || !canOrder} className="h-auto min-h-12 w-full whitespace-normal rounded-xl py-3">{submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Enviando pedido…</> : 'Confirmar pedido · ' + publicMoney(total, store)}</Button>
           <Button type="button" variant="outline" disabled={submitting} onClick={() => setStep('details')} className="h-11 w-full">Editar mis datos</Button>
           <p className="text-center text-xs text-muted-foreground">Después de confirmar vas a poder seguir el estado desde esta web.</p>
         </section>}
-        <aside className={'min-w-0 self-start rounded-2xl border bg-card p-5 lg:sticky lg:top-5 ' + (step === 'review' ? 'hidden lg:block' : '')}><div className="flex justify-between gap-2"><h2 className="text-lg font-bold">Tu pedido</h2><Link to={menuURL} className="text-sm text-primary underline">Editar</Link></div><OrderSummary items={items} store={store} mode={draft.fulfillment_type} /></aside>
+        <aside className={'min-w-0 self-start rounded-2xl border bg-card p-5 xl:sticky xl:top-5 ' + (step === 'review' ? 'hidden xl:block' : '')}><div className="flex justify-between gap-2"><h2 className="text-lg font-bold">Tu pedido</h2><Link to={menuURL} className="text-sm text-primary underline">Editar</Link></div><OrderSummary items={items} store={store} mode={draft.fulfillment_type} /></aside>
       </div>
     </main>
+    {step === 'details' && <div className="fixed inset-x-0 bottom-0 z-20 border-t bg-background/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur xl:hidden"><Button type="submit" form="checkout-details-form" disabled={!canOrder} className="h-14 w-full justify-between rounded-xl px-4 sm:px-5"><span>Revisar pedido</span><span className="tabular-nums">{publicMoney(total, store)} <ArrowRight className="ml-1 inline h-4 w-4" /></span></Button></div>}
   </div>;
 }

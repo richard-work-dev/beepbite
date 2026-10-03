@@ -11,10 +11,10 @@ export function FulfillmentPicker({ store, value, onChange, disabled = false }: 
 }) {
   return <fieldset disabled={disabled} className="min-w-0 space-y-3">
     <legend className="text-base font-semibold">¿Cómo querés tu pedido?</legend>
-    <div className="grid gap-2 sm:grid-cols-3">
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(6rem,1fr))] gap-2">
       {fulfillmentOptions(store).map(mode => {
         const Icon = icons[mode];
-        return <label key={mode} className={cn('flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border-2 px-3 py-3 text-sm transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring', value === mode ? 'border-primary bg-primary/5 text-primary' : 'border-border bg-card')}>
+        return <label key={mode} className={cn('flex min-h-20 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 px-2 py-3 text-center text-sm transition-colors sm:min-h-14 sm:flex-row sm:gap-3 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring', value === mode ? 'border-primary bg-primary/5 text-primary' : 'border-border bg-card')}>
           <input type="radio" name="fulfillment" value={mode} checked={value === mode} onChange={() => onChange(mode)} className="sr-only" />
           <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
           <span className="font-semibold">{fulfillmentLabels[mode]}</span>
@@ -28,9 +28,9 @@ export function QuantityControl({ name, quantity, onMinus, onPlus, max = 99 }: {
   name: string; quantity: number; onMinus: () => void; onPlus: () => void; max?: number;
 }) {
   return <div className="flex shrink-0 items-center gap-1 rounded-xl border bg-background p-1">
-    <Button type="button" variant="ghost" size="icon" className="h-10 w-10" onClick={onMinus} aria-label={`Quitar uno de ${name}`}><Minus className="h-4 w-4" /></Button>
+    <Button type="button" variant="ghost" size="icon" className="h-11 w-11" onClick={onMinus} aria-label={`Quitar uno de ${name}`}><Minus className="h-4 w-4" /></Button>
     <span className="min-w-6 text-center text-sm font-bold tabular-nums" aria-live="polite">{quantity}</span>
-    <Button type="button" variant="ghost" size="icon" className="h-10 w-10" onClick={onPlus} disabled={quantity >= max} aria-label={`Agregar uno de ${name}`}><Plus className="h-4 w-4" /></Button>
+    <Button type="button" variant="ghost" size="icon" className="h-11 w-11" onClick={onPlus} disabled={quantity >= max} aria-label={`Agregar uno de ${name}`}><Plus className="h-4 w-4" /></Button>
   </div>;
 }
 

@@ -30,7 +30,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { MemoryRouter, Routes, Route, useSearchParams } from 'react-router-dom';
 import { ChefHat, Loader2, Monitor, RefreshCw, ShieldAlert } from 'lucide-react';
 
 import { useAuth } from '@/context/auth-context';
@@ -265,8 +265,7 @@ function TabButton({ active, onClick, children }: TabButtonProps) {
       type="button"
       variant="ghost"
       onClick={onClick}
-      aria-selected={active}
-      role="tab"
+      aria-pressed={active}
       className={cn(
         // font-display: this is the "which screen am I on" label — read at a
         // glance while reaching for the tab, same job as a KDS ticket header.
@@ -298,7 +297,7 @@ function ViewPill({ active, onClick, children }: ViewPillProps) {
       variant={active ? 'default' : 'outline'}
       onClick={onClick}
       aria-pressed={active}
-      className="h-auto shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold"
+      className="h-11 shrink-0 rounded-xl px-3.5 text-sm font-semibold"
     >
       {children}
     </Button>
@@ -442,6 +441,7 @@ function POSPanel({ posView }: { posView: PosViewId }) {
 // ---------------------------------------------------------------------------
 
 export default function WorkspacePage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { roles, caps, loading: memberLoading, error: membershipError } = useMembership();
 
   const { showPOS, showKitchen } = useMemo(
@@ -480,31 +480,51 @@ export default function WorkspacePage() {
     else if (showKitchen) setActiveTab('kitchen');
   }, [memberLoading, showPOS, showKitchen, activeTab]);
 
+  // Explicit navigation links take precedence over a device's last saved view.
+  // This also makes Back/Forward and shared links restore the visible screen.
+  useEffect(() => {
+    if (memberLoading || !prefsLoaded) return;
+    const tab = searchParams.get('tab');
+    const view = searchParams.get('view');
+    if (tab === 'pos' && showPOS) {
+      setActiveTab('pos');
+      if (POS_VIEWS.some(v => v.id === view)) setPosView(view as PosViewId);
+    } else if (tab === 'kitchen' && showKitchen) {
+      setActiveTab('kitchen');
+      if (KDS_VIEWS.some(v => v.id === view)) setKdsView(view as KdsViewId);
+    }
+  }, [searchParams, memberLoading, prefsLoaded, showPOS, showKitchen]);
+
   // Handlers with preference persistence.
   const handlePosView = useCallback(
     (view: PosViewId) => {
       setPosView(view);
+      setSearchParams({ tab: 'pos', view });
       // savePOSView() has its own try/catch (services/userprefs.ts) and
       // always resolves — the localStorage write is optimistic and a
       // server-sync failure is tolerated silently by design.
       void savePOSView(view);
     },
-    [],
+    [setSearchParams],
   );
 
   const handleKdsView = useCallback(
     (view: KdsViewId) => {
       setKdsView(view);
+      setSearchParams({ tab: 'kitchen', view });
       // Same as handlePosView above: saveKDSView() self-catches and always
       // resolves.
       void saveKDSView(view);
     },
-    [],
+    [setSearchParams],
   );
 
   const handleTab = useCallback(
-    (tab: 'pos' | 'kitchen') => setActiveTab(tab),
-    [],
+    (tab: 'pos' | 'kitchen') => {
+      setActiveTab(tab);
+      setSearchParams({ tab, view: tab === 'pos' ? posView : kdsView });
+    },
+    [setSearchParams, posView, kdsView],
   );
 
   // Show loader while membership resolves or prefs are loading.
@@ -533,7 +553,7 @@ export default function WorkspacePage() {
   if (activeTab === null) return <ViewLoader />;
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-background">
+    <div className="operational-workspace flex h-full flex-col overflow-hidden bg-background">
       {/* ----------------------------------------------------------------- */}
       {/* Top bar: tab switcher + view picker                               */}
       {/*                                                                   */}
@@ -551,7 +571,7 @@ export default function WorkspacePage() {
       {/* ----------------------------------------------------------------- */}
       <div className="dark flex shrink-0 flex-col gap-0 border-b border-border bg-card shadow-sm sm:flex-row sm:items-center">
         {/* Tab buttons */}
-        <div className="flex w-full items-center overflow-x-auto border-b border-border sm:w-auto sm:border-b-0 sm:border-r sm:pr-4">
+        <div role="group" aria-label="Área de trabajo" className="flex w-full items-center overflow-x-auto border-b border-border sm:w-auto sm:border-b-0 sm:border-r sm:pr-4">
           <div className="hidden items-center gap-2.5 pl-4 pr-3 min-[420px]:flex" aria-hidden="true">
             <span className="h-6 w-1 rounded-full bg-primary" />
             <Monitor className="h-4 w-4 text-muted-foreground" />
@@ -575,7 +595,7 @@ export default function WorkspacePage() {
         </div>
 
         {/* View pills */}
-        <div className="flex w-full items-center gap-2 overflow-x-auto px-3 py-2 sm:w-auto sm:px-4 sm:py-0">
+        <div role="group" aria-label="Vista del área de trabajo" className="flex w-full items-center gap-2 overflow-x-auto px-3 py-2 sm:w-auto sm:px-4 sm:py-1">
           {activeTab === 'pos' &&
             POS_VIEWS.map((v) => (
               <ViewPill
@@ -610,7 +630,7 @@ export default function WorkspacePage() {
       {/* ----------------------------------------------------------------- */}
       {/* View content area                                                 */}
       {/* ----------------------------------------------------------------- */}
-      <div className="min-h-0 flex-1 overflow-hidden">
+      <div className="operational-content min-h-0 flex-1 overflow-hidden">
         {activeTab === 'pos' && <POSPanel posView={posView} />}
         {activeTab === 'kitchen' && (
           <KitchenPanel kdsView={kdsView} />

@@ -585,6 +585,31 @@
   }
 }
 
+  /* Landscape phones and short windows need page scroll, not clipped actions.
+     Taller screens retain the independently scrolling, full-height POS panes. */
+  @media (min-width: 768px) and (max-height: 600px) {
+    .workspace-shell {
+      height: auto;
+      padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+    }
+    .operational-workspace,
+    .operational-content {
+      height: auto;
+      overflow: visible;
+    }
+    .pos-workspace {
+      height: auto;
+      min-height: 100dvh;
+      overflow: visible;
+    }
+    .pos-workspace-main { min-height: 32rem; }
+    .pos-products,
+    .pos-ticket { height: 32rem; }
+  }
+  @media (min-width: 1024px) and (max-height: 600px) {
+    .workspace-shell { padding-bottom: 0; }
+  }
+
 @layer components {
   /* Retained alias — nothing in the app references this class today, but it
      shipped as public-ish API in previous waves. Now points at the current

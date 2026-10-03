@@ -218,7 +218,7 @@ function Checkout({ slug }: { slug: string }) {
       </div> : <div className="mx-auto flex max-w-5xl gap-2">
         {step === 'payment' && <Button type="button" variant="outline" onClick={goBack} className="h-14 shrink-0 rounded-xl px-4"><ArrowLeft className="mr-1 h-4 w-4" />Volver</Button>}
         <Button type="submit" form="checkout-step-form" disabled={!canAdvance} className="h-14 min-w-0 flex-1 justify-between rounded-xl px-4 sm:px-5">
-          <span>{step === 'details' ? 'Continuar a pago' : 'Revisar pedido'}</span>
+          <span>{step === 'details' ? 'Continuar al pago' : 'Revisar pedido'}</span>
           <span className="shrink-0 tabular-nums">{publicMoney(total, store)} <ArrowRight className="ml-1 inline h-4 w-4" /></span>
         </Button>
       </div>}

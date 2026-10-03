@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ComponentType } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { LogOut, Users, ChevronDown, UserCircle, BarChart3, Hash, X, MapPin, ChefHat, CookingPot, Building2, Check, Store, Folder, Receipt, MonitorPlay, Truck, LockKeyhole, LayoutDashboard, PackageSearch, PackageOpen, ClipboardList, ClipboardCheck, PackageCheck, FileCheck2, Zap, Menu, LayoutGrid, CalendarDays, ListChecks, WalletCards, Gift, FileText, Clock3, ContactRound } from 'lucide-react';
+import { LogOut, Users, ChevronDown, UserCircle, BarChart3, Hash, X, MapPin, ChefHat, CookingPot, Building2, Check, Store, Folder, Receipt, MonitorPlay, Truck, LockKeyhole, LayoutDashboard, PackageSearch, PackageOpen, ClipboardList, ClipboardCheck, PackageCheck, FileCheck2, Zap, Menu, LayoutGrid, CalendarDays, ListChecks, WalletCards, Gift, FileText, Clock3, ContactRound, Search } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { useActor } from '@/context/actor-token-context';
 import { hasAnyAccess } from '@/lib/access-control';
@@ -19,6 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SyncStatusBadge } from "@/components/ui/sync-status";
 import { cn } from "@/lib/utils";
 import Logo from '@/components/ui/logo';
+import { Input } from '@/components/ui/input';
 
 interface NavItem {
   name: string;
@@ -51,6 +52,7 @@ const TopBar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isSideNavOpen, setIsSideNavOpen] = useState(false);
+  const [moduleQuery, setModuleQuery] = useState('');
 
   // Focus management for the side nav below — it's a hand-rolled panel (not
   // Radix Dialog, since it's a persistent drawer rather than a centered
@@ -107,6 +109,7 @@ const TopBar = () => {
 
   const closeSideNav = () => {
     setIsSideNavOpen(false);
+    setModuleQuery('');
   };
 
   const toggleSideNav = (trigger?: HTMLButtonElement) => {
@@ -129,10 +132,10 @@ const TopBar = () => {
     document.body.style.overflow = 'hidden';
 
     const panel = sideNavRef.current;
-    const focusable = panel?.querySelectorAll<HTMLElement>(
+    const getFocusable = () => panel?.querySelectorAll<HTMLElement>(
       'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
     );
-    focusable?.[0]?.focus();
+    getFocusable()?.[0]?.focus();
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -140,6 +143,7 @@ const TopBar = () => {
         closeSideNav();
         return;
       }
+      const focusable = getFocusable();
       if (e.key !== 'Tab' || !focusable?.length) return;
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
@@ -225,7 +229,9 @@ const TopBar = () => {
   ];
 
   const availablePrimaryItems = topNavigationItems.filter((item) => canAccess(item.capability));
-  const mobilePrimaryItems = availablePrimaryItems.filter((item) => ['/home', '/pos/workspace', '/reports'].includes(item.path));
+  const mobilePrimaryItems = availablePrimaryItems;
+  const normalizeSearch = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const visibleSections = sideNavigationSections.map(section => ({ ...section, items: section.items.filter(item => canAccess(item.capability) && normalizeSearch(`${item.name} ${item.description} ${section.title}`).includes(normalizeSearch(moduleQuery.trim()))) })).filter(section => section.items.length > 0);
   const availableNavItems = [
     ...availablePrimaryItems,
     ...sideNavigationSections.flatMap((section) => section.items.filter((item) => canAccess(item.capability))),
@@ -306,7 +312,7 @@ const TopBar = () => {
                   {/* Sync status — always visible, not tucked in a menu. See
                       src/components/ui/sync-status.jsx: offline queueing is
                       real (src/offline/queue.js) and staff need to see it. */}
-                  {!isLandingPage && <SyncStatusBadge className="hidden lg:inline-flex" />}
+                  {!isLandingPage && <SyncStatusBadge className="hidden xl:inline-flex" />}
 
                   {/* Location Selector — also visible on tablets so the
                       current operating location is never hidden in a menu. */}
@@ -460,7 +466,7 @@ const TopBar = () => {
             role="dialog"
             aria-modal="true"
             aria-label={t('auth.openNavMenu')}
-            className="fixed inset-y-0 right-0 z-[9999] h-[100dvh] w-full max-w-sm animate-in border-l-2 border-border bg-background shadow-2xl slide-in-from-right duration-200"
+            className="fixed inset-y-0 right-0 z-[9999] h-[100dvh] w-full max-w-md animate-in border-l border-border bg-background shadow-2xl slide-in-from-right duration-200"
           >
             <div className="h-full flex flex-col">
 
@@ -499,6 +505,10 @@ const TopBar = () => {
                 </div>
               </div>
 
+              <div className="shrink-0 border-b bg-card p-4">
+                <label htmlFor="module-search" className="mb-2 block text-sm font-semibold">¿A dónde querés ir?</label>
+                <div className="relative"><Search className="absolute left-3 top-3.5 h-5 w-5 text-muted-foreground" aria-hidden="true" /><Input id="module-search" className="h-12 pl-10 text-base" type="search" placeholder="Buscar módulo: caja, inventario…" value={moduleQuery} onChange={event => setModuleQuery(event.target.value)} /></div>
+              </div>
               {/* Scrollable Content */}
               <div className="flex-1 overflow-y-auto">
                 <div className="space-y-6 p-4 sm:p-6">
@@ -536,7 +546,8 @@ const TopBar = () => {
                       </DropdownMenu>
                     </div>
                   )}
-                  {sideNavigationSections.map((section) => (
+                  {visibleSections.length === 0 && <p role="status" className="py-6 text-center text-sm text-muted-foreground">No encontramos módulos con ese nombre.</p>}
+                  {visibleSections.map((section) => (
                     <div key={section.title} className="space-y-2">
                       <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-1">
                         {section.title}

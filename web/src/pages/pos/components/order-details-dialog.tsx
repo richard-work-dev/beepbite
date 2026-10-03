@@ -87,14 +87,14 @@ export default function OrderDetailsDialog({
                 <Label htmlFor="order-customer-name">Nombre del cliente</Label>
                 <div className="relative">
                   <UserRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input id="order-customer-name" value={customerName} onChange={(event) => { setCustomerId(undefined); setCustomerName(event.target.value); }} placeholder="Ej.: María López" className="h-11 pl-9 text-base sm:text-sm" maxLength={120} autoComplete="name" />
+                  <Input id="order-customer-name" value={customerName} onChange={(event) => { setCustomerId(undefined); setCustomerName(event.target.value); }} placeholder="Ej.: María López" className="h-12 pl-9 text-base" maxLength={120} autoComplete="name" />
                 </div>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="order-customer-phone">Teléfono</Label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input id="order-customer-phone" type="tel" inputMode="tel" value={customerPhone} onChange={(event) => { setCustomerId(undefined); setCustomerPhone(event.target.value); }} placeholder="Ej.: 3755 123456" className="h-11 pl-9 text-base sm:text-sm" maxLength={40} autoComplete="tel" />
+                  <Input id="order-customer-phone" type="tel" inputMode="tel" value={customerPhone} onChange={(event) => { setCustomerId(undefined); setCustomerPhone(event.target.value); }} placeholder="Ej.: 3755 123456" className="h-12 pl-9 text-base" maxLength={40} autoComplete="tel" />
                 </div>
               </div>
             </div>

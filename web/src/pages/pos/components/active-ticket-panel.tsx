@@ -22,6 +22,7 @@
 //
 // Pure presentational. Parent owns all state.
 
+import { useRef, useState } from 'react';
 import {
   ChefHat,
   CreditCard,
@@ -163,11 +164,11 @@ function TicketHeader({ ticket, onAdjustGuests, onEditDetails }: TicketHeaderPro
 			</div>
 			<div className="flex items-start gap-2 border-t border-border/60 bg-muted/30 px-4 py-2.5">
 				<div className="min-w-0 flex-1 text-xs">
-					<p className="truncate font-semibold text-foreground">{ticket.customerName || 'Cliente de mostrador'}</p>
+					<p className="truncate font-semibold text-foreground">{ticket.customerName || (walkIn ? 'Cliente de mostrador' : `Consumo en mesa ${ticket.table_number ?? ''}`)}</p>
 					{ticket.customerPhone && <p className="mt-0.5 flex items-center gap-1 text-muted-foreground"><Phone className="h-3 w-3" />{ticket.customerPhone}</p>}
 					{ticket.notes && <p className="mt-1 line-clamp-2 flex items-start gap-1 text-muted-foreground"><StickyNote className="mt-0.5 h-3 w-3 shrink-0" />{ticket.notes}</p>}
 				</div>
-				{onEditDetails && <Button type="button" variant="ghost" size="sm" onClick={onEditDetails} className="h-8 shrink-0"><Pencil className="mr-1.5 h-3.5 w-3.5" />Datos</Button>}
+				{onEditDetails && <Button type="button" variant="outline" size="sm" onClick={onEditDetails} className="h-11 shrink-0"><Pencil className="h-3.5 w-3.5" />Datos</Button>}
 			</div>
 		</div>
   );
@@ -211,7 +212,7 @@ function SentItemRow({ item, orderId, locationId, onAdjustSuccess }: SentItemRow
     >
       <div
         className={cn(
-          'flex items-start gap-2 py-2 pl-3 pr-10',
+          'grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2 py-3 pl-3 pr-10',
           canActOnItem && itemId && 'hover:bg-muted/60 transition-colors',
         )}
       >
@@ -220,7 +221,7 @@ function SentItemRow({ item, orderId, locationId, onAdjustSuccess }: SentItemRow
             <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 tabular-nums shrink-0">
               {item.quantity}×
             </span>
-            <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{item.item_name || item.name}</span>
+            <span className="break-words text-sm text-gray-700 dark:text-gray-300">{item.item_name || item.name}</span>
           </div>
           {item.notes && (
             <p className="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400 truncate flex items-center gap-1">
@@ -229,15 +230,10 @@ function SentItemRow({ item, orderId, locationId, onAdjustSuccess }: SentItemRow
             </p>
           )}
         </div>
-        <span className={cn(
-          'text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border',
-          statusMeta.className,
-        )}>
-          {statusMeta.label}
-        </span>
         <span className="text-sm font-medium text-gray-700 dark:text-gray-300 tabular-nums shrink-0">
           {format(priceCents)}
         </span>
+        <span className={cn('col-span-2 w-fit rounded border px-2 py-1 text-[11px] font-medium', statusMeta.className)}>{statusMeta.label}</span>
       </div>
     </AdjustmentMenu>
   );
@@ -280,11 +276,11 @@ function SentOrderGroup({ order, locationId, onAdjustSuccess }: SentOrderGroupPr
       >
         <div
           className={cn(
-            'flex items-center justify-between py-2 pl-3 pr-10 bg-success/10 border-b border-success/20',
+            'flex flex-wrap items-center justify-between gap-2 py-3 pl-3 pr-10 bg-success/10 border-b border-success/20',
             canVoid && 'hover:bg-muted/60 transition-colors',
           )}
         >
-          <div className="flex min-w-0 items-center gap-2 text-[11px] font-bold">
+          <div className="flex min-w-0 flex-wrap items-center gap-2 text-[11px] font-bold">
             <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary" />
             <span className="truncate text-foreground">Pedido {shortOrderNum(order)}</span>
             <span className={cn('shrink-0 rounded-full border px-2 py-0.5', statusMeta.className)}>
@@ -380,7 +376,7 @@ function NewItemRow({ item, onBumpQty, onRemove, onEditNotes, courses, onSetCour
     <div className="flex flex-col px-3 py-2.5 bg-card gap-1.5">
       <div className="flex items-start gap-2">
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-gray-900 dark:text-white truncate leading-tight">{item.name}</p>
+          <p className="break-words text-sm font-semibold text-gray-900 dark:text-white leading-snug">{item.name}</p>
           {item.modifier_names && item.modifier_names.length > 0 && (
             <p className="text-[11px] text-primary truncate mt-0.5">
               {item.modifier_names.join(', ')}
@@ -403,17 +399,17 @@ function NewItemRow({ item, onBumpQty, onRemove, onEditNotes, courses, onSetCour
             variant="outline"
             onClick={() => onBumpQty(item.id, -1)}
             aria-label={`Disminuir cantidad de ${item.name}`}
-            className="h-9 w-9 p-0 rounded-full border-primary/25 hover:bg-primary/10 hover:border-primary/50 focus-visible:ring-2 focus-visible:ring-ring transition"
+            className="h-11 w-11 p-0 rounded-xl border-primary/25 hover:bg-primary/10 hover:border-primary/50 focus-visible:ring-2 focus-visible:ring-ring transition"
           >
             <Minus className="w-4 h-4" />
           </Button>
-          <span className="w-8 text-center text-sm font-bold tabular-nums select-none">{item.qty}</span>
+          <span className="w-5 text-center text-sm font-bold tabular-nums select-none">{item.qty}</span>
           {/* Qty increase */}
           <Button
             size="sm"
             onClick={() => onBumpQty(item.id, +1)}
             aria-label={`Aumentar cantidad de ${item.name}`}
-            className="h-9 w-9 p-0 rounded-full bg-primary hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring transition"
+            className="h-11 w-11 p-0 rounded-xl bg-primary hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring transition"
           >
             <Plus className="w-4 h-4" />
           </Button>
@@ -436,7 +432,7 @@ function NewItemRow({ item, onBumpQty, onRemove, onEditNotes, courses, onSetCour
               size="sm"
               variant="ghost"
               onClick={() => onEditNotes(item.id)}
-              className="h-8 px-2 text-xs text-muted-foreground"
+              className="h-11 px-2 text-xs text-muted-foreground"
               aria-label={`${item.notes ? 'Editar' : 'Agregar'} instrucciones para ${item.name}`}
             >
               <StickyNote className="mr-1 h-3.5 w-3.5" />
@@ -451,7 +447,7 @@ function NewItemRow({ item, onBumpQty, onRemove, onEditNotes, courses, onSetCour
             variant="ghost"
             onClick={() => onRemove(item.id)}
             aria-label={`Quitar ${item.name} del pedido`}
-            className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full focus-visible:ring-2 focus-visible:ring-destructive transition"
+            className="h-11 w-11 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl focus-visible:ring-2 focus-visible:ring-destructive transition"
           >
             <Trash2 className="w-4 h-4" />
           </Button>
@@ -520,6 +516,7 @@ interface TicketFooterProps {
   sending?: boolean;
   hasUnpaidOrders: boolean;
   newItemsCount: number;
+  newItems: NewTicketItem[];
 }
 
 function TicketFooter({
@@ -533,13 +530,16 @@ function TicketFooter({
   sending,
   hasUnpaidOrders,
   newItemsCount,
+  newItems,
 }: TicketFooterProps) {
-  const { format } = useMoney();
+  const { format, scale } = useMoney();
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const editDetailsAfterClose = useRef(false);
   const canSend = newItemsCount > 0 && !sending && Boolean(ticket);
   const canCharge = hasUnpaidOrders && !sending && Boolean(ticket);
 
   return (
-    <div className="border-t border-border bg-card px-4 py-3 space-y-2.5 shadow-[0_-2px_8px_rgba(0,0,0,0.04)] dark:shadow-[0_-2px_8px_rgba(0,0,0,0.3)]">
+    <div className="shrink-0 border-t border-border bg-card px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] space-y-2 shadow-[0_-2px_8px_rgba(0,0,0,0.04)] sm:px-4">
       {/* Subtotal breakdown */}
       {(sentSubtotalCents > 0 || newSubtotalCents > 0) && (
         <div className="text-xs space-y-1 rounded-lg bg-gray-50 dark:bg-gray-800/60 px-3 py-2">
@@ -565,18 +565,26 @@ function TicketFooter({
       </div>
 
       {/* Send / Charge — min-height 56px for thumb-friendly tap targets */}
-      <div className="grid grid-cols-2 gap-2">
-		<AlertDialog>
+      <div className="grid grid-cols-1 gap-2">
+		<AlertDialog open={reviewOpen} onOpenChange={setReviewOpen}>
 			<AlertDialogTrigger asChild>
 				<Button disabled={!canSend} aria-label={sending ? 'Enviando el pedido a cocina' : `Revisar y enviar ${newItemsCount} producto${newItemsCount === 1 ? '' : 's'} a cocina`} aria-busy={sending} className={cn('h-14 font-bold text-base shadow-sm transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1', canSend ? 'bg-primary hover:bg-primary/90 active:bg-primary/95 text-primary-foreground' : 'bg-muted text-muted-foreground cursor-not-allowed shadow-none')}>
 					{sending ? <span className="flex items-center gap-1.5"><Loader2 className="h-4 w-4 animate-spin" />Enviando…</span> : <span className="flex items-center gap-1.5"><ChefHat className="h-4 w-4" />Revisar y enviar{newItemsCount > 0 && <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/25 text-[11px] font-bold leading-none">{newItemsCount}</span>}</span>}
 				</Button>
 			</AlertDialogTrigger>
-			<AlertDialogContent className="flex max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] max-w-[42rem] min-w-0 flex-col overflow-y-auto p-4 sm:p-6">
+			<AlertDialogContent onCloseAutoFocus={event => {
+              if (!editDetailsAfterClose.current) return;
+              event.preventDefault();
+              editDetailsAfterClose.current = false;
+              // Wait for the old focus/pointer lock to be released before
+              // mounting the next modal, including its exit animation.
+              requestAnimationFrame(() => onEditDetails?.());
+            }} className="flex max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] max-w-[42rem] min-w-0 flex-col overflow-hidden p-4 sm:p-6">
 				<AlertDialogHeader>
 					<AlertDialogTitle>Enviar pedido a cocina</AlertDialogTitle>
 					<AlertDialogDescription>Revisá los datos antes de crear la comanda. Después de que cocina comience a prepararla, los productos ya no se podrán editar.</AlertDialogDescription>
 				</AlertDialogHeader>
+				<div className="min-h-0 min-w-0 space-y-3 overflow-y-auto overscroll-contain">
 				<div className="min-w-0 space-y-2 rounded-lg border bg-muted/40 p-3 text-sm">
 					<div className="grid min-w-0 grid-cols-[minmax(5.5rem,auto)_minmax(0,1fr)] gap-x-3 gap-y-2"><span>Destino</span><strong className="min-w-0 break-words text-right">{ticket?.kind === 'table' ? `Mesa ${ticket.table_number || ''}` : 'Para llevar'}</strong></div>
 					<div className="grid min-w-0 grid-cols-[minmax(5.5rem,auto)_minmax(0,1fr)] gap-x-3 gap-y-2"><span>Cliente</span><strong className="min-w-0 break-words text-right">{ticket?.customerName || 'Mostrador'}</strong></div>
@@ -585,19 +593,21 @@ function TicketFooter({
 					<div className="grid min-w-0 grid-cols-[minmax(5.5rem,auto)_minmax(0,1fr)] gap-x-3 gap-y-2"><span>Subtotal nuevo</span><strong className="min-w-0 text-right tabular-nums">{format(newSubtotalCents)}</strong></div>
 					{ticket?.notes && <div className="border-t pt-2"><span className="text-muted-foreground">Observaciones:</span><p className="mt-1 font-medium text-foreground">{ticket.notes}</p></div>}
 				</div>
-				<AlertDialogFooter className="grid w-full grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_1.35fr]">
+				<ul className="divide-y rounded-xl border px-3">{newItems.map(item => <li key={item.id} className="flex items-start justify-between gap-3 py-3 text-sm"><div className="min-w-0"><p className="break-words font-semibold">{item.qty}× {item.name}</p>{item.modifier_names?.length ? <p className="mt-1 text-xs text-muted-foreground">{item.modifier_names.join(', ')}</p> : null}{item.notes && <p className="mt-1 break-words text-xs text-muted-foreground">{item.notes}</p>}</div><span className="shrink-0 tabular-nums">{format(Math.round(parseFloat(String(item.price || 0)) * scale) * item.qty)}</span></li>)}</ul>
+				</div>
+				<AlertDialogFooter className="grid w-full shrink-0 grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_1.35fr] sm:space-x-0">
 					<AlertDialogCancel className="m-0 w-full">Seguir editando</AlertDialogCancel>
-					{onEditDetails && <Button type="button" variant="outline" className="w-full" onClick={onEditDetails}>Editar datos</Button>}
+					{onEditDetails && <AlertDialogCancel className="m-0 w-full" onClick={() => { editDetailsAfterClose.current = true; }}>Editar datos</AlertDialogCancel>}
 					<AlertDialogAction className="m-0 w-full whitespace-normal" onClick={() => onSend?.()}><ChefHat className="mr-2 h-4 w-4 shrink-0" />Confirmar y enviar</AlertDialogAction>
 				</AlertDialogFooter>
 			</AlertDialogContent>
 		</AlertDialog>
-        <Button
+        {hasUnpaidOrders && <Button
           onClick={onCharge}
           disabled={!canCharge}
           aria-label="Cobrar al cliente y registrar el pago"
           className={cn(
-            'h-14 font-bold text-base shadow-sm transition-all focus-visible:ring-2 focus-visible:ring-success focus-visible:ring-offset-1',
+            'h-11 font-bold text-base shadow-sm transition-all focus-visible:ring-2 focus-visible:ring-success focus-visible:ring-offset-1',
             canCharge
               ? 'bg-success hover:bg-success/90 active:bg-success/95 text-success-foreground'
               : 'bg-muted text-muted-foreground cursor-not-allowed shadow-none',
@@ -607,7 +617,7 @@ function TicketFooter({
             <CreditCard className="w-4 h-4" />
             Cobrar
           </span>
-        </Button>
+        </Button>}
       </div>
     </div>
   );
@@ -618,6 +628,7 @@ function TicketFooter({
 // ---------------------------------------------------------------------------
 
 interface ActiveTicketPanelProps {
+  className?: string;
   ticket: TicketLike | null;
   newItems?: NewTicketItem[];
   sentOrders?: SentOrder[];
@@ -636,6 +647,7 @@ interface ActiveTicketPanelProps {
 }
 
 export default function ActiveTicketPanel({
+  className,
   ticket,                // active ticket object or null
   newItems = [],         // unsent items: [{ id, item_id, name, price, qty, course_id, ... }]
   sentOrders = [],       // sent rounds: [{ id, order_number, items: [...], created_at }]
@@ -674,30 +686,26 @@ export default function ActiveTicketPanel({
     <aside
       aria-label="Comanda del pedido"
       className={cn(
-        'flex flex-col bg-muted/40 border-l-2 border-border',
-        // Desktop: fixed-width sidebar. On phones it becomes a bottom panel
-        // with its own scroll area so menu tiles keep a usable width.
-        'w-full shrink-0 max-h-[46dvh] min-h-[17rem] border-l-0 border-t-2 lg:h-full lg:max-h-none lg:min-h-0 lg:w-[min(420px,38vw)] lg:border-l-2 lg:border-t-0',
-        'order-2 lg:order-none',
+        'pos-ticket h-full min-h-0 w-full shrink-0 flex-col bg-muted/30 md:w-[min(360px,43vw)] md:border-l xl:w-[400px]',
+        className,
       )}
     >
 		<TicketHeader ticket={ticket} onAdjustGuests={onAdjustGuests} onEditDetails={onEditDetails} />
 
       {/* Scrollable middle (Sent + New) */}
-      <div className="flex-1 overflow-y-auto">
-        <SentSection
-          sentOrders={sentOrders}
-          locationId={locationId}
-          onAdjustSuccess={onAdjustSuccess}
-        />
-        <NewSection
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        {(newItems.length > 0 || sentOrders.length === 0) && <NewSection
           newItems={newItems}
           onBumpQty={onBumpQty}
           onRemove={onRemoveItem}
           onEditNotes={onEditItemNotes}
           courses={courses}
           onSetCourse={onSetCourse}
-        />
+        />}
+        {sentOrders.length > 0 && <details className="border-t" open={newItems.length === 0}>
+          <summary className="cursor-pointer px-4 py-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">En cocina · {sentOrders.length} {sentOrders.length === 1 ? 'envío' : 'envíos'}</summary>
+          <SentSection sentOrders={sentOrders} locationId={locationId} onAdjustSuccess={onAdjustSuccess} />
+        </details>}
       </div>
 
       <TicketFooter
@@ -711,6 +719,7 @@ export default function ActiveTicketPanel({
         sending={sending}
         hasUnpaidOrders={hasUnpaidOrders}
         newItemsCount={newItems.reduce((s, it) => s + (it.qty || 0), 0)}
+        newItems={newItems}
       />
     </aside>
   );

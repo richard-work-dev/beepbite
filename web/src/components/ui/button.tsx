@@ -40,10 +40,10 @@ const buttonVariants = cva(
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-md px-3 text-xs",
+        default: "h-11 px-4 py-2",
+        sm: "h-11 rounded-md px-3 text-xs lg:h-9",
         lg: "h-11 rounded-md px-8",
-        icon: "h-10 w-10",
+        icon: "h-11 w-11",
         // Till / KDS / kiosk primary actions — big, thumb-reachable, tapped
         // under pressure. Text scales up too; these are never fine print.
         touch: "h-14 px-6 text-base [&_svg]:size-5",

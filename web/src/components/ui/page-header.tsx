@@ -51,7 +51,7 @@ export function PageHeader({
   return (
     <div
       className={cn(
-        "flex min-w-0 flex-col gap-4 sm:flex-row sm:items-end sm:justify-between",
+        "flex min-w-0 flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-end lg:justify-between",
         className
       )}
       {...props}
@@ -84,7 +84,7 @@ export function PageHeader({
         </div>
       </div>
       {actions && (
-        <div className="flex w-full flex-shrink-0 flex-wrap items-center gap-2 [&>*]:min-w-0 [&>*]:flex-1 sm:w-auto sm:[&>*]:flex-none">{actions}</div>
+        <div className="flex w-full min-w-0 flex-wrap items-center gap-2 [&>*]:min-w-0 [&>*]:flex-1 lg:w-auto lg:max-w-full lg:[&>*]:flex-none">{actions}</div>
       )}
     </div>
   );

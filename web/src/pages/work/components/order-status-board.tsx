@@ -194,7 +194,9 @@ export default function OrderStatusBoard() {
       }
       const activeOrders = (activeResult.data || []) as POSOrder[];
       const closedOrders = (closedResult.data || []) as POSOrder[];
-      setOrders([...activeOrders, ...closedOrders].sort((left, right) =>
+      // An order can move between the two queries while they are in flight.
+      const uniqueOrders = new Map([...activeOrders, ...closedOrders].map(order => [order.id, order]));
+      setOrders([...uniqueOrders.values()].sort((left, right) =>
         String(right.created_at || '').localeCompare(String(left.created_at || ''))));
       setError('');
     } catch (cause) {

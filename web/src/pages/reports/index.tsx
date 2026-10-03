@@ -144,7 +144,7 @@ export default function ReportsPage() {
         title="Reportes"
         description={activeLocation ? `Ventas y pedidos de ${activeLocation.name}.` : 'Ventas y pedidos del local.'}
         actions={
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="flex w-full flex-wrap items-center gap-2 [&>button]:min-h-11">
             <Select value={period} onValueChange={handlePeriodChange}>
               <SelectTrigger className="w-full sm:w-44" aria-label="Período del reporte">
                 <SelectValue />
@@ -213,7 +213,11 @@ export default function ReportsPage() {
             ) : daily.length === 0 ? (
               <p className="px-5 pb-5 text-sm text-muted-foreground">No hay ventas en el período seleccionado.</p>
             ) : (
-              <div className="overflow-x-auto">
+              <>
+              <dl className="divide-y sm:hidden">
+                {daily.map(day => <div key={day.date} className="space-y-3 px-4 py-4"><div className="flex items-center justify-between gap-3"><dt className="text-sm font-semibold">{dateLabel(day.date)}</dt><dd className="text-xs text-muted-foreground">{day.orders.toLocaleString(locale)} pedidos</dd></div><dd className="grid grid-cols-2 gap-3"><div><p className="text-xs text-muted-foreground">Ventas netas</p><p className="mt-1 break-words text-sm font-bold tabular-nums">{formatMoney(day.netSalesCents)}</p></div><div><p className="text-xs text-muted-foreground">Utilidad bruta</p><p className="mt-1 break-words text-sm font-semibold tabular-nums">{grossProfitAvailable ? formatMoney(day.grossProfitCents) : '—'}</p></div></dd></div>)}
+              </dl>
+              <div className="hidden overflow-x-auto sm:block">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-y bg-muted/40 text-left text-xs text-muted-foreground">
@@ -235,6 +239,7 @@ export default function ReportsPage() {
                   </tbody>
                 </table>
               </div>
+              </>
             )}
           </CardContent>
         </Card>

@@ -2,10 +2,7 @@
 //
 // A single page with TWO top-level tabs: POS and Kitchen.
 //
-// POS views:     Quick | Full | Floor
-// (an "Orders" POS view was removed — it rendered the raw Home orders-section
-//  component with none of the state/props it needs, which crashed. The
-//  Home page's Live Orders panel is the supported place for that list.)
+// POS views:     Orders | Full | Quick | Floor
 // Kitchen views: Station | Expo | Bump-bar
 //
 // Role-aware tab visibility:
@@ -43,7 +40,7 @@ import { fetchPrefs, savePOSView, saveKDSView } from '@/services/userprefs';
 import { Button } from '@/components/ui/button';
 import { SyncStatusBadge } from '@/components/ui/sync-status';
 
-type PosViewId = 'full' | 'quick' | 'floor';
+type PosViewId = 'full' | 'orders' | 'quick' | 'floor';
 type KdsViewId = 'station' | 'expo';
 
 interface KdsStation {
@@ -67,6 +64,7 @@ interface MembershipCaps {
 const PosWorkspace = lazy(() => import('@/pages/pos/workspace').then((module) => ({ default: module.EmbeddedPosWorkspace })));
 const QuickPOS = lazy(() => import('@/pages/quick-pos').then((module) => ({ default: module.EmbeddedQuickPOS })));
 const FloorLive = lazy(() => import('@/pages/floor'));
+const OrderStatusBoard = lazy(() => import('@/pages/work/components/order-status-board'));
 
 // Kitchen views
 const StationPage = lazy(() => import('@/pages/kds/station').then((module) => ({ default: module.EmbeddedStationPage })));
@@ -77,6 +75,7 @@ const ExpoPage = lazy(() => import('@/pages/kds/expo').then((module) => ({ defau
 // ---------------------------------------------------------------------------
 
 const POS_VIEWS: { id: PosViewId; label: string }[] = [
+  { id: 'orders', label: 'Pedidos' },
   { id: 'full', label: 'Pedido y comanda' },
   { id: 'quick', label: 'Venta rápida' },
   { id: 'floor', label: 'Mesas' },
@@ -424,6 +423,11 @@ function POSPanel({ posView }: { posView: PosViewId }) {
           <QuickPOS />
         </Suspense>
       )}
+      {posView === 'orders' && (
+        <Suspense fallback={<ViewLoader />}>
+          <OrderStatusBoard />
+        </Suspense>
+      )}
       {posView === 'floor' && (
         <Suspense fallback={<ViewLoader />}>
           <FloorLive />
@@ -460,8 +464,7 @@ export default function WorkspacePage() {
   // genuinely safe fire-and-forget, not a swallowed-rejection risk.
   useEffect(() => {
     void fetchPrefs().then(({ lastViewPOS, lastViewKDS }) => {
-      // 'orders' was a removed POS view (see POS_VIEWS above) — coerce any
-      // previously-persisted preference back to a view that still exists.
+      // Unknown or legacy saved views fall back to the default POS workspace.
       const posView = (POS_VIEWS.some((v) => v.id === lastViewPOS) ? lastViewPOS : 'full') as PosViewId;
       setPosView(posView);
       const kdsView = (KDS_VIEWS.some((v) => v.id === lastViewKDS) ? lastViewKDS : 'station') as KdsViewId;

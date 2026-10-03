@@ -52,6 +52,8 @@ function getStatusLabelShort(status: string, order?: HomeOrder): string {
     return 'Finalizar pedido';
   }
   if (status === 'delivered') return 'Confirmar entrega';
+  if (status === 'confirmed') return 'Aceptar pedido';
+  if (status === 'out_for_delivery') return 'Iniciar reparto';
   const labels: Record<string, string> = {
     pending:          'Pendiente',
     confirmed:        'Confirmado',

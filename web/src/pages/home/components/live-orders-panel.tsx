@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Radio } from 'lucide-react';
+import { nextPOSOrderAction } from '@/pages/work/order-status';
 import OrdersSection from './orders-section';
 import type { HomeOrder } from '../types';
 
@@ -51,15 +52,7 @@ export default function LiveOrdersPanel({
   };
 
   const getNextStatus = (order: HomeOrder): string | undefined => {
-    const fulfillment = order.fulfillment_type || order.order_type;
-    const flow: Record<string, string | undefined> = {
-      pending: 'confirmed',
-      confirmed: 'preparing',
-      preparing: 'ready',
-      ready: fulfillment === 'delivery' ? 'out_for_delivery' : 'completed',
-      out_for_delivery: fulfillment === 'delivery' ? 'delivered' : undefined,
-    };
-    return flow[order.status];
+    return nextPOSOrderAction(order)?.nextStatus;
   };
 
   const getStatusLabel = (status: string): string => {

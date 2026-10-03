@@ -102,6 +102,9 @@ func (a *application) handleData(ctx context.Context, request events.APIGatewayV
 func dataTableCapability(table, method string) (string, bool) {
 	menuTables := map[string]bool{"categories": true, "items": true, "item_recipes": true, "item_prep_steps": true, "allergens": true, "item_allergens": true, "dietary_tags": true, "item_dietary_tags": true, "menu_schedules": true, "menu_schedule_slots": true, "item_menu_schedules": true, "item_price_schedules": true}
 	stockTables := map[string]bool{"inventory_items": true, "stock_movements": true, "suppliers": true, "supplier_contacts": true, "supplier_locations": true, "supplier_inventory_items": true, "purchase_orders": true, "purchase_order_items": true, "goods_receipts": true, "goods_receipt_items": true, "supplier_invoices": true, "supplier_invoice_lines": true, "ingredient_price_history": true}
+	if table == "orders" && method == "PATCH" {
+		return "can_pos", true
+	}
 	if menuTables[table] && method != "GET" {
 		return "can_manage_menu", true
 	}
@@ -313,14 +316,18 @@ func validOrderStatusTransition(current, next, fulfillment string) bool {
 	case "preparing":
 		return next == "ready"
 	case "ready":
-		if fulfillment == "delivery" {
+		switch fulfillment {
+		case "delivery":
 			return next == "out_for_delivery"
+		case "collection", "pickup", "takeaway", "dine_in":
+			return next == "completed"
+		default:
+			return false
 		}
-		return next == "completed"
 	case "out_for_delivery":
 		return fulfillment == "delivery" && next == "delivered"
 	case "pending_on_delivery":
-		return next == "delivered"
+		return fulfillment == "delivery" && next == "delivered"
 	default:
 		return false
 	}

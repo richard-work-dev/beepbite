@@ -61,6 +61,8 @@ export interface KdsTicketDetail {
   station_name: string;
   table_number?: string | null;
   order_type?: string | null;
+  payment_status?: string | null;
+  payment_method?: string | null;
   customer_name?: string | null;
   customer_phone?: string | null;
   delivery_address?: string | null;
@@ -92,6 +94,8 @@ export interface KdsTicket {
   items?: KdsTicketItem[];
 	// The serverless station endpoint enriches ticket rows with order context.
 	order_type?: string;
+	payment_status?: string;
+	payment_method?: string;
 	table_number?: string;
 	order_number?: string;
 	customer_name?: string | null;
@@ -146,6 +150,8 @@ export interface ExpoOrder {
   order_id: string;
   order_number?: string;
   order_type?: string;
+	payment_status?: string;
+	payment_method?: string;
 	table_number?: string;
 	customer_name?: string | null;
 	customer_phone?: string | null;
@@ -157,5 +163,4 @@ export interface ExpoOrder {
   all_ready?: boolean;
   any_in_progress?: boolean;
   order_status?: string;
-  payment_status?: string;
 }

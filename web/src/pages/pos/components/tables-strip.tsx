@@ -33,7 +33,7 @@ interface WalkInTileData {
 
 function SkeletonTile() {
   return (
-    <div className="flex-shrink-0 w-24 h-[4.5rem] rounded-xl border border-gray-200 bg-gray-100 animate-pulse" />
+    <div className="flex-shrink-0 w-28 h-14 rounded-xl border border-gray-200 bg-gray-100 animate-pulse" />
   )
 }
 
@@ -59,7 +59,7 @@ function TableTile({ table, isActive, onSelect }: TableTileProps) {
       aria-label={`${label}: ${table.label}${table.section_name ? ` en ${table.section_name}` : ''}${subtotal ? `, total ${subtotal}` : ''}`}
       aria-pressed={isActive}
       className={cn(
-        "relative flex-shrink-0 w-24 h-[4.5rem] rounded-xl border-2 overflow-hidden",
+        "relative flex-shrink-0 w-28 h-14 rounded-xl border-2 overflow-hidden",
         "flex flex-col items-center justify-center gap-0.5",
         "transition-all duration-150 select-none",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-1",
@@ -122,7 +122,7 @@ function WalkInTile({ walkIn, isActive, onSelect }: WalkInTileProps) {
       aria-label={`Pedido de mostrador: ${walkIn.label}${subtotal ? `, total ${subtotal}` : ''}`}
       aria-pressed={isActive}
       className={cn(
-        "relative flex-shrink-0 w-24 h-[4.5rem] rounded-xl border-2 overflow-hidden",
+        "relative flex-shrink-0 w-28 h-14 rounded-xl border-2 overflow-hidden",
         "flex flex-col items-center justify-center gap-0.5",
         "transition-all duration-150 select-none cursor-pointer",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-1",
@@ -134,7 +134,7 @@ function WalkInTile({ walkIn, isActive, onSelect }: WalkInTileProps) {
     >
       <span className="absolute top-0 left-0 right-0 h-1.5 rounded-t-xl bg-orange-400" />
 
-      <Users className="w-4 h-4 text-orange-500" />
+      <Users className="hidden w-4 h-4 text-orange-500 lg:block" />
 
       <span className="text-[11px] font-semibold text-orange-700 truncate max-w-[80px] px-1 leading-tight">
         {walkIn.label}
@@ -236,16 +236,14 @@ export function TablesStrip({
       <div className="w-full px-1 py-1">
         <div className="flex items-center gap-2">
           {/* Only show the floor plan prompt for dine-in businesses */}
-          {isDineInMode && (
-            <NoFloorPlanCard canDesignFloor={canDesignFloor} onDesignFloor={onDesignFloor} />
-          )}
+          {isDineInMode && <div className="hidden min-w-0 flex-1 md:block"><NoFloorPlanCard canDesignFloor={canDesignFloor} onDesignFloor={onDesignFloor} /></div>}
           {/* Keep the "New tab" affordance so takeaway is always one tap away. */}
           <Button
             variant="outline"
             onClick={onAddWalkIn}
             aria-label="Nueva cuenta de mostrador"
             className={cn(
-              isDineInMode ? "flex-shrink-0 w-24 h-[4.5rem]" : "flex-shrink-0 h-[4.5rem] px-6",
+              "flex-shrink-0 h-14 px-4",
               "rounded-xl flex flex-col items-center justify-center gap-1",
               "border-dashed border-2 border-gray-300 text-gray-500",
               "hover:border-orange-400 hover:text-orange-500 hover:bg-orange-50",
@@ -265,12 +263,12 @@ export function TablesStrip({
     <div className="w-full">
       {/* Only show the floor plan prompt for dine-in businesses */}
       {noFloorPlan && isDineInMode && (
-        <div className="px-1 pb-2">
+        <div className="hidden px-1 pb-2 md:block">
           <NoFloorPlanCard canDesignFloor={canDesignFloor} onDesignFloor={onDesignFloor} />
         </div>
       )}
       <div
-        role="tablist"
+        role="group"
         aria-label="Mesas y cuentas de mostrador"
         className="flex items-center gap-2 overflow-x-auto px-1 py-1 scrollbar-thin scrollbar-thumb-gray-200"
         style={{ scrollbarWidth: "thin" }}
@@ -303,7 +301,7 @@ export function TablesStrip({
               onClick={onAddWalkIn}
               aria-label="Nueva cuenta de mostrador"
               className={cn(
-                "flex-shrink-0 w-24 h-[4.5rem] rounded-xl flex flex-col items-center justify-center gap-1",
+                "flex-shrink-0 w-28 h-14 rounded-xl flex flex-col items-center justify-center gap-1",
                 "border-dashed border-2 border-gray-300 text-gray-500",
                 "hover:border-orange-400 hover:text-orange-500 hover:bg-orange-50",
                 "focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-1",

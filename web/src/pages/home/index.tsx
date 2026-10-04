@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { AlertCircle, RefreshCw, MapPin, LayoutDashboard } from 'lucide-react';
+import { AlertCircle, RefreshCw, MapPin, LayoutDashboard, Plus, ClipboardList, LayoutGrid, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { hasAnyAccess } from '@/lib/access-control';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/auth-context';
 import { supabase } from '@/services/supabase-client';
@@ -49,7 +51,8 @@ function GuardScreen({ icon: Icon, iconClass, title, subtitle }: GuardScreenProp
 }
 
 const Home = () => {
-  const { activeOrganization, activeLocation, locations, hasLoadedLocations } = useAuth();
+  const { activeOrganization, activeLocation, activeMembership, locations, hasLoadedLocations } = useAuth();
+  const canUsePOS = hasAnyAccess(activeMembership, ['can_pos']);
   const orgCurrency = (activeOrganization?.default_currency_code ||
     activeOrganization?.currency_code ||
     activeOrganization?.currency ||
@@ -289,6 +292,14 @@ const Home = () => {
         />
       </Reveal>
 
+      {canUsePOS && <nav aria-label="Acciones rápidas del local" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {[
+          { to: '/pos/workspace', icon: Plus, title: 'Nuevo pedido', description: 'Elegí productos y enviá a cocina', primary: true },
+          { to: '/work?tab=pos&view=orders', icon: ClipboardList, title: 'Estado de los pedidos', description: 'Controlá preparación, retiro y entrega', primary: false },
+          ...(resolvedLocation?.service_style === 'dine_in' ? [{ to: '/floor', icon: LayoutGrid, title: 'Salón y mesas', description: 'Consultá cuentas y mesas disponibles', primary: false }] : []),
+        ].map(action => <Link key={action.to} to={action.to} className={`flex min-h-20 min-w-0 items-center gap-3 rounded-2xl border p-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${action.primary ? 'border-primary bg-primary text-primary-foreground hover:bg-primary/90' : 'border-border bg-card hover:bg-muted'}`}><action.icon className="h-6 w-6 shrink-0" aria-hidden="true" /><div className="min-w-0 flex-1"><p className="font-semibold">{action.title}</p><p className={`mt-1 text-xs ${action.primary ? 'text-primary-foreground/85' : 'text-muted-foreground'}`}>{action.description}</p></div><ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" /></Link>)}
+      </nav>}
+
       {/* Summary error banner */}
       {summaryError && !summaryLoading && (
         <Reveal delay={0.05}>
@@ -350,7 +361,7 @@ const Home = () => {
         {/* Right column: live orders */}
         <section
           aria-label="Pedidos en curso"
-          className="lg:col-span-1"
+          className="order-first lg:order-none lg:col-span-1"
         >
           <Reveal delay={0.12}>
             <LiveOrdersPanel

@@ -12,7 +12,7 @@
 
 import { defineConfig, devices } from '@playwright/test';
 
-const DEV_PORT = process.env.VITE_PORT || 5173;
+const DEV_PORT = Number(process.env.VITE_PORT || 5174);
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -28,6 +28,7 @@ export default defineConfig({
 
   use: {
     baseURL: `http://localhost:${DEV_PORT}`,
+    serviceWorkers: 'block',
     /* Collect trace on first retry (CI only) */
     trace: 'on-first-retry',
   },
@@ -35,7 +36,7 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: { ...devices['Desktop Chrome'], ...(process.env.PLAYWRIGHT_CHANNEL ? { channel: process.env.PLAYWRIGHT_CHANNEL } : {}) },
     },
   ],
 
@@ -43,10 +44,11 @@ export default defineConfig({
    * Remove / comment out this block if you prefer to start the server
    * manually before invoking playwright. */
   webServer: {
-    command: 'npm run dev',
+    command: `npm run dev -- --port ${DEV_PORT}`,
     url: `http://localhost:${DEV_PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
+    env: { VITE_API_URL: `http://localhost:${DEV_PORT}/api` },
     stdout: 'pipe',
     stderr: 'pipe',
   },

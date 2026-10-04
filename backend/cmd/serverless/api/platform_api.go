@@ -49,8 +49,8 @@ func (a *application) handlePlatformAPI(ctx context.Context, request events.APIG
 	if strings.HasPrefix(path, "webhook-endpoints") {
 		return a.handleWebhooks(ctx, request, userID, strings.Split(path, "/")), true, nil
 	}
-	if strings.HasPrefix(path, "delivery-zones") {
-		return a.handleSimpleResource(ctx, request, userID, "delivery_zones", strings.Split(path, "/")), true, nil
+	if path == "delivery-zones" || strings.HasPrefix(path, "delivery-zones/") {
+		return a.handleDeliveryZones(ctx, request, userID, strings.Split(path, "/")), true, nil
 	}
 	if strings.HasPrefix(path, "payroll/") {
 		return a.handlePayroll(ctx, request, userID, strings.Split(path, "/")), true, nil

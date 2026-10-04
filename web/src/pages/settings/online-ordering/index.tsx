@@ -14,6 +14,7 @@ interface OrderingConfig {
   is_marketplace_visible?: boolean; online_orders_enabled?: boolean;
   accepts_pickup?: boolean; accepts_delivery?: boolean; offers_collection?: boolean; offers_delivery?: boolean;
   service_style?: string; on_delivery_payment_methods?: string[]; currency_code?: string; default_currency_code?: string;
+  transfer_account_holder?: string; transfer_alias?: string; transfer_cbu?: string;
 }
 export default function OnlineOrderingSettings() {
   const { activeLocation } = useAuth();
@@ -47,7 +48,7 @@ function OrderingSettings({ locationID }: { locationID: string }) {
       setEnabled(row.online_orders_enabled !== false);
       setPickup(row.accepts_pickup ?? row.offers_collection ?? false);
       setDelivery(row.accepts_delivery ?? row.offers_delivery ?? false);
-      setMethods((row.on_delivery_payment_methods || []).filter(m => m === 'cash' || m === 'card_machine'));
+      setMethods((row.on_delivery_payment_methods || []).filter(m => ['cash', 'card_machine', 'eft'].includes(m)));
     }).catch(() => { if (active) setError('No pudimos conectar con el servidor.'); });
     return () => { active = false; };
   }, [locationID, attempt]);
@@ -57,13 +58,19 @@ function OrderingSettings({ locationID }: { locationID: string }) {
   const path = '/store/' + encodeURIComponent(slug);
   const url = window.location.origin + path + (table.trim() ? '?mesa=' + encodeURIComponent(table.trim()) : '');
   const live = config.is_marketplace_visible === true && config.is_active !== false;
+  const transferHolder = (config.transfer_account_holder || '').trim();
+  const transferAlias = (config.transfer_alias || '').trim();
+  const transferCBU = (config.transfer_cbu || '').replace(/\D/g, '');
+  const transferConfigured = transferHolder.length > 0 && (transferAlias.length > 0 || transferCBU.length === 22);
+  const savedMethods = (config.on_delivery_payment_methods || []).filter(m => ['cash', 'card_machine', 'eft'].includes(m));
   const pending = published !== Boolean(config.is_marketplace_visible) || enabled !== (config.online_orders_enabled !== false) ||
     pickup !== (config.accepts_pickup ?? config.offers_collection ?? false) || delivery !== (config.accepts_delivery ?? config.offers_delivery ?? false) ||
-    JSON.stringify(methods) !== JSON.stringify((config.on_delivery_payment_methods || []).filter(m => m === 'cash' || m === 'card_machine'));
+    JSON.stringify(methods) !== JSON.stringify(savedMethods);
 
   async function save() {
     if (!config) return;
     setError(''); setMessage('');
+    if (published && enabled && methods.includes('eft') && !transferConfigured) { setError('Para habilitar transferencias, cargá el titular y un alias o CBU/CVU de 22 dígitos en Configuración > Pagos.'); return; }
     if (published && enabled && !methods.length) { setError('Elegí al menos un medio de pago para recibir pedidos.'); return; }
     if (published && enabled && !(config.currency_code || config.default_currency_code)) { setError('Configurá la moneda del local antes de habilitar pedidos.'); return; }
     if (published && enabled && !pickup && !delivery && config.service_style === 'takeaway') { setError('Habilitá retiro o delivery para recibir pedidos.'); return; }
@@ -92,8 +99,6 @@ function OrderingSettings({ locationID }: { locationID: string }) {
     anchor.href = blobURL; anchor.download = 'menu-' + slug + (table.trim() ? '-mesa' : '') + '.svg'; anchor.click();
     setTimeout(() => URL.revokeObjectURL(blobURL), 1000);
   }
-  const toggle = (method: string, checked: boolean) => setMethods(prev => checked ? [...prev, method] : prev.filter(m => m !== method));
-
   return <div className="min-w-0 space-y-6">
     <div><div className="mb-2 flex items-center gap-2 text-primary"><Globe className="h-5 w-5" /><span className="text-xs font-bold uppercase tracking-wider">{config.name}</span></div><h1 className="text-2xl font-bold">Pedidos desde tu enlace</h1><p className="mt-2 text-sm text-muted-foreground">Compartí el menú. Tus clientes eligen, confirman y siguen su pedido desde la web.</p></div>
     {error && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm">{error}</p>}
@@ -102,7 +107,7 @@ function OrderingSettings({ locationID }: { locationID: string }) {
       <div className="flex items-center justify-between gap-4"><div><Label htmlFor="publish-menu">Publicar menú</Label><p className="mt-1 text-xs text-muted-foreground">Permite que cualquier persona con el enlace vea tus productos.</p></div><Switch id="publish-menu" checked={published} onCheckedChange={setPublished} /></div>
       <div className="flex items-center justify-between gap-4"><div><Label htmlFor="online-enabled">Recibir pedidos online</Label><p className="mt-1 text-xs text-muted-foreground">Podés pausarlos y mantener el menú visible.</p></div><Switch id="online-enabled" checked={enabled} onCheckedChange={setEnabled} /></div>
       <fieldset className="space-y-3 border-t pt-4"><legend className="font-semibold">Modalidades</legend><label className="flex min-h-11 items-center gap-3"><input type="checkbox" checked={pickup} onChange={e => setPickup(e.target.checked)} />Para llevar / retirar</label><label className="flex min-h-11 items-center gap-3"><input type="checkbox" checked={delivery} onChange={e => setDelivery(e.target.checked)} />Delivery</label><p className="text-sm text-muted-foreground">Comer en el local: {config.service_style === 'takeaway' ? 'deshabilitado' : 'habilitado'}. Se configura desde la modalidad de atención del local.</p></fieldset>
-      <fieldset className="space-y-3 border-t pt-4"><legend className="font-semibold">Pago al recibir</legend><label className="flex min-h-11 items-center gap-3"><input type="checkbox" checked={methods.includes('cash')} onChange={e => toggle('cash', e.target.checked)} />Efectivo</label><label className="flex min-h-11 items-center gap-3"><input type="checkbox" checked={methods.includes('card_machine')} onChange={e => toggle('card_machine', e.target.checked)} />Tarjeta con terminal del local</label></fieldset>
+      <section className="space-y-2 border-t pt-4"><div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">Medios de pago</h2><Link className="text-sm font-semibold text-primary underline" to={'/settings/location/' + locationID + '/payments'}>Administrar pagos</Link></div><p className="text-sm text-muted-foreground">{methods.length ? methods.map(method => method === 'eft' ? 'Transferencia bancaria' : method === 'card_machine' ? 'Tarjeta al recibir' : 'Efectivo').join(' · ') : 'Todavía no configuraste medios de pago.'}</p>{methods.includes('eft') && !transferConfigured && <p className="text-sm text-destructive">La transferencia está incompleta. Completá los datos bancarios antes de publicar.</p>}</section>
       <p className="text-sm text-muted-foreground">El envío, la moneda y los impuestos usan la configuración del local. <Link className="text-primary underline" to={'/settings/location/' + locationID}>Revisar configuración</Link></p>
       {config.is_active === false && <p className="text-sm text-destructive">El local está inactivo. Activá el local para que el menú sea público.</p>}
       <Button className="min-h-11 w-full sm:w-auto" disabled={saving} onClick={() => void save()}>{saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}Guardar configuración</Button>

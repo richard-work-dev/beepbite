@@ -78,12 +78,52 @@ func publicOrderModeEnabled(location map[string]any, mode string) bool {
 func publicOrderPaymentMethods(location map[string]any) []string {
 	methods, _ := stringSlice(location["on_delivery_payment_methods"])
 	result := []string{}
+	seen := map[string]bool{}
 	for _, method := range methods {
-		if method == "cash" || method == "card_machine" {
+		if seen[method] {
+			continue
+		}
+		if method == "cash" || method == "card_machine" || (method == "eft" && publicTransferDetails(location) != nil) {
 			result = append(result, method)
+			seen[method] = true
 		}
 	}
 	return result
+}
+
+// publicTransferDetails returns only complete, customer-facing bank details.
+// An EFT option without a beneficiary and at least one usable destination is
+// intentionally not exposed as a valid checkout method.
+func publicTransferDetails(location map[string]any) map[string]any {
+	holder := strings.TrimSpace(displayString(location["transfer_account_holder"]))
+	alias := strings.TrimSpace(displayString(location["transfer_alias"]))
+	cbuInput := strings.TrimSpace(displayString(location["transfer_cbu"]))
+	cbu := strings.Map(func(r rune) rune {
+		if r >= '0' && r <= '9' {
+			return r
+		}
+		return -1
+	}, cbuInput)
+	if len(holder) == 0 || len(holder) > 100 {
+		return nil
+	}
+	if len(cbu) != 22 {
+		cbu = ""
+	}
+	if len(alias) > 40 {
+		alias = ""
+	}
+	if alias == "" && cbu == "" {
+		return nil
+	}
+	details := map[string]any{"account_holder": holder}
+	if alias != "" {
+		details["alias"] = alias
+	}
+	if cbu != "" {
+		details["cbu"] = cbu
+	}
+	return details
 }
 
 func publicOrderMoney(value any, currency string) int64 {
@@ -114,9 +154,10 @@ type publicOrderLine struct {
 type publicOrderQuote struct {
 	lines                               []publicOrderLine
 	subtotal, tax, delivery, total, tip int64
+	zone                                deliverySelection
 }
 
-func pricePublicOrder(input, location map[string]any, catalog []map[string]any, rate float64, inclusive bool, now time.Time) (publicOrderQuote, error) {
+func pricePublicOrder(input, location map[string]any, catalog []map[string]any, rate float64, inclusive bool, now time.Time, zones []map[string]any) (publicOrderQuote, error) {
 	q := publicOrderQuote{}
 	mode := displayString(input["fulfillment_type"])
 	if !publicOrderModeEnabled(location, mode) {
@@ -180,12 +221,12 @@ func pricePublicOrder(input, location map[string]any, catalog []map[string]any, 
 		q.tax = int64(math.Round(float64(q.subtotal) * rate / 100))
 		q.total += q.tax
 	}
-	if mode == "delivery" {
-		threshold := publicOrderMoney(location["free_delivery_threshold"], currency)
-		if threshold == 0 || q.subtotal < threshold {
-			q.delivery = publicOrderMoney(location["delivery_fee"], currency)
-		}
+	var deliveryErr error
+	q.zone, deliveryErr = priceDelivery(input, location, zones, q.subtotal)
+	if deliveryErr != nil {
+		return q, deliveryErr
 	}
+	q.delivery = q.zone.fee
 	q.tip, ok = integerValue(valueOr(input, "tip_cents", int64(0)))
 	if !ok || q.tip < 0 || q.tip > q.subtotal*3 {
 		return q, errors.New("La propina no es válida.")
@@ -201,21 +242,33 @@ func pricePublicOrder(input, location map[string]any, catalog []map[string]any, 
 }
 
 func validatePublicOrderContact(input map[string]any) error {
+	mode := strings.TrimSpace(displayString(input["fulfillment_type"]))
+	dineIn := mode == "dine_in"
 	name := strings.TrimSpace(displayString(input["customer_name"]))
 	phone := strings.TrimSpace(displayString(input["customer_phone"]))
-	digits := 0
-	for _, r := range phone {
-		if r >= '0' && r <= '9' {
-			digits++
-		} else if !strings.ContainsRune("+()- .", r) {
-			return errors.New("Ingresá un teléfono válido con código de área.")
+	table := strings.TrimSpace(displayString(input["table_label"]))
+	if dineIn {
+		if utf8.RuneCountInString(table) < 1 || utf8.RuneCountInString(table) > 60 {
+			return errors.New("Indicá el número de mesa para identificar el pedido.")
 		}
-	}
-	if utf8.RuneCountInString(name) < 2 || utf8.RuneCountInString(name) > 100 {
+		if utf8.RuneCountInString(name) > 100 {
+			return errors.New("El nombre no puede superar los 100 caracteres.")
+		}
+	} else if utf8.RuneCountInString(name) < 2 || utf8.RuneCountInString(name) > 100 {
 		return errors.New("Ingresá un nombre de entre 2 y 100 caracteres.")
 	}
-	if digits < 8 || digits > 15 || len(phone) > 24 {
-		return errors.New("Ingresá un teléfono válido con código de área.")
+	if !dineIn || phone != "" {
+		digits := 0
+		for _, r := range phone {
+			if r >= '0' && r <= '9' {
+				digits++
+			} else if !strings.ContainsRune("+()- .", r) {
+				return errors.New("Ingresá un teléfono válido con código de área.")
+			}
+		}
+		if digits < 8 || digits > 15 || len(phone) > 24 {
+			return errors.New("Ingresá un teléfono válido con código de área.")
+		}
 	}
 	if input["customer_id"] != nil && displayString(input["customer_id"]) != "" {
 		return errors.New("El pedido público debe incluir los datos de contacto, no una cuenta de cliente.")
@@ -230,6 +283,26 @@ func validatePublicOrderContact(input map[string]any) error {
 		return errors.New("Las aclaraciones o la referencia de mesa son demasiado largas.")
 	}
 	return nil
+}
+
+func validatePublicOrderPaymentMethod(input, location map[string]any) error {
+	method := strings.TrimSpace(displayString(input["on_delivery_method"]))
+	if method == "" && strings.TrimSpace(displayString(input["fulfillment_type"])) == "dine_in" {
+		return nil
+	}
+	for _, allowed := range publicOrderPaymentMethods(location) {
+		if method == allowed {
+			return nil
+		}
+	}
+	return errors.New("Ese medio de pago no está habilitado. Actualizá los datos del local.")
+}
+
+func publicOrderCustomerName(mode, name, table string) string {
+	if strings.TrimSpace(mode) == "dine_in" {
+		return "Mesa " + strings.TrimSpace(table)
+	}
+	return strings.TrimSpace(name)
 }
 
 func publicOrderHash(input map[string]any) string {
@@ -281,16 +354,10 @@ func (a *application) createMarketplaceOrder(ctx context.Context, slug, body, so
 	if !boolOr(location.row, "online_orders_enabled", true) {
 		return errorResponse(422, "El local pausó los pedidos online.")
 	}
-	method := displayString(input["on_delivery_method"])
-	validMethod := false
-	for _, allowed := range publicOrderPaymentMethods(location.row) {
-		if method == allowed {
-			validMethod = true
-		}
+	if err := validatePublicOrderPaymentMethod(input, location.row); err != nil {
+		return errorResponse(422, err.Error())
 	}
-	if !validMethod {
-		return errorResponse(422, "Ese medio de pago no está habilitado. Actualizá los datos del local.")
-	}
+	method := strings.TrimSpace(displayString(input["on_delivery_method"]))
 	catalog, err := a.queryDataRows(ctx, orgID, "items")
 	if err != nil {
 		return dataAccessError(err)
@@ -317,7 +384,14 @@ func (a *application) createMarketplaceOrder(ctx context.Context, slug, body, so
 	}
 	now := time.Now().UTC()
 	businessNow := marketplaceLocationTime(now, location.row)
-	quote, err := pricePublicOrder(input, location.row, publicCatalog, rate, inclusive, businessNow)
+	var zones []map[string]any
+	if displayString(input["fulfillment_type"]) == "delivery" {
+		zones, err = a.queryDataRows(ctx, orgID, "delivery_zones")
+		if err != nil {
+			return dataAccessError(err)
+		}
+	}
+	quote, err := pricePublicOrder(input, location.row, publicCatalog, rate, inclusive, businessNow, zones)
 	if err != nil {
 		return errorResponse(409, err.Error())
 	}
@@ -336,6 +410,7 @@ func (a *application) createMarketplaceOrder(ctx context.Context, slug, body, so
 	}
 	orderNumber := "WEB-" + now.Format("060102") + "-" + strings.ToUpper(orderID[:8])
 	mode := displayString(input["fulfillment_type"])
+	customerName := publicOrderCustomerName(mode, displayString(input["customer_name"]), displayString(input["table_label"]))
 	notes := strings.TrimSpace(displayString(input["notes"]))
 	if mode == "dine_in" && strings.TrimSpace(displayString(input["table_label"])) != "" {
 		notes = strings.TrimSpace("Mesa / referencia: " + strings.TrimSpace(displayString(input["table_label"])) + ". " + notes)
@@ -346,7 +421,7 @@ func (a *application) createMarketplaceOrder(ctx context.Context, slug, body, so
 	}
 	order := map[string]any{
 		"id": orderID, "location_id": locationID, "customer_id": customerID,
-		"customer_name": strings.TrimSpace(displayString(input["customer_name"])), "customer_phone": strings.TrimSpace(displayString(input["customer_phone"])),
+		"customer_name": customerName, "customer_phone": strings.TrimSpace(displayString(input["customer_phone"])),
 		"order_number": orderNumber, "order_type": mapMarketplaceFulfillment(mode), "fulfillment_type": mode,
 		"status": "confirmed", "payment_status": "pending", "payment_method": method, "source": "web",
 		"subtotal_cents": quote.subtotal, "tax_cents": quote.tax, "delivery_fee_cents": quote.delivery, "total_cents": quote.total,
@@ -354,8 +429,14 @@ func (a *application) createMarketplaceOrder(ctx context.Context, slug, body, so
 		"notes": nullableString(notes), "table_label": nil, "delivery_address": nil,
 		"business_date": businessDate, "estimated_prep_time": integerOr(location.row, "estimated_prep_time", 30),
 	}
+	if method == "eft" {
+		// Keep a snapshot so later edits to the store's transfer destination do
+		// not change where a customer is told to pay for an existing order.
+		order["transfer_details"] = publicTransferDetails(location.row)
+	}
 	if mode == "delivery" {
 		order["delivery_address"] = strings.TrimSpace(displayString(input["delivery_address"]))
+		setDeliverySnapshot(order, quote.zone)
 	}
 	if mode == "dine_in" {
 		order["table_label"] = nullableString(input["table_label"])

@@ -80,6 +80,14 @@ export interface MarketplaceMenuCategory {
 // actually sends, `online_payment_available: boolean` (deployment-wide, not
 // per-method) — true selects the online flow, false falls back to
 // on-delivery, mirroring checkout.go's own fallback behaviour.
+export interface DeliveryZoneOption {
+  id: string;
+  name: string;
+  delivery_fee_cents: number;
+  min_order_cents: number;
+  estimated_eta_minutes: number;
+}
+
 export interface StoreDetail {
   id: string;
   name: string;
@@ -93,12 +101,15 @@ export interface StoreDetail {
   offers_dine_in?: boolean;
   accepting_orders?: boolean;
   on_delivery_payment_methods?: string[];
+  transfer_details?: { account_holder: string; alias?: string; cbu?: string } | null;
   locale?: string | null;
   phone_country_code?: string | null;
   whatsapp_number?: string | null;
   tax_rate?: number;
   tax_inclusive?: boolean;
   delivery_fee_cents?: number;
+  delivery_zones?: DeliveryZoneOption[];
+  delivery_zones_required?: boolean;
   free_delivery_threshold_cents?: number;
   estimated_prep_time_minutes: number;
   currency_code: string | null;
@@ -146,6 +157,7 @@ export interface CheckoutOrderPayload {
   fulfillment_type: 'delivery' | 'collection' | 'dine_in';
   on_delivery_method?: string;
   delivery_address?: string;
+  delivery_zone_id?: string;
   items: { item_id: string; quantity: number; notes?: string }[];
   tip_cents?: number;
 }
@@ -170,6 +182,7 @@ export interface CartItem {
 export interface CartMeta {
   fulfillment_type: 'delivery' | 'collection' | 'dine_in' | null;
   delivery_address: string;
+  delivery_zone_id?: string;
   table_label?: string;
 }
 
@@ -261,6 +274,7 @@ export function readCartMeta(slug: string): CartMeta {
     return {
       fulfillment_type: ['delivery', 'collection', 'dine_in'].includes(String(meta.fulfillment_type)) ? meta.fulfillment_type! : null,
       delivery_address: typeof meta.delivery_address === 'string' ? meta.delivery_address : '',
+      delivery_zone_id: typeof meta.delivery_zone_id === 'string' ? meta.delivery_zone_id : '',
       table_label: typeof meta.table_label === 'string' ? meta.table_label : '',
     };
   } catch {

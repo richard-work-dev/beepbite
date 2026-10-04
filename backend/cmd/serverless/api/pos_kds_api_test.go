@@ -62,10 +62,10 @@ func TestOrderStatusAfterPaymentWaitsForKitchenHandoff(t *testing.T) {
 		statuses []string
 		want     string
 	}{
-		{name: "no kitchen tickets", current: "confirmed", want: "completed"},
+		{name: "no kitchen tickets does not prove handoff", current: "confirmed", want: "confirmed"},
 		{name: "new ticket", current: "confirmed", statuses: []string{"fired"}, want: "confirmed"},
 		{name: "ready ticket", current: "ready", statuses: []string{"ready"}, want: "ready"},
-		{name: "all handed off", current: "ready", statuses: []string{"bumped", "cancelled"}, want: "completed"},
+		{name: "all kitchen stations finished still awaits customer", current: "ready", statuses: []string{"bumped", "cancelled"}, want: "ready"},
 		{name: "one station remains", current: "preparing", statuses: []string{"bumped", "in_progress"}, want: "preparing"},
 	}
 	for _, test := range tests {

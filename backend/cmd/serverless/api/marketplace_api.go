@@ -282,15 +282,29 @@ func (a *application) getMarketplaceStore(ctx context.Context, slug string) even
 		return dataAccessError(taxErr)
 	}
 	methods := publicOrderPaymentMethods(row)
+	zones, err := a.queryDataRows(ctx, location.orgID, "delivery_zones")
+	if err != nil {
+		return dataAccessError(err)
+	}
+	publicZones, zonesRequired := publicDeliveryZones(zones, locationID)
+	var transferDetails any
+	for _, method := range methods {
+		if method == "eft" {
+			transferDetails = publicTransferDetails(row)
+			break
+		}
+	}
 	return mustJSONResponse(200, map[string]any{
 		"id": row["id"], "name": row["name"], "slug": valueOr(row, "slug", nil), "city": valueOr(row, "city", nil),
 		"country": valueOr(row, "country", nil), "address": valueOr(row, "address", nil), "description": valueOr(row, "description", nil),
 		"offers_delivery": publicOrderModeEnabled(row, "delivery"), "offers_collection": publicOrderModeEnabled(row, "collection"),
 		"offers_dine_in": publicOrderModeEnabled(row, "dine_in"), "on_delivery_payment_methods": methods,
+		"transfer_details": transferDetails,
 		"accepting_orders": len(methods) > 0 && currencyCode != "" && boolOr(row, "online_orders_enabled", true),
 		"locale":           valueOr(row, "locale", "es-AR"), "phone_country_code": valueOr(row, "phone_country_code", nil),
 		"tax_rate": rate, "tax_inclusive": inclusive,
-		"delivery_fee_cents":            publicOrderMoney(row["delivery_fee"], currencyCode),
+		"delivery_fee_cents": publicOrderMoney(row["delivery_fee"], currencyCode),
+		"delivery_zones":     publicZones, "delivery_zones_required": zonesRequired,
 		"free_delivery_threshold_cents": publicOrderMoney(row["free_delivery_threshold"], currencyCode),
 		"estimated_prep_time_minutes":   integerOr(row, "estimated_prep_time", 30),
 		"currency_code":                 valueOr(row, "currency_code", valueOr(row, "default_currency_code", nil)),

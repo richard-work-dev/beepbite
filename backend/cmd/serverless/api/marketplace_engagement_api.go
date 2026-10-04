@@ -312,6 +312,7 @@ func (a *application) getMarketplaceTracking(ctx context.Context, encodedToken s
 	response := map[string]any{
 		"token": token, "order_id": orderID, "status": order["status"], "fulfillment_type": order["fulfillment_type"],
 		"order_number": order["order_number"], "total_cents": order["total_cents"], "currency_code": order["currency_code"],
+		"delivery_fee_cents": integerOr(order, "delivery_fee_cents", 0), "delivery_zone_name": valueOr(order, "delivery_zone_name", nil),
 		"store_name": location["name"], "store_address": location["address"], "store_slug": location["slug"],
 		"locale": valueOr(location, "locale", "es-AR"), "payment_status": valueOr(order, "payment_status", "pending"),
 		"payment_method": order["payment_method"], "table_label": valueOr(order, "table_label", nil),
@@ -319,6 +320,11 @@ func (a *application) getMarketplaceTracking(ctx context.Context, encodedToken s
 		"estimated_delivery_time": valueOr(order, "estimated_delivery_time", nil),
 		"store_lat":               valueOr(location, "latitude", nil), "store_lng": valueOr(location, "longitude", nil),
 		"delivery_address": valueOr(order, "delivery_address", nil),
+	}
+	if displayString(order["payment_method"]) == "eft" {
+		response["transfer_details"] = valueOr(order, "transfer_details", nil)
+		response["store_whatsapp_number"] = valueOr(location, "whatsapp_number", nil)
+		response["phone_country_code"] = valueOr(location, "phone_country_code", nil)
 	}
 	lines, err := a.queryDataRows(ctx, orgID, "order_items")
 	if err != nil {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math"
 	"sort"
@@ -47,8 +48,28 @@ func (a *application) handlePOSCompletionAPI(ctx context.Context, request events
 	if err != nil {
 		return dataAccessError(err), true, nil
 	}
+	actor, err := a.workflowActor(ctx, request, claims.UserID, orgID)
+	if err != nil {
+		return dataAccessError(err), true, nil
+	}
+	if actor.locationID != "" && route.name != "cash_out" {
+		order, lookupErr := a.dataRowByID(ctx, orgID, "orders", route.params[0])
+		if lookupErr != nil {
+			return errorResponse(404, "Pedido no encontrado."), true, nil
+		}
+		if displayString(order["location_id"]) != actor.locationID {
+			return errorResponse(403, "El pedido pertenece a otro local."), true, nil
+		}
+	}
+	required := "can_pos"
+	if route.name == "mark_paid_on_delivery" {
+		required = "can_settle"
+	}
+	if !actor.allows(required) {
+		return errorResponse(403, "Tu rol no puede realizar esta operación."), true, nil
+	}
 	if strings.HasPrefix(route.name, "item_") || route.name == "void" || route.name == "refund" {
-		if !a.isManager(ctx, claims.UserID, orgID) {
+		if !managerRole(actor.role) {
 			return errorResponse(403, "manager role required"), true, nil
 		}
 	}
@@ -64,7 +85,7 @@ func (a *application) handlePOSCompletionAPI(ctx context.Context, request events
 	case "item_comp", "item_price_override":
 		response = a.adjustPOSOrder(ctx, orgID, claims.UserID, route.params[0], route.params[1], strings.TrimPrefix(route.name, "item_"), request.Body)
 	case "mark_paid_on_delivery":
-		response = a.markPOSPaidOnDelivery(ctx, orgID, claims.UserID, route.params[0], request.Body)
+		response = a.markPOSPaidOnDelivery(ctx, orgID, actor.id, route.params[0], request.Body)
 	case "cash_out":
 		response = a.getCashOutReport(ctx, orgID, route.params[0])
 	}
@@ -116,6 +137,7 @@ func (a *application) getPOSReceipt(ctx context.Context, orgID, orderID string) 
 		}
 		lineItems = append(lineItems, map[string]any{
 			"order_item_id": item["id"], "item_name": itemName,
+			"notes":    valueOr(item, "notes", valueOr(item, "special_instructions", "")),
 			"quantity": valueOr(item, "quantity", 0), "unit_price_cents": valueOr(item, "unit_price_cents", 0),
 			"total_price_cents": valueOr(item, "line_total_cents", valueOr(item, "total_price_cents", 0)), "modifiers": modifiers,
 		})
@@ -131,7 +153,7 @@ func (a *application) getPOSReceipt(ctx context.Context, orgID, orderID string) 
 	payments := make([]map[string]any, 0)
 	tipCents := int64(0)
 	for _, payment := range allPayments {
-		if fmt.Sprint(payment["order_id"]) != orderID {
+		if fmt.Sprint(payment["order_id"]) != orderID || displayString(payment["payment_status"]) != "completed" {
 			continue
 		}
 		tip, _ := integerValue(payment["tip_amount_cents"])
@@ -148,8 +170,11 @@ func (a *application) getPOSReceipt(ctx context.Context, orgID, orderID string) 
 	return mustJSONResponse(200, map[string]any{
 		"store_name": valueOr(location, "name", ""), "store_address": locationAddress(location),
 		"order_id": orderID, "order_number": valueOr(order, "order_number", ""), "created_at": order["created_at"],
+		"status": order["status"], "payment_status": order["payment_status"], "payment_method": order["payment_method"],
+		"paid_cents": completedPaymentCents(allPayments, orderID), "status_history": valueOr(order, "status_history", []any{}),
 		"line_items": lineItems, "subtotal_cents": valueOr(order, "subtotal_cents", valueOr(order, "subtotal_amount_cents", 0)), "tax_cents": valueOr(order, "tax_cents", valueOr(order, "tax_amount_cents", 0)),
 		"tip_cents": tipCents, "total_cents": valueOr(order, "total_cents", valueOr(order, "total_amount_cents", 0)), "currency_code": valueOr(order, "currency_code", ""),
+		"delivery_fee_cents": integerOr(order, "delivery_fee_cents", 0), "delivery_zone_name": valueOr(order, "delivery_zone_name", nil),
 		"payments": payments, "fiscal_receipt_number": valueOr(order, "fiscal_receipt_number", nil),
 	})
 }
@@ -439,6 +464,7 @@ func (a *application) recalculatePOSOrder(ctx context.Context, orgID string, ord
 	}
 	gratuity, _ := integerValue(order["gratuity_cents"])
 	total += gratuity
+	total += integerOr(order, "delivery_fee_cents", 0)
 	order["subtotal_cents"], order["tax_cents"], order["total_cents"] = subtotal, tax, total
 	order["updated_at"] = time.Now().UTC().Format(time.RFC3339Nano)
 	if err := a.putDataRow(ctx, orgID, "orders", order, false); err != nil {
@@ -467,43 +493,21 @@ func (a *application) markPOSPaidOnDelivery(ctx context.Context, orgID, actorID,
 	if method != "cash" && method != "card_machine" {
 		return errorResponse(400, "method must be 'cash' or 'card_machine'")
 	}
-	amount, ok := integerValue(input["amount_received_cents"])
-	if !ok || amount <= 0 {
-		amount, ok = integerValue(valueOr(order, "total_cents", order["total_amount_cents"]))
+	payments, err := a.queryDataRows(ctx, orgID, "order_payments")
+	if err != nil {
+		return dataAccessError(err)
 	}
-	if !ok || amount <= 0 {
-		return errorResponse(400, "amount_received_cents must be > 0")
+	amount := integerOr(order, "total_cents", 0) - completedPaymentCents(payments, orderID)
+	if amount <= 0 {
+		return errorResponse(409, "El pedido no tiene saldo pendiente.")
 	}
 	methodCode := "cash_on_delivery"
 	if method == "card_machine" {
 		methodCode = "card_on_delivery"
 	}
-	payment, err := a.createStoredRow(ctx, orgID, "order_payments", map[string]any{
-		"order_id": orderID, "payment_method_code": methodCode, "amount_paid_cents": amount,
-		"tip_amount_cents": int64(0), "change_given_cents": int64(0), "payment_reference": nil,
-		"processed_by_staff_id": actorID, "payment_status": "completed", "paid_at": time.Now().UTC().Format(time.RFC3339Nano),
-	})
-	if err != nil {
-		return dataAccessError(err)
-	}
-	if method == "cash" {
-		if sessionID := displayString(order["register_session_id"]); sessionID != "" {
-			_, _ = a.createStoredRow(ctx, orgID, "cash_drawer_session_payments", map[string]any{"cash_drawer_session_id": sessionID, "order_payment_id": payment["id"], "payment_id": payment["id"]})
-		}
-	}
-	// Settling the amount must not close the fulfilment lifecycle. Older orders
-	// used pending_on_delivery as both states; treat this explicit settlement as
-	// proof of hand-off only for those legacy rows.
-	if legacyPending {
-		status = "delivered"
-		order["status"] = status
-	}
-	order["payment_status"], order["payment_method"] = "paid", methodCode
-	order["updated_at"] = time.Now().UTC().Format(time.RFC3339Nano)
-	if err := a.putDataRow(ctx, orgID, "orders", order, false); err != nil {
-		return dataAccessError(err)
-	}
-	return mustJSONResponse(200, map[string]any{"order_id": orderID, "payment_id": payment["id"], "status": status, "payment_status": "paid"})
+	payload, _ := json.Marshal(map[string]any{"payment_method_code": methodCode, "amount_paid_cents": amount})
+	// Money does not prove delivery, including older pending_on_delivery orders.
+	return a.chargePOSOrder(ctx, orgID, orderID, string(payload), actorID)
 }
 
 func (a *application) getCashOutReport(ctx context.Context, orgID, sessionID string) events.APIGatewayV2HTTPResponse {

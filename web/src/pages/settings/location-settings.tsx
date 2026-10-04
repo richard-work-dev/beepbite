@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ import { Reveal } from "@/components/ui/motion";
 import AddressAutocomplete from "@/components/address-autocomplete";
 import {
   MapPin,
+  CreditCard,
   Settings as SettingsIcon,
   Save,
   CheckCircle,
@@ -452,6 +453,9 @@ const LocationSettings = () => {
               </Button>
             }
           />
+          <Button asChild variant="outline" className="min-h-10 w-full sm:w-auto">
+            <Link to={`/settings/location/${locationId}/payments`}><CreditCard className="mr-2 h-4 w-4" />Configurar pagos online</Link>
+          </Button>
         </div>
       </Reveal>
 

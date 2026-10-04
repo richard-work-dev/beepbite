@@ -9,6 +9,7 @@ import { ThemeProvider } from '@/components/theme-provider';
 import OnboardingPopup from '@/components/setup/onboarding-popup';
 import { LocaleProvider } from '@/context/locale-context';
 import { useAuth } from './context/auth-context';
+import { POSDraftProvider } from './context/pos-draft-context';
 
 // Bridges the active location into the locale layer.
 //
@@ -40,13 +41,15 @@ const AuthWrapper = () => {
     >
       <LocaleBridge>
         <ActorTokenProvider>
-          <PinModalProvider>
-            <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
-              <AppRoutes />
-              <OnboardingPopup pathname={location.pathname} />
-              <Toaster />
-            </ThemeProvider>
-          </PinModalProvider>
+          <POSDraftProvider>
+            <PinModalProvider>
+              <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
+                <AppRoutes />
+                <OnboardingPopup pathname={location.pathname} />
+                <Toaster />
+              </ThemeProvider>
+            </PinModalProvider>
+          </POSDraftProvider>
         </ActorTokenProvider>
       </LocaleBridge>
     </AuthProvider>

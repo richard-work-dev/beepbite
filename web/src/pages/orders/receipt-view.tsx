@@ -259,9 +259,10 @@ export default function ReceiptView({ orderId, onClose }: { orderId: string; onC
         {/* Financial summary */}
         <div className="mb-2 space-y-0.5">
           <Row label="Subtotal" value={fmt(receipt.subtotal_cents)} />
-          <Row label="Tax" value={fmt(receipt.tax_cents)} />
+          <Row label="Impuestos" value={fmt(receipt.tax_cents)} />
+          {Boolean(receipt.delivery_fee_cents || receipt.delivery_zone_name) && <Row label={`Envío${receipt.delivery_zone_name ? ` · ${receipt.delivery_zone_name}` : ''}`} value={fmt(receipt.delivery_fee_cents || 0)} />}
           {receipt.tip_cents > 0 && (
-            <Row label="Tip / Gratuity" value={fmt(receipt.tip_cents)} />
+            <Row label="Propina" value={fmt(receipt.tip_cents)} />
           )}
         </div>
 

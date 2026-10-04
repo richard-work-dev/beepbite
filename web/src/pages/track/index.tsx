@@ -4,7 +4,7 @@ import { Check, CheckCircle2, ChefHat, Copy, MapPin, RefreshCw, ShoppingBag, Tru
 import { Button } from '@/components/ui/button';
 import { fetchTracking, type TrackingPayload } from '@/services/tracking';
 import { formatMoney } from '@/lib/currency';
-import { fulfillmentLabels, paymentLabels, type Fulfillment } from '@/services/public-order';
+import { fulfillmentLabels, paymentLabel, type Fulfillment } from '@/services/public-order';
 
 const terminalStatuses = new Set(['completed', 'delivered', 'cancelled']);
 const TrackingMap = lazy(() => import('./components/TrackingMap'));
@@ -48,6 +48,11 @@ function Tracking({ token }: { token: string }) {
     return () => { active = false; if (timer) clearTimeout(timer); };
   }, [token, attempt]);
 
+  async function copyBankDetail(value: string) {
+    try { await navigator.clipboard.writeText(value); setCopyMessage('Dato bancario copiado.'); }
+    catch { setCopyMessage('Mantené presionado el dato para copiarlo.'); }
+  }
+
   async function copyLink() {
     try { await navigator.clipboard.writeText(window.location.href); setCopyMessage('Enlace copiado'); }
     catch { setCopyMessage('Podés guardar el enlace desde la barra de direcciones.'); }
@@ -74,6 +79,10 @@ function Tracking({ token }: { token: string }) {
   const title = cancelled ? 'Pedido cancelado' : done ? '¡Que lo disfrutes!' : status === 'out_for_delivery' ? 'Tu pedido está en camino' : status === 'ready' ? collected ? '¡Ya podés retirar tu pedido!' : '¡Tu pedido está listo!' : status === 'preparing' ? 'Estamos preparando tu pedido' : '¡Recibimos tu pedido!';
   const money = (value: number) => formatMoney(value, { currency: tracking.currency, locale: tracking.locale || 'es-AR' });
   const menuURL = tracking.store?.slug ? '/store/' + encodeURIComponent(tracking.store.slug) : null;
+  const whatsappDigits = (tracking.store?.whatsapp_number || '').replace(/\D/g, '');
+  const countryDigits = (tracking.store?.phone_country_code || '').replace(/\D/g, '');
+  const contactDigits = countryDigits && !whatsappDigits.startsWith(countryDigits) ? countryDigits + whatsappDigits : whatsappDigits;
+  const whatsappURL = contactDigits ? 'https://wa.me/' + contactDigits + '?text=' + encodeURIComponent('Hola, consulto por el pago del pedido ' + (tracking.orderNumber || '') + '.') : '';
 
   return <div className="min-h-dvh bg-muted/20 pb-10">
     <header className="border-b bg-background"><div className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-4 py-4"><p className="min-w-0 truncate font-bold">{tracking.store?.name || 'Tu pedido'}</p>{menuURL && <Link to={menuURL} className="shrink-0 text-sm text-primary underline">Ver menú</Link>}</div></header>
@@ -96,10 +105,12 @@ function Tracking({ token }: { token: string }) {
         {(delivery ? tracking.delivery_address.label : tracking.store?.address) && <p className="flex items-start gap-2 text-sm"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />{delivery ? tracking.delivery_address.label : tracking.store?.address}</p>}
         {mode === 'dine_in' && tracking.tableLabel && <p className="text-sm">Mesa / referencia: {tracking.tableLabel}</p>}
         <ul className="divide-y">{tracking.items?.map((item, i) => <li key={i} className="flex justify-between gap-3 py-3 text-sm"><div className="min-w-0"><p className="break-words">{item.quantity}× {item.name}</p>{item.notes && <p className="mt-1 break-words text-xs text-muted-foreground">{item.notes}</p>}</div><span className="shrink-0">{money(item.total_cents)}</span></li>)}</ul>
+        {delivery && tracking.deliveryFeeCents != null && <div className="flex justify-between gap-3 text-sm"><span>Envío{tracking.deliveryZoneName ? ` · ${tracking.deliveryZoneName}` : ''}</span><span className="shrink-0">{tracking.deliveryFeeCents ? money(tracking.deliveryFeeCents) : 'Sin cargo'}</span></div>}
         {tracking.totalCents != null && <div className="flex justify-between gap-3 border-t pt-4 text-lg font-bold"><span>Total</span><span>{money(tracking.totalCents)}</span></div>}
-        <p className="text-sm text-muted-foreground">{tracking.paymentStatus === 'paid' ? 'Pago registrado' : 'Pago pendiente al recibir'}{tracking.paymentMethod ? ' · ' + (paymentLabels[tracking.paymentMethod] || tracking.paymentMethod) : ''}</p>
+        <p className="text-sm text-muted-foreground">{tracking.paymentStatus === 'paid' ? 'Pago registrado' : tracking.paymentMethod === 'eft' ? 'Transferencia pendiente de verificación por el local' : mode === 'dine_in' ? `Pago pendiente al final${tracking.paymentMethod ? '' : ' · método a definir en caja'}` : mode === 'collection' ? 'Pago pendiente al retirar' : 'Pago pendiente al recibir'}{tracking.paymentMethod ? ' · ' + paymentLabel(tracking.paymentMethod, mode as Fulfillment) : ''}</p>
       </section>
       {delivery && (tracking.store?.lat != null || tracking.delivery_address.lat != null) && <section className="h-72 overflow-hidden rounded-2xl border bg-card" aria-label="Mapa del recorrido"><Suspense fallback={<div className="flex h-full items-center justify-center text-sm text-muted-foreground">Cargando mapa…</div>}><TrackingMap store={tracking.store} delivery={tracking.delivery_address} driver={tracking.driver} /></Suspense></section>}
+      {tracking.paymentMethod === 'eft' && tracking.paymentStatus !== 'paid' && tracking.transferDetails && <section className="space-y-3 rounded-2xl border border-primary/20 bg-primary/5 p-5"><div><h2 className="font-bold">Transferencia bancaria</h2><p className="mt-1 text-sm text-muted-foreground">El pago queda pendiente hasta que el local revise y confirme la transferencia. Si ya transferiste, conservá el comprobante.</p></div><dl className="space-y-2 text-sm">{[['Titular', tracking.transferDetails.account_holder], ['Alias', tracking.transferDetails.alias], ['CBU / CVU', tracking.transferDetails.cbu]].filter((entry): entry is [string, string] => Boolean(entry[1])).map(([label, value]) => <div key={label} className="flex flex-wrap items-center justify-between gap-2"><dt className="text-muted-foreground">{label}</dt><dd className="flex items-center gap-2 break-all font-semibold">{value}<button type="button" className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-md border bg-background px-2 text-xs" onClick={() => void copyBankDetail(value)} aria-label={'Copiar ' + label}><Copy className="h-3.5 w-3.5" />Copiar</button></dd></div>)}</dl>{whatsappURL && <Button variant="outline" asChild className="min-h-11 w-full"><a href={whatsappURL} target="_blank" rel="noreferrer">Consultar el pago al local por WhatsApp</a></Button>}</section>}
       <div className="flex flex-wrap gap-3"><Button variant="outline" onClick={() => void copyLink()} className="min-h-11 flex-1"><Copy className="mr-2 h-4 w-4" />Guardar enlace</Button>{!done && !cancelled && <Button variant="outline" onClick={() => setAttempt(n => n + 1)} className="min-h-11 flex-1"><RefreshCw className="mr-2 h-4 w-4" />Actualizar</Button>}</div>
       {copyMessage && <p role="status" className="text-center text-sm">{copyMessage}</p>}
       <p className="text-center text-xs text-muted-foreground">{updated ? 'Última actualización: ' + updated.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) : ''}. Este enlace es privado: compartilo solo con quien deba seguir el pedido.</p>

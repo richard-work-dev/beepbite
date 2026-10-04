@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"net/url"
@@ -14,6 +15,7 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
 type commerceRoute struct {
@@ -34,8 +36,12 @@ func matchCommerceRoute(method, path string) (commerceRoute, bool) {
 		return commerceRoute{name: "pos_create"}, true
 	case method == "GET" && len(segments) == 3 && segments[0] == "pos" && segments[1] == "orders" && segments[2] == "held":
 		return commerceRoute{name: "pos_held"}, true
+	case method == "GET" && len(segments) == 3 && segments[0] == "pos" && segments[1] == "orders" && segments[2] == "queue":
+		return commerceRoute{name: "pos_queue"}, true
 	case len(segments) == 4 && segments[0] == "pos" && segments[1] == "orders" && method == "POST" && (segments[3] == "charge" || segments[3] == "hold" || segments[3] == "release"):
 		return commerceRoute{name: "pos_" + segments[3], params: []string{segments[2]}}, true
+	case len(segments) == 4 && segments[0] == "pos" && segments[1] == "orders" && method == "POST" && segments[3] == "status":
+		return commerceRoute{name: "pos_status", params: []string{segments[2]}}, true
 	case len(segments) == 4 && segments[0] == "pos" && segments[1] == "orders" && method == "PATCH" && segments[3] == "items":
 		return commerceRoute{name: "pos_modify", params: []string{segments[2]}}, true
 	case len(segments) == 4 && segments[0] == "cash-drawers" && segments[2] == "sessions" && method == "POST" && segments[3] == "open":
@@ -86,6 +92,62 @@ func (a *application) handleCommerceAPI(ctx context.Context, request events.APIG
 	if err != nil {
 		return dataAccessError(err), true, nil
 	}
+	actor, err := a.workflowActor(ctx, request, claims.UserID, orgID)
+	if err != nil {
+		return dataAccessError(err), true, nil
+	}
+	capability := "can_pos"
+	if strings.HasPrefix(route.name, "kds_") {
+		capability = "can_kds"
+	}
+	if route.name == "pos_charge" {
+		capability = "can_settle"
+	}
+	if !strings.HasPrefix(route.name, "time_") && !actor.allows(capability) {
+		return errorResponse(403, "Tu rol no puede realizar esta operación."), true, nil
+	}
+	if actor.locationID != "" && !strings.HasPrefix(route.name, "time_") {
+		locationID := ""
+		if route.name == "pos_create" {
+			var input map[string]any
+			_ = decodeDataObject(request.Body, &input)
+			locationID = displayString(input["location_id"])
+		} else if len(route.params) > 0 {
+			resource := "orders"
+			if strings.HasPrefix(route.name, "kds_station_") {
+				resource = "kitchen_stations"
+			} else if strings.HasPrefix(route.name, "kds_") && route.name != "kds_expo" && route.name != "kds_fanout" {
+				resource = "kds_tickets"
+			} else if strings.HasPrefix(route.name, "cash_") {
+				resource = "cash_drawers"
+				if route.name == "cash_get" || route.name == "cash_movement" || route.name == "cash_close" {
+					resource = "cash_drawer_sessions"
+				}
+			}
+			row, lookupErr := a.dataRowByID(ctx, orgID, resource, route.params[0])
+			if lookupErr != nil {
+				return errorResponse(404, "Recurso no encontrado."), true, nil
+			}
+			locationID = displayString(row["location_id"])
+			if resource == "cash_drawer_sessions" {
+				drawer, lookupErr := a.dataRowByID(ctx, orgID, "cash_drawers", displayString(row["cash_drawer_id"]))
+				if lookupErr != nil {
+					return errorResponse(404, "Caja no encontrada."), true, nil
+				}
+				locationID = displayString(drawer["location_id"])
+			}
+			if resource == "kds_tickets" {
+				order, lookupErr := a.dataRowByID(ctx, orgID, "orders", displayString(row["order_id"]))
+				if lookupErr != nil {
+					return errorResponse(404, "Pedido no encontrado."), true, nil
+				}
+				locationID = displayString(order["location_id"])
+			}
+		}
+		if locationID != "" && locationID != actor.locationID {
+			return errorResponse(403, "El recurso pertenece a otro local."), true, nil
+		}
+	}
 
 	var response events.APIGatewayV2HTTPResponse
 	switch route.name {
@@ -94,11 +156,15 @@ func (a *application) handleCommerceAPI(ctx context.Context, request events.APIG
 	case "pos_modify":
 		response = a.modifyPOSOrder(ctx, orgID, route.params[0], request.Body)
 	case "pos_charge":
-		response = a.chargePOSOrder(ctx, orgID, route.params[0], request.Body)
+		response = a.chargePOSOrder(ctx, orgID, route.params[0], request.Body, actor.id)
+	case "pos_status":
+		response = a.transitionPOSOrder(ctx, orgID, route.params[0], actor, request.Body)
 	case "pos_hold", "pos_release":
 		response = a.holdPOSOrder(ctx, orgID, route.params[0], route.name == "pos_hold")
 	case "pos_held":
 		response = a.listHeldPOSOrders(ctx, orgID, request.RawQueryString)
+	case "pos_queue":
+		response = a.listPOSOrderQueue(ctx, orgID, request.RawQueryString, actor)
 	case "cash_open":
 		response = a.openCashSession(ctx, orgID, route.params[0], request.Body)
 	case "cash_list":
@@ -116,11 +182,11 @@ func (a *application) handleCommerceAPI(ctx context.Context, request events.APIG
 	case "kds_details":
 		response = a.getKDSTicketDetails(ctx, orgID, route.params[0])
 	case "kds_start", "kds_ready", "kds_bump", "kds_recall", "kds_refire", "kds_rush":
-		response = a.transitionKDSTicket(ctx, orgID, route.params[0], strings.TrimPrefix(route.name, "kds_"))
+		response = a.transitionKDSTicket(ctx, orgID, route.params[0], strings.TrimPrefix(route.name, "kds_"), actor)
 	case "kds_expo":
 		response = a.getKDSExpo(ctx, orgID, route.params[0])
 	case "kds_expo_list":
-		response = a.listKDSExpo(ctx, orgID)
+		response = a.listKDSExpo(ctx, orgID, actor.locationID)
 	case "kds_fanout":
 		response = a.fanoutKDS(ctx, orgID, route.params[0])
 	case "time_clock_in", "time_clock_out":
@@ -308,7 +374,8 @@ func (a *application) createPOSOrder(ctx context.Context, orgID, body string) ev
 	if locationID == "" || (orderType != "dine_in" && orderType != "pickup" && orderType != "delivery") {
 		return errorResponse(400, "location_id and valid order_type required")
 	}
-	if _, err := a.dataRowByID(ctx, orgID, "locations", locationID); err != nil {
+	location, err := a.dataRowByID(ctx, orgID, "locations", locationID)
+	if err != nil {
 		return errorResponse(404, "location not found")
 	}
 	tableSessionID := strings.TrimSpace(displayString(input["table_session_id"]))
@@ -404,7 +471,27 @@ func (a *application) createPOSOrder(ctx context.Context, orgID, body string) ev
 		}
 	}
 
-	location, _ := a.dataRowByID(ctx, orgID, "locations", locationID)
+	var zones []map[string]any
+	if orderType == "delivery" {
+		address := strings.TrimSpace(displayString(input["delivery_address"]))
+		if len(address) < 8 || len(address) > 500 {
+			return errorResponse(400, "Completá una dirección de entrega válida.")
+		}
+		zones, err = a.queryDataRows(ctx, orgID, "delivery_zones")
+		if err != nil {
+			return dataAccessError(err)
+		}
+	}
+	delivery, deliveryErr := priceDelivery(map[string]any{"fulfillment_type": orderType, "delivery_zone_id": input["delivery_zone_id"]}, location, zones, subtotal)
+	if deliveryErr != nil {
+		return errorResponse(422, deliveryErr.Error())
+	}
+	if expected, exists := input["expected_delivery_fee_cents"]; exists {
+		fee, valid := integerValue(expected)
+		if !valid || fee != delivery.fee {
+			return errorResponse(409, "La tarifa de envío cambió. Actualizá las zonas y revisá el pedido.")
+		}
+	}
 	taxRate, _ := numericValue(location["tax_rate"])
 	taxInclusive, _ := location["tax_inclusive"].(bool)
 	tax := int64(0)
@@ -419,6 +506,7 @@ func (a *application) createPOSOrder(ctx context.Context, orgID, body string) ev
 	if !taxInclusive {
 		total += tax
 	}
+	total += delivery.fee
 	now := time.Now().UTC()
 	businessDate := marketplaceLocationTime(now, location).Format("2006-01-02")
 	order := map[string]any{
@@ -431,6 +519,10 @@ func (a *application) createPOSOrder(ctx context.Context, orgID, body string) ev
 		"register_session_id": valueOr(input, "register_session_id", nil), "customer_id": nullableString(customerID),
 		"customer_name": nullableString(customerName), "customer_phone": nullableString(customerPhone),
 		"notes": valueOr(input, "notes", nil), "party_size": valueOr(input, "party_size", 1), "held_at": nil,
+	}
+	setDeliverySnapshot(order, delivery)
+	if orderType == "delivery" {
+		order["delivery_address"] = strings.TrimSpace(displayString(input["delivery_address"]))
 	}
 	created, err := a.createStoredRow(ctx, orgID, "orders", order)
 	if err != nil {
@@ -460,6 +552,7 @@ func posOrderResponse(order map[string]any, ticketIDs []string, orderItems []map
 	return map[string]any{
 		"order_id": order["id"], "order_number": order["order_number"],
 		"subtotal_minor": subtotal, "tax_minor": tax, "gratuity_minor": gratuity, "total_minor": total,
+		"delivery_fee_cents": integerOr(order, "delivery_fee_cents", 0), "delivery_zone_name": valueOr(order, "delivery_zone_name", nil),
 		"subtotal": float64(subtotal) / 100, "tax": float64(tax) / 100, "gratuity": float64(gratuity) / 100, "total": float64(total) / 100,
 		"currency_code": order["currency_code"], "currency_decimals": valueOr(order, "currency_decimals", 2),
 		"tax_rate": valueOr(order, "tax_rate", 0), "tax_inclusive": valueOr(order, "tax_inclusive", false), "tax_label": valueOr(order, "tax_label", "Tax"),
@@ -571,6 +664,7 @@ func (a *application) modifyPOSOrder(ctx context.Context, orgID, orderID, body s
 	if !taxInclusive {
 		total += tax
 	}
+	total += integerOr(order, "delivery_fee_cents", 0) + integerOr(order, "gratuity_cents", 0)
 	order["subtotal_cents"], order["tax_cents"], order["total_cents"] = subtotal, tax, total
 	order["updated_at"] = time.Now().UTC().Format(time.RFC3339Nano)
 	if err := a.putDataRow(ctx, orgID, "orders", order, false); err != nil {
@@ -583,7 +677,7 @@ func (a *application) modifyPOSOrder(ctx context.Context, orgID, orderID, body s
 	return mustJSONResponse(200, map[string]any{"order_id": orderID, "subtotal": float64(subtotal) / 100, "tax": float64(tax) / 100, "total": float64(total) / 100, "currency_code": order["currency_code"], "kds_ticket_ids": ticketIDs})
 }
 
-func (a *application) chargePOSOrder(ctx context.Context, orgID, orderID, body string) events.APIGatewayV2HTTPResponse {
+func (a *application) chargePOSOrder(ctx context.Context, orgID, orderID, body string, actorID string) events.APIGatewayV2HTTPResponse {
 	order, err := a.dataRowByID(ctx, orgID, "orders", orderID)
 	if err != nil {
 		return errorResponse(404, "order not found")
@@ -594,6 +688,7 @@ func (a *application) chargePOSOrder(ctx context.Context, orgID, orderID, body s
 	if fmt.Sprint(order["status"]) == "cancelled" {
 		return errorResponse(409, "cancelled order cannot be paid")
 	}
+	previous := cloneDataRow(order)
 	var input map[string]any
 	if decodeDataObject(body, &input) != nil {
 		return errorResponse(400, "invalid request body")
@@ -642,13 +737,18 @@ func (a *application) chargePOSOrder(ctx context.Context, orgID, orderID, body s
 				return errorResponse(400, "change_given_cents must be an integer")
 			}
 		}
-		if method == "" || !amountOK || amount < 1 || change < 0 || change >= amount {
+		validMethod := method == "cash" || method == "card_in_person" || method == "card_machine" || method == "eft" || method == "cash_on_delivery" || method == "card_on_delivery"
+		if !validMethod || !amountOK || amount < 1 || change < 0 || change >= amount {
 			return errorResponse(400, "each payment requires a positive amount and valid change")
 		}
 		if method != "cash" && change > 0 {
 			return errorResponse(400, "change is only valid for cash payments")
 		}
 		leg["payment_method_code"], leg["amount_paid_cents"], leg["change_given_cents"] = method, amount, change
+		// Bound before addition so multiple huge amounts cannot overflow int64.
+		if amount-change > totalCents-paidBefore-newPaidCents {
+			return errorResponse(400, "payment exceeds remaining balance")
+		}
 		normalizedLegs = append(normalizedLegs, leg)
 		newPaidCents += amount - change
 	}
@@ -657,30 +757,39 @@ func (a *application) chargePOSOrder(ctx context.Context, orgID, orderID, body s
 		return errorResponse(400, "payment exceeds remaining balance")
 	}
 	legs = normalizedLegs
+	if len(legs) > 20 {
+		return errorResponse(400, "Demasiados medios de pago.")
+	}
+	writes := make([]types.TransactWriteItem, 0, 1+2*len(legs))
 	paymentIDs := make([]string, 0, len(legs))
 	for _, leg := range legs {
 		method := strings.TrimSpace(fmt.Sprint(leg["payment_method_code"]))
 		amount, _ := integerValue(leg["amount_paid_cents"])
-		payment, createErr := a.createStoredRow(ctx, orgID, "order_payments", map[string]any{
+		payment, put, createErr := prepareWorkflowCreate(a.table, orgID, "order_payments", map[string]any{
 			"order_id": orderID, "payment_method_code": method, "amount_paid_cents": amount,
 			"tip_amount_cents": valueOr(leg, "tip_amount_cents", 0), "change_given_cents": valueOr(leg, "change_given_cents", 0),
-			"payment_reference": valueOr(leg, "payment_reference", nil), "processed_by_staff_id": valueOr(input, "processed_by_staff_id", nil), "payment_status": "completed",
+			"payment_reference": valueOr(leg, "payment_reference", nil), "processed_by_staff_id": actorID, "payment_status": "completed",
 		})
 		if createErr != nil {
 			return dataAccessError(createErr)
 		}
 		paymentIDs = append(paymentIDs, fmt.Sprint(payment["id"]))
-		if method == "cash" {
+		writes = append(writes, types.TransactWriteItem{Put: put})
+		if method == "cash" || method == "cash_on_delivery" {
 			sessionID := displayString(order["register_session_id"])
 			if sessionID != "" {
-				_, _ = a.createStoredRow(ctx, orgID, "cash_drawer_session_payments", map[string]any{"cash_drawer_session_id": sessionID, "order_payment_id": payment["id"], "payment_id": payment["id"]})
+				_, linkPut, linkErr := prepareWorkflowCreate(a.table, orgID, "cash_drawer_session_payments", map[string]any{"cash_drawer_session_id": sessionID, "order_payment_id": payment["id"], "payment_id": payment["id"]})
+				if linkErr != nil {
+					return dataAccessError(linkErr)
+				}
+				writes = append(writes, types.TransactWriteItem{Put: linkPut})
 			}
 		}
 	}
 	// Payment and kitchen fulfilment are separate lifecycles. A customer may
 	// pay before preparation finishes; marking the order completed here used
 	// to make it disappear from Expo even though its KDS ticket was active.
-	// Complete it now only when every kitchen ticket is already terminal.
+	// Recording a payment never confirms service or customer pickup.
 	paidCents := paidBefore + newPaidCents
 	paymentStatus := "partial"
 	if paidCents == totalCents {
@@ -688,12 +797,22 @@ func (a *application) chargePOSOrder(ctx context.Context, orgID, orderID, body s
 		order["status"] = orderStatusAfterPayment(fmt.Sprint(order["status"]), displayString(valueOr(order, "fulfillment_type", order["order_type"])), statuses)
 	}
 	order["payment_status"], order["updated_at"] = paymentStatus, time.Now().UTC().Format(time.RFC3339Nano)
+	order["paid_cents"], order["payment_updated_by"] = paidCents, actorID
 	if len(legs) == 1 {
 		order["payment_method"] = legs[0]["payment_method_code"]
 	} else {
 		order["payment_method"] = "split"
 	}
-	if err := a.putDataRow(ctx, orgID, "orders", order, false); err != nil {
+	orderPut, err := conditionalRowPut(a.table, orgID, "orders", previous, order)
+	if err != nil {
+		return dataAccessError(err)
+	}
+	writes = append(writes, types.TransactWriteItem{Put: orderPut})
+	if _, err := a.dynamo.TransactWriteItems(ctx, &dynamodb.TransactWriteItemsInput{TransactItems: writes}); err != nil {
+		var conflict *types.TransactionCanceledException
+		if errors.As(err, &conflict) {
+			return errorResponse(409, "El pedido cambió. Actualizá y revisá el saldo antes de registrar otro pago.")
+		}
 		return dataAccessError(err)
 	}
 	sessionClosed := false
@@ -714,6 +833,7 @@ func (a *application) chargePOSOrder(ctx context.Context, orgID, orderID, body s
 	}
 	return mustJSONResponse(200, map[string]any{
 		"order_id": orderID, "payment_id": firstID, "payment_ids": paymentIDs, "payment_status": paymentStatus,
+		"status":     order["status"],
 		"paid_cents": paidCents, "remaining_cents": totalCents - paidCents, "session_closed": sessionClosed,
 		"session_close_error": sessionCloseError,
 	})
@@ -737,7 +857,7 @@ func (a *application) closeTableSessionWhenPaid(ctx context.Context, orgID, sess
 			continue
 		}
 		linkedOrders++
-		if displayString(order["payment_status"]) != "paid" {
+		if displayString(order["payment_status"]) != "paid" || displayString(order["status"]) != "completed" {
 			return false, nil
 		}
 	}
@@ -1025,6 +1145,8 @@ func (a *application) listKDSTickets(ctx context.Context, orgID, stationID strin
 		if order := ordersByID[fmt.Sprint(ticket["order_id"])]; order != nil {
 			copy["order_number"] = order["order_number"]
 			copy["order_type"] = order["order_type"]
+			copy["payment_status"] = valueOr(order, "payment_status", "pending")
+			copy["payment_method"] = valueOr(order, "payment_method", "")
 			copy["table_number"] = order["table_number"]
 			copy["customer_name"] = valueOr(order, "customer_name", nil)
 			copy["customer_phone"] = valueOr(order, "customer_phone", nil)
@@ -1091,17 +1213,27 @@ func (a *application) getKDSTicketDetails(ctx context.Context, orgID, ticketID s
 	}
 	return mustJSONResponse(200, map[string]any{
 		"ticket_id": ticketID, "order_number": order["order_number"], "station_name": station["name"],
-		"table_number": order["table_number"], "order_type": order["order_type"], "fired_at": ticket["fired_at"],
+		"table_number": order["table_number"], "order_type": order["order_type"],
+		"payment_status": valueOr(order, "payment_status", "pending"), "payment_method": valueOr(order, "payment_method", ""),
+		"fired_at":      ticket["fired_at"],
 		"customer_name": valueOr(order, "customer_name", nil), "customer_phone": valueOr(order, "customer_phone", nil),
 		"delivery_address": valueOr(order, "delivery_address", nil), "notes": valueOr(order, "notes", ticket["notes"]),
 		"items": resultItems,
 	})
 }
 
-func (a *application) transitionKDSTicket(ctx context.Context, orgID, ticketID, action string) events.APIGatewayV2HTTPResponse {
+func (a *application) transitionKDSTicket(ctx context.Context, orgID, ticketID, action string, actor workflowActor) events.APIGatewayV2HTTPResponse {
 	ticket, err := a.dataRowByID(ctx, orgID, "kds_tickets", ticketID)
 	if err != nil {
 		return errorResponse(404, "ticket not found")
+	}
+	previous := cloneDataRow(ticket)
+	order, err := a.dataRowByID(ctx, orgID, "orders", displayString(ticket["order_id"]))
+	if err != nil {
+		return errorResponse(404, "Pedido no encontrado.")
+	}
+	if status := displayString(order["status"]); status == "cancelled" || status == "completed" || status == "delivered" || status == "out_for_delivery" {
+		return errorResponse(409, "Este pedido ya fue entregado, despachado o cancelado.")
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	switch action {
@@ -1129,7 +1261,8 @@ func (a *application) transitionKDSTicket(ctx context.Context, orgID, ticketID, 
 		ticket["priority"] = priority + 1
 	}
 	ticket["updated_at"] = now
-	if err := a.putDataRow(ctx, orgID, "kds_tickets", ticket, false); err != nil {
+	ticket["updated_by"] = actor.id
+	if err := a.putWorkflowRow(ctx, orgID, "kds_tickets", previous, ticket); err != nil {
 		return dataAccessError(err)
 	}
 	itemStatus := map[string]string{"start": "in_progress", "ready": "ready", "bump": "bumped", "recall": "fired", "refire": "fired"}[action]
@@ -1161,12 +1294,12 @@ func (a *application) transitionKDSTicket(ctx context.Context, orgID, ticketID, 
 		}
 	}
 	if action != "rush" {
-		if err := a.syncOrderStatusFromKDS(ctx, orgID, fmt.Sprint(ticket["order_id"])); err != nil {
+		if err := a.syncOrderStatusFromKDS(ctx, orgID, fmt.Sprint(ticket["order_id"]), actor); err != nil {
 			return dataAccessError(err)
 		}
 	}
 	eventType := map[string]string{"start": "started", "ready": "ready", "bump": "bumped", "recall": "recalled", "refire": "re_fired", "rush": "rushed"}[action]
-	event, err := a.createStoredRow(ctx, orgID, "kds_ticket_events", map[string]any{"ticket_id": ticketID, "station_id": ticket["station_id"], "event_type": eventType, "performed_by": nil, "created_at": now})
+	event, err := a.createStoredRow(ctx, orgID, "kds_ticket_events", map[string]any{"ticket_id": ticketID, "station_id": ticket["station_id"], "event_type": eventType, "performed_by": actor.id, "created_at": now})
 	if err != nil {
 		return dataAccessError(err)
 	}
@@ -1246,18 +1379,13 @@ func summarizeKDSStatuses(statuses []string) (active, allReady, allFinished bool
 }
 
 func orderStatusAfterPayment(current, fulfillment string, statuses []string) string {
-	_, _, allFinished := summarizeKDSStatuses(statuses)
-	if fulfillment == "delivery" {
-		if current == "out_for_delivery" || current == "delivered" || current == "cancelled" {
-			return current
-		}
-		if allFinished {
-			return "ready"
-		}
+	// Paying never proves that the customer collected or was served the food.
+	if current == "completed" || current == "delivered" || current == "cancelled" || current == "out_for_delivery" {
 		return current
 	}
-	if len(statuses) == 0 || allFinished {
-		return "completed"
+	_, allReady, _ := summarizeKDSStatuses(statuses)
+	if allReady {
+		return "ready"
 	}
 	return current
 }
@@ -1272,9 +1400,9 @@ func shouldListKDSExpoOrder(orderStatus string, statuses []string) bool {
 }
 
 // syncOrderStatusFromKDS keeps the order aligned with its kitchen tickets.
-// Delivery statuses remain owned by front-of-house. A paid order becomes
-// completed only after every kitchen ticket has been handed off/cancelled.
-func (a *application) syncOrderStatusFromKDS(ctx context.Context, orgID, orderID string) error {
+// Every service mode needs an explicit front-of-house/customer handoff.
+// Bumping kitchen tickets means preparation finished, not customer delivery.
+func (a *application) syncOrderStatusFromKDS(ctx context.Context, orgID, orderID string, actor workflowActor) error {
 	order, err := a.dataRowByID(ctx, orgID, "orders", orderID)
 	if err != nil {
 		return err
@@ -1291,19 +1419,17 @@ func (a *application) syncOrderStatusFromKDS(ctx context.Context, orgID, orderID
 	if len(statuses) == 0 {
 		return nil
 	}
-	_, allReady, allFinished := summarizeKDSStatuses(statuses)
+	_, allReady, _ := summarizeKDSStatuses(statuses)
 	next := "preparing"
-	fulfillment := displayString(valueOr(order, "fulfillment_type", order["order_type"]))
-	if allFinished && fmt.Sprint(order["payment_status"]) == "paid" && fulfillment != "delivery" {
-		next = "completed"
-	} else if allReady {
+	if allReady {
 		next = "ready"
 	}
 	if current == next {
 		return nil
 	}
-	order["status"], order["updated_at"] = next, time.Now().UTC().Format(time.RFC3339Nano)
-	return a.putDataRow(ctx, orgID, "orders", order, false)
+	previous := cloneDataRow(order)
+	recordOrderTransition(order, next, actor)
+	return a.putWorkflowRow(ctx, orgID, "orders", previous, order)
 }
 
 func (a *application) getKDSExpo(ctx context.Context, orgID, orderID string) events.APIGatewayV2HTTPResponse {
@@ -1358,14 +1484,14 @@ func (a *application) getKDSExpo(ctx context.Context, orgID, orderID string) eve
 	return mustJSONResponse(200, map[string]any{
 		"order_id": orderID, "order_number": order["order_number"], "order_type": order["order_type"], "table_number": order["table_number"],
 		"customer_name": valueOr(order, "customer_name", nil), "customer_phone": valueOr(order, "customer_phone", nil), "delivery_address": valueOr(order, "delivery_address", nil), "notes": valueOr(order, "notes", nil),
-		"order_status": order["status"], "payment_status": valueOr(order, "payment_status", "pending"),
+		"order_status": order["status"], "payment_status": valueOr(order, "payment_status", "pending"), "payment_method": valueOr(order, "payment_method", ""),
 		"earliest_fired_at": earliest, "station_tickets": stationTickets, "max_priority": maxPriority, "all_ready": allReady, "any_in_progress": anyProgress,
 	})
 }
 
 // listKDSExpo is the board endpoint. It keeps Expo out of the generic data
 // API, whose table permissions are intentionally stricter than kitchen access.
-func (a *application) listKDSExpo(ctx context.Context, orgID string) events.APIGatewayV2HTTPResponse {
+func (a *application) listKDSExpo(ctx context.Context, orgID, locationID string) events.APIGatewayV2HTTPResponse {
 	orders, err := a.queryDataRows(ctx, orgID, "orders")
 	if err != nil {
 		return dataAccessError(err)
@@ -1382,6 +1508,9 @@ func (a *application) listKDSExpo(ctx context.Context, orgID string) events.APIG
 	result := make([]map[string]any, 0)
 	for _, order := range orders {
 		orderID := fmt.Sprint(order["id"])
+		if locationID != "" && displayString(order["location_id"]) != locationID {
+			continue
+		}
 		if !shouldListKDSExpoOrder(fmt.Sprint(order["status"]), statusesByOrder[orderID]) {
 			continue
 		}

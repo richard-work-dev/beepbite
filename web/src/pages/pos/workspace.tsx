@@ -19,7 +19,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Banknote, ChefHat, CreditCard, Filter, Loader2, Lock, LogOut, MapPin, Plus, Receipt, RotateCcw, Scissors, Search, ShoppingBag, Unlock, User as UserIcon, UserCheck, Utensils } from 'lucide-react';
+import { ArrowRight, Ban, Banknote, BarChart3, ChefHat, CreditCard, Filter, Home, ListOrdered, Loader2, Lock, LogOut, MapPin, MoreHorizontal, Plus, Receipt, RotateCcw, Scissors, Search, Settings2, ShoppingBag, Truck, Unlock, User as UserIcon, UserCheck, Utensils, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -30,12 +30,15 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { emojiFor } from '@/lib/item-emoji';
 import { normalizeServiceStyle } from '@/lib/service-style';
+import { hasAnyAccess, canRecordOrderPayment } from '@/lib/access-control';
 
 import { useAuth } from '@/context/auth-context';
 import { useActor } from '@/context/actor-token-context';
+import { usePOSDraft } from '@/context/pos-draft-context';
 import { useDateTime, useMoney } from '@/context/locale-context';
 import { supabase } from '@/services/supabase-client';
 import { useToast } from '@/hooks/use-toast';
@@ -78,6 +81,9 @@ import SplitBySeat from './components/split-by-seat';
 import ModifierPicker, { useItemHasModifiers, type Modifier } from './components/modifier-picker';
 import ReceiptModal from './components/receipt-modal';
 import OrderDetailsDialog, { type OrderDetails } from './components/order-details-dialog';
+import { useDeliveryZones } from '@/pages/settings/delivery-zones/hooks/use-delivery-zones';
+import { deliveryPrice } from '@/services/public-order';
+import type { StoreDetail } from '@/services/marketplace';
 import ItemNoteDialog from './components/item-note-dialog';
 
 // ---------------------------------------------------------------------------
@@ -93,6 +99,7 @@ interface MenuItem {
   id: string;
   name: string;
   description?: string | null;
+  image_url?: string | null;
   price: number | string;
   category_id: string;
   is_86ed: boolean;
@@ -147,6 +154,9 @@ interface WorkspaceSentOrder {
 }
 
 interface WorkspaceTicket {
+  fulfillment?: 'takeaway' | 'delivery';
+  deliveryAddress?: string;
+  deliveryZoneID?: string;
   id: string;
   kind: 'walkin' | 'table';
   label?: string;
@@ -293,8 +303,9 @@ export function EmbeddedPosWorkspace() {
 function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { activeLocation, user, userProfile, signOut } = useAuth();
-  const { format, scale } = useMoney();
+  const { activeLocation, activeMembership, user, userProfile, signOut } = useAuth();
+  const { format, scale, currency } = useMoney();
+  const { zones: deliveryZones, loading: loadingDeliveryZones, error: deliveryZonesError, refresh: refreshDeliveryZones } = useDeliveryZones(activeLocation?.id);
   const { today } = useDateTime();
   // The store's local trading date, not the browser's UTC one.
   const todayStr = today();
@@ -339,17 +350,8 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
   // ----- auth gate -------------------------------------------------------
   const staff = useMemo(() => getStaff(), []);
   const staffName = useMemo(() => getStaffDisplayName(), []);
-  // NOTE (found by this TS conversion, not fixed — out of scope): both
-  // `userProfile.first_name` and `user.user_metadata.name` are leftovers from
-  // the pre-migration Supabase auth. The real DTOs (backend/migrations/
-  // 001_baseline.sql `profiles` has only `full_name`, no first/last split;
-  // AuthUser in auth-context.tsx has no user_metadata at all) never populate
-  // either field, so both branches have always been dead — an owner/admin's
-  // display name falls straight through to their bare email. Casts below
-  // preserve that exact (already-broken) runtime behavior.
   const displayName = actorDisplayName || staffName
-    || (userProfile as unknown as { first_name?: string } | null)?.first_name
-    || (user as unknown as { user_metadata?: { name?: string } } | null)?.user_metadata?.name
+    || userProfile?.full_name
     || user?.email || 'Usuario';
   // The device is authed if: (a) actor overlay set, (b) legacy staff session, or (c) member JWT.
   const isAuthed = Boolean(actor || staff || user);
@@ -364,9 +366,10 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
     const elevated = (r?: string) => ['owner', 'manager', 'admin'].includes(String(r || '').toLowerCase());
     if (actor) return elevated(actor.role);
     if (staff) return elevated(staff.role);
-    // Supabase email session with no staff overlay == owner/admin.
-    return Boolean(user);
-  }, [actor, staff, user]);
+    return elevated(activeMembership?.role);
+  }, [actor, staff, activeMembership?.role]);
+  const canOpenModule = (capability: string) => hasAnyAccess(activeMembership, [capability], actor?.capabilities, actor?.role);
+  const canRecordPayment = canRecordOrderPayment(activeMembership, actor?.capabilities, actor?.role);
 
   // ----- register session ------------------------------------------------
   // Mirrors home/index.jsx: only staff PIN sessions need an open cash drawer.
@@ -408,6 +411,7 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
   const [loadingMenu, setLoadingMenu] = useState(true);
   const [search, setSearch] = useState('');
   const [categoryId, setCategoryId] = useState('all');
+  const [mobileView, setMobileView] = useState<'products' | 'ticket'>('products');
 
   // ----- tables / sessions ----------------------------------------------
   const [tables, setTables] = useState<RestaurantTable[]>([]);
@@ -420,6 +424,24 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
   const [activeTicketId, setActiveTicketId] = useState<string | null>(null);
   const [walkInCounter, setWalkInCounter] = useState(1);
   const [openingTable, setOpeningTable] = useState(false);
+  const { scope: draftScope, read: readDraft, save: saveDraft } = usePOSDraft<{
+    tickets: Record<string, WorkspaceTicket>;
+    activeTicketId: string | null;
+    walkInCounter: number;
+  }>();
+  const [loadedDraftScope, setLoadedDraftScope] = useState<string | null>(null);
+
+  useEffect(() => {
+    const draft = readDraft();
+    setTickets(draft?.tickets || {});
+    setActiveTicketId(draft?.activeTicketId || null);
+    setWalkInCounter(draft?.walkInCounter || 1);
+    setLoadedDraftScope(draftScope);
+  }, [draftScope, readDraft]);
+
+  useEffect(() => {
+    if (draftScope && loadedDraftScope === draftScope) saveDraft({ tickets, activeTicketId, walkInCounter });
+  }, [draftScope, loadedDraftScope, saveDraft, tickets, activeTicketId, walkInCounter]);
 
   // A floor plan exists once the location has at least one table row. Until
   // then, dine-in cannot proceed (there is nothing to seat a guest at).
@@ -563,7 +585,7 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
             .eq('location_id', activeLocation.id).eq('is_active', true)
             .order('sort_order', { ascending: true }).order('name', { ascending: true }),
           supabase.from('items').select(`
-            id, name, description, price, category_id, is_86ed,
+            id, name, description, image_url, price, category_id, is_86ed,
             daily_quantity, daily_sold_count, daily_counter_date,
             categories ( id, name )
           `).eq('location_id', activeLocation.id).eq('is_active', true)
@@ -689,13 +711,25 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
             notes: latestOrder?.notes || undefined,
           };
         });
-        setTickets(next);
+        setTickets(current => {
+          // Keep local walk-ins and unsent table lines when the server's
+          // session snapshot arrives, including a return from another module.
+          const merged = { ...next };
+          for (const ticket of Object.values(current)) {
+            if (ticket.kind === 'walkin') merged[ticket.id] = ticket;
+            else if (merged[ticket.id]) merged[ticket.id] = {
+              ...merged[ticket.id], newItems: ticket.newItems,
+              ...(ticket.newItems.length ? { customerId: ticket.customerId, customerName: ticket.customerName, customerPhone: ticket.customerPhone, notes: ticket.notes } : {}),
+            };
+          }
+          return merged;
+        });
       } catch (err) {
         console.error('Open sessions load failed:', err);
       }
     })();
     return () => { cancelled = true; };
-  }, [activeLocation?.id, refreshTables, scale]);
+  }, [activeLocation?.id, draftScope, refreshTables, scale]);
 
   // ===== derived =========================================================
 
@@ -711,6 +745,23 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
   }, [items, categoryId, search]);
 
   const activeTicket = activeTicketId ? tickets[activeTicketId] : null;
+  const orderDetailsValue = useMemo(() => ({
+    customerId: activeTicket?.customerId, customerName: activeTicket?.customerName, customerPhone: activeTicket?.customerPhone, notes: activeTicket?.notes,
+    fulfillment: activeTicket?.fulfillment, deliveryAddress: activeTicket?.deliveryAddress, deliveryZoneID: activeTicket?.deliveryZoneID,
+  }), [activeTicket?.customerId, activeTicket?.customerName, activeTicket?.customerPhone, activeTicket?.notes, activeTicket?.fulfillment, activeTicket?.deliveryAddress, activeTicket?.deliveryZoneID]);
+  const isDeliveryTicket = activeTicket?.kind === 'walkin' && activeTicket.fulfillment === 'delivery';
+  const deliveryStore: StoreDetail = {
+    id: activeLocation?.id || '', name: activeLocation?.name || '', slug: null, city: null, country: null, address: null, description: null,
+    offers_delivery: Boolean(activeLocation?.accepts_delivery ?? activeLocation?.offers_delivery) || deliveryZones.length > 0 || isDeliveryTicket,
+    offers_collection: true, currency_code: currency,
+    estimated_prep_time_minutes: 30, avg_rating: null, review_count: 0, categories: [], online_payment_available: false,
+    delivery_zones: deliveryZones.filter(zone => zone.is_active !== false), delivery_zones_required: deliveryZones.length > 0,
+    delivery_fee_cents: Math.round(Number(activeLocation?.delivery_fee || 0) * scale),
+    free_delivery_threshold_cents: Math.round(Number(activeLocation?.free_delivery_threshold || 0) * scale),
+  };
+  const draftProductsCents = activeTicket?.newItems.reduce((sum, item) => sum + Math.round(item.price * scale) * item.qty, 0) || 0;
+  const deliveryQuote = deliveryPrice(deliveryStore, draftProductsCents, isDeliveryTicket ? 'delivery' : 'collection', isDeliveryTicket ? activeTicket.deliveryZoneID : '');
+  const deliveryError = !isDeliveryTicket ? '' : loadingDeliveryZones ? 'Cargando tarifas de envío…' : deliveryZonesError ? 'No pudimos cargar las tarifas. Volvé a abrir Datos para actualizar.' : deliveryQuote.pending ? 'Elegí una zona de entrega en Datos.' : !deliveryQuote.ready ? `Agregá productos hasta alcanzar el mínimo de ${format(deliveryQuote.minimum)} para esta zona.` : (activeTicket.deliveryAddress?.trim().length || 0) < 8 ? 'Completá la dirección de entrega en Datos.' : '';
 	const editingNoteItem = activeTicket?.newItems.find((item) => item.id === editingNoteItemId);
 
 	const handleSaveOrderDetails = useCallback((details: OrderDetails) => {
@@ -905,6 +956,14 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
     setActiveTicketId(t.id);
   }, [walkInCounter]);
 
+  const handleAddDelivery = () => {
+    const ticket = { ...makeWalkInTicket(walkInCounter), fulfillment: 'delivery' as const };
+    setWalkInCounter(n => n + 1);
+    setTickets(previous => ({ ...previous, [ticket.id]: ticket }));
+    setActiveTicketId(ticket.id);
+    setShowOrderDetails(true);
+  };
+
   // commitAddItem — called directly (no modifiers) or after modifier picker confirms.
   const commitAddItem = useCallback((item: MenuItem, { extraCents = 0, selectedModifiers = [], linePriceCents = null }: {
     extraCents?: number;
@@ -1005,12 +1064,16 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
 
   const handleSend = useCallback(async () => {
     if (!activeTicket || activeTicket.newItems.length === 0) return;
+    if (deliveryError) { toast({ variant: 'destructive', title: 'Revisá la entrega', description: deliveryError }); setShowOrderDetails(true); return; }
     if (isStaffSession && !registerSession) { setIsOpenRegisterOpen(true); return; }
     setSending(true);
     try {
       const result = await submitPosOrder({
         locationId: activeLocation!.id,
-        orderType: activeTicket.kind === 'table' ? 'dine_in' : 'takeaway',
+        orderType: activeTicket.kind === 'table' ? 'dine_in' : activeTicket.fulfillment || 'takeaway',
+        deliveryAddress: activeTicket.deliveryAddress,
+        deliveryZoneID: activeTicket.deliveryZoneID,
+        expectedDeliveryFeeCents: deliveryQuote.fee,
         tableNumber: activeTicket.kind === 'table' ? String(activeTicket.table_number || activeTicket.label || '') : undefined,
         tableSessionId: activeTicket.kind === 'table' ? activeTicket.sessionId : undefined,
         registerSessionId: registerSession?.id,
@@ -1055,7 +1118,7 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
         payment_status: 'pending',
         paid_cents: 0,
         kitchen_status: result.kds_ticket_ids.length > 0 ? 'fired' : 'pending',
-        total_cents: typeof result.total === 'number'
+        total_cents: typeof result.total_minor === 'number' ? result.total_minor : typeof result.total === 'number'
           ? Math.round(result.total * scale)
           : sentItems.reduce((s, it) => s + it.total_cents, 0),
         items: sentItems,
@@ -1075,10 +1138,10 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
     } finally {
       setSending(false);
     }
-	}, [activeTicket, registerSession, activeLocation?.id, toast, scale]);
+  }, [activeTicket, registerSession, activeLocation?.id, toast, scale, deliveryError, deliveryQuote.fee]);
 
   const handleOpenCharge = () => {
-    if (!activeTicket || activeTicket.sentOrders.length === 0) return;
+    if (!canRecordPayment || !activeTicket || activeTicket.sentOrders.length === 0) return;
     setTenderError('');
     setShowTenderModal(true);
   };
@@ -1090,7 +1153,7 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
 
   // Run charge for ALL unpaid orders using split-tender legs from TenderModal.
   const runCharge = async (legs: TenderLeg[]) => {
-    if (!activeTicket) return;
+    if (!canRecordPayment || !activeTicket) return;
     setChargeBusy(true);
     setTenderError('');
     try {
@@ -1311,19 +1374,21 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
         .filter((o) => o.payment_status !== 'paid')
         .reduce((s, o) => s + Math.max(0, (o.total_cents || 0) - (o.paid_cents || 0)), 0)
     : 0;
+  const newItemCount = activeTicket?.newItems.reduce((sum, item) => sum + item.qty, 0) || 0;
+  const newTotalCents = draftProductsCents + (newItemCount ? deliveryQuote.fee : 0);
 
   return (
-    <div className={cn('flex flex-col overflow-hidden bg-gradient-to-br from-background to-primary/5 dark:to-primary/10', embedded ? 'h-full' : 'h-[100dvh]')}>
+    <div className={cn('pos-workspace flex flex-col overflow-hidden bg-gradient-to-br from-background to-primary/5 dark:to-primary/10', embedded ? 'h-full' : 'h-[100dvh]')}>
       {/* ============================== TOP BAR ============================== */}
       <header className="bg-card border-b border-border shadow-sm shrink-0">
-        <div className="flex flex-wrap items-center justify-between gap-2 px-2 py-2.5 sm:flex-nowrap sm:px-4">
+        <div className="flex items-center justify-between gap-2 px-3 py-2 sm:px-4">
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <div className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/80 shadow-md min-[420px]:flex">
               <Receipt className="w-5 h-5 text-primary-foreground" />
             </div>
             <div className="flex flex-col leading-tight min-w-0">
               <span className="text-sm font-bold text-foreground truncate">Punto de venta</span>
-              <span className="text-[11px] text-muted-foreground truncate flex items-center gap-1">
+              <span className="hidden text-[11px] text-muted-foreground truncate sm:flex items-center gap-1">
                 <UserIcon className="w-3 h-3" />
                 {displayName}
                 {/* Actor overlay chip — shown when staff logged in via /s/:slug PIN.
@@ -1337,7 +1402,7 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
                 )}
                 {!actor && !staff && (
                   <span className="ml-0.5 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[9px] font-semibold uppercase tracking-wide">
-                    Propietario
+                    {isOwnerManager ? 'Administración' : 'Personal'}
                   </span>
                 )}
                 {activeLocation?.name && (
@@ -1378,62 +1443,38 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
             </div>
           )}
 
-          <div className="flex w-full shrink-0 items-center justify-end gap-1 sm:w-auto">
-            {/* Move/Assign Table + Split act directly on the active ticket, so
-                they get the primary tint — same visual family as the ticket
-                panel's own guest-count pill. Return/Kitchen/End shift are
-                chrome navigation, not ticket actions, so they stay neutral
-                outline rather than competing for the same accent colour. */}
-            {activeTicket && isDineInMode && (
-              <Button size="sm" variant="outline" onClick={handleStartEatIn}
-                aria-label={activeTicket.kind === 'walkin' ? 'Asignar esta cuenta a una mesa' : 'Mover a otra mesa'}
-                className="h-9 w-9 border-primary/30 p-0 text-primary hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-primary md:w-auto md:px-3">
-                <MapPin className="h-3.5 w-3.5 md:mr-1.5" aria-hidden="true" />
-                <span className="hidden md:inline">
-                  {activeTicket.kind === 'walkin' ? 'Asignar mesa' : 'Cambiar mesa'}
-                </span>
-              </Button>
-            )}
-            {activeTicket?.kind === 'table' && activeTicket?.sentOrders?.length > 0 && (
-              <Button size="sm" variant="outline" onClick={() => setShowSplitBySeat(true)}
-                aria-label="Dividir la cuenta por asiento"
-                className="h-9 w-9 border-primary/30 p-0 text-primary hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-primary md:w-auto md:px-3">
-                <Scissors className="h-3.5 w-3.5 md:mr-1.5" aria-hidden="true" />
-                <span className="hidden md:inline">Dividir</span>
-              </Button>
-            )}
-            <Button size="sm" variant="outline" onClick={() => setIsReturnOpen(true)} disabled={isStaffSession && !registerSession}
-              aria-label="Procesar una devolución"
-              className="h-9 w-9 p-0 focus-visible:ring-2 focus-visible:ring-ring md:w-auto md:px-3">
-              <RotateCcw className="h-3.5 w-3.5 md:mr-1.5" aria-hidden="true" />
-              <span className="hidden md:inline">Devolución</span>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button size="sm" variant="outline" className="h-11 gap-2 px-3" onClick={() => navigate('/work?tab=pos&view=orders')}>
+              <ListOrdered className="h-4 w-4" aria-hidden="true" />Estados
             </Button>
-            <Button size="sm" variant="outline" onClick={() => navigate('/kds/expo')}
-              aria-label="Abrir pantalla de cocina"
-              className="h-9 w-9 p-0 focus-visible:ring-2 focus-visible:ring-ring md:w-auto md:px-3">
-              <ChefHat className="h-3.5 w-3.5 md:mr-1.5" aria-hidden="true" />
-              <span className="hidden md:inline">Cocina</span>
-            </Button>
-            {/* End shift / Switch user — shown when an actor overlay is active. */}
-            {actor && (
-              <Button size="sm" variant="outline" onClick={handleEndShift}
-                aria-label="Finalizar turno y volver al acceso con PIN"
-                className="h-9 w-9 p-0 focus-visible:ring-2 focus-visible:ring-ring md:w-auto md:px-3">
-                <UserCheck className="h-3.5 w-3.5 md:mr-1.5" aria-hidden="true" />
-                <span className="hidden md:inline">Finalizar turno</span>
-              </Button>
-            )}
-            <Button size="sm" variant="ghost" onClick={handleSignOut}
-              aria-label="Cerrar sesión"
-              className="h-9 w-9 p-0 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring md:w-auto md:px-3">
-              <LogOut className="h-3.5 w-3.5 md:mr-1.5" aria-hidden="true" />
-              <span className="hidden md:inline">Cerrar sesión</span>
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="h-11 gap-2 px-3" aria-label="Opciones del punto de venta">
+                  <MoreHorizontal className="h-5 w-5" aria-hidden="true" /><span className="hidden sm:inline">Opciones</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64 [&_[role=menuitem]]:min-h-11">
+                <DropdownMenuLabel>Esta cuenta</DropdownMenuLabel>
+                {activeTicket && isDineInMode && <DropdownMenuItem onSelect={handleStartEatIn}><MapPin />{activeTicket.kind === 'walkin' ? 'Asignar mesa' : 'Cambiar mesa'}</DropdownMenuItem>}
+                {activeTicket?.kind === 'table' && activeTicket.sentOrders.length > 0 && <DropdownMenuItem onSelect={() => setShowSplitBySeat(true)}><Scissors />Dividir la cuenta</DropdownMenuItem>}
+                <DropdownMenuItem disabled={isStaffSession && !registerSession} onSelect={() => setIsReturnOpen(true)}><RotateCcw />Procesar devolución</DropdownMenuItem>
+                {isStaffSession && <DropdownMenuItem onSelect={() => setIsOpenRegisterOpen(true)}><Banknote />{registerSession ? 'Ver caja abierta' : 'Abrir caja'}</DropdownMenuItem>}
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>Ir a otro módulo</DropdownMenuLabel>
+                <DropdownMenuItem onSelect={() => navigate('/home')}><Home />Inicio y pedidos</DropdownMenuItem>
+                {canOpenModule('can_kds') && <DropdownMenuItem onSelect={() => navigate('/work?tab=kitchen&view=expo')}><ChefHat />Cocina</DropdownMenuItem>}
+                {canOpenModule('can_view_reports') && <DropdownMenuItem onSelect={() => navigate('/reports')}><BarChart3 />Reportes</DropdownMenuItem>}
+                {isOwnerManager && <DropdownMenuItem onSelect={() => navigate('/settings')}><Settings2 />Configuración</DropdownMenuItem>}
+                <DropdownMenuSeparator />
+                {actor && <DropdownMenuItem onSelect={handleEndShift}><UserCheck />Finalizar turno</DropdownMenuItem>}
+                <DropdownMenuItem onSelect={handleSignOut}><LogOut />Cerrar sesión</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
         {/* Tables strip */}
-        <div className="px-3 py-2 border-t border-border bg-muted/30">
+        <div className={cn('px-3 py-2 border-t border-border bg-muted/30', mobileView === 'ticket' && 'hidden md:block')}>
           <TablesStrip
             tables={tableTiles}
             walkIns={walkInTiles}
@@ -1455,10 +1496,14 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
       <OfflineBanner />
 
       {/* ============================== MAIN ============================== */}
-      <main className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
+      <div className="grid shrink-0 grid-cols-2 gap-1 border-b bg-muted/40 p-2 md:hidden" role="group" aria-label="Vista del punto de venta">
+        <Button variant={mobileView === 'products' ? 'default' : 'ghost'} className="h-11 rounded-xl" aria-pressed={mobileView === 'products'} onClick={() => setMobileView('products')}><Utensils />Productos</Button>
+        <Button variant={mobileView === 'ticket' ? 'default' : 'ghost'} className="h-11 rounded-xl" aria-pressed={mobileView === 'ticket'} onClick={() => setMobileView('ticket')}><Receipt />Pedido {newItemCount > 0 && <span className="rounded-full bg-background/20 px-2 tabular-nums">{newItemCount}</span>}</Button>
+      </div>
+      <main className="pos-workspace-main flex min-h-0 flex-1 overflow-hidden">
         {/* Menu */}
-        <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-card">
-          <div className="px-4 py-3 border-b border-border">
+        <section aria-label="Productos del menú" className={cn('pos-products min-h-0 min-w-0 flex-1 flex-col bg-card md:flex', mobileView === 'products' ? 'flex' : 'hidden')}>
+          <div className="px-3 py-2 border-b border-border sm:px-4">
             <div className="relative">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
               <Input
@@ -1466,8 +1511,9 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 aria-label="Buscar productos del menú"
-                className="pl-10 h-11 rounded-xl text-sm"
+                className="pl-10 pr-12 h-12 rounded-xl text-base"
               />
+              {search && <Button variant="ghost" size="icon" className="absolute right-1 top-1 h-10 w-10" aria-label="Limpiar búsqueda" onClick={() => setSearch('')}><X /></Button>}
             </div>
           </div>
 
@@ -1486,7 +1532,7 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
                 onClick={() => setCategoryId('all')}
                 aria-pressed={categoryId === 'all'}
                 className={cn(
-                  'font-display inline-flex items-center gap-1 h-9 rounded-full px-3.5 text-xs whitespace-nowrap border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  'inline-flex items-center gap-1 h-11 rounded-full px-3.5 text-sm font-semibold whitespace-nowrap border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   categoryId === 'all'
                     ? 'bg-primary border-primary text-primary-foreground shadow-sm'
                     : 'border-border text-foreground bg-card hover:bg-accent hover:border-primary/40',
@@ -1501,7 +1547,7 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
                   onClick={() => setCategoryId(c.id)}
                   aria-pressed={categoryId === c.id}
                   className={cn(
-                    'font-display h-9 rounded-full px-3.5 text-xs whitespace-nowrap border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    'h-11 rounded-full px-3.5 text-sm font-semibold whitespace-nowrap border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                     categoryId === c.id
                       ? 'bg-primary border-primary text-primary-foreground shadow-sm'
                       : 'border-border text-foreground bg-card hover:bg-accent hover:border-primary/40',
@@ -1513,7 +1559,7 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-3">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 sm:p-4">
             {!activeTicket && (
               <div className="mb-4 rounded-2xl border border-border bg-gradient-to-br from-primary/5 to-accent/50 dark:from-primary/10 dark:to-accent/15 p-4 shadow-sm">
                 <p className="font-display text-xs uppercase tracking-widest text-primary mb-3 text-center">
@@ -1528,9 +1574,9 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
                       type="button"
                       onClick={handleStartEatIn}
                       aria-label="Iniciar pedido para consumir en el local: seleccionar una mesa"
-                      className="flex flex-col items-center justify-center gap-2 py-7 rounded-2xl border-2 border-primary/30 bg-card hover:bg-primary/10 hover:border-primary/50 active:bg-primary/15 transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      className="flex flex-col items-center justify-center gap-2 px-2 py-4 rounded-2xl border-2 border-primary/30 bg-card hover:bg-primary/10 hover:border-primary/50 active:bg-primary/15 transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     >
-                      <Utensils className="w-10 h-10 text-primary" />
+                      <Utensils className="w-7 h-7 text-primary" />
                       <span className="text-base font-bold text-foreground">Comer en el local</span>
                       <span className="text-[11px] text-muted-foreground">
                         {hasFloorPlan ? 'Seleccionar una mesa' : 'Primero configurá las mesas'}
@@ -1541,17 +1587,18 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
                       type="button"
                       onClick={handleAddWalkIn}
                       aria-label="Iniciar pedido para llevar o de mostrador"
-                      className="flex flex-col items-center justify-center gap-2 py-7 rounded-2xl border-2 border-border bg-card hover:bg-accent hover:border-secondary/40 active:bg-accent/70 transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="flex flex-col items-center justify-center gap-2 px-2 py-4 rounded-2xl border-2 border-border bg-card hover:bg-accent hover:border-secondary/40 active:bg-accent/70 transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
-                      <ShoppingBag className="w-10 h-10 text-secondary dark:text-foreground/80" />
+                      <ShoppingBag className="w-7 h-7 text-secondary dark:text-foreground/80" />
                       <span className="text-base font-bold text-foreground">Para llevar</span>
                       <span className="text-[11px] text-muted-foreground">Mostrador</span>
                     </button>
+                    {deliveryStore.offers_delivery && <button type="button" onClick={handleAddDelivery} aria-label="Iniciar pedido de delivery" className="col-span-2 flex min-h-14 items-center justify-center gap-3 rounded-2xl border-2 bg-card px-3 py-3 font-bold hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-ring"><Truck className="h-6 w-6 text-primary" />Delivery <span className="text-xs font-normal text-muted-foreground">Dirección y tarifa por zona</span></button>}
                 </div>
               </div>
             )}
             {loadingMenu ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(10rem,1fr))]">
                 {Array.from({ length: 12 }).map((_, i) => (
                   <div key={i} className="h-40 rounded-2xl bg-muted animate-pulse" />
                 ))}
@@ -1573,7 +1620,7 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(10rem,1fr))]">
                 {filteredItems.map((it) => {
                   const remaining = computeRemainingToday(it, todayStr);
                   const soldOutToday = remaining !== null && remaining === 0;
@@ -1581,6 +1628,7 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
                   const soldOut = soldOutToday || is86;
                   const isDisabled = !activeTicket || !canTakeOrders || soldOut;
                   const busy86 = toggling86 === it.id;
+                  const selectedQty = activeTicket?.newItems.filter(line => line.item_id === it.id).reduce((sum, line) => sum + line.qty, 0) || 0;
                   return (
                     <div key={it.id} className="group relative">
                       <button
@@ -1589,7 +1637,7 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
                         disabled={isDisabled}
                         aria-label={`Agregar ${it.name} — ${format(Math.round(parseFloat(String(it.price || 0)) * scale))}${is86 || soldOutToday ? ' (agotado)' : ''}`}
                         className={cn(
-                          'flex w-full flex-col rounded-2xl bg-card border-2 overflow-hidden text-left',
+                          'flex h-full w-full flex-col rounded-2xl bg-card border overflow-hidden text-left',
                           'transition-all duration-150',
                           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
                           isDisabled
@@ -1597,8 +1645,9 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
                             : 'border-border shadow-sm hover:shadow-lg hover:border-primary/50 hover:-translate-y-0.5 active:scale-95 active:shadow-sm',
                         )}
                       >
-                        <div className="h-24 sm:h-28 flex items-center justify-center bg-gradient-to-br from-primary/5 via-accent/40 to-primary/10 dark:from-primary/10 dark:via-accent/10 dark:to-primary/15 relative">
-                          <span className="text-4xl sm:text-5xl group-hover:scale-110 transition-transform duration-200 select-none">{emojiFor(it)}</span>
+                        <div className="h-20 flex items-center justify-center bg-gradient-to-br from-primary/5 via-accent/40 to-primary/10 dark:from-primary/10 dark:via-accent/10 dark:to-primary/15 relative">
+                          {it.image_url ? <img src={it.image_url} alt="" loading="lazy" className="h-full w-full object-cover" /> : <span className="text-3xl sm:text-4xl select-none" aria-hidden="true">{emojiFor(it)}</span>}
+                          {!isDisabled && <span className="absolute bottom-2 left-2 flex h-8 min-w-8 items-center justify-center rounded-full bg-primary px-2 text-xs font-bold text-primary-foreground shadow-sm" aria-label={selectedQty ? `${selectedQty} en el pedido` : undefined}>{selectedQty ? `${selectedQty}×` : <Plus className="h-4 w-4" aria-hidden="true" />}</span>}
                           {is86 ? (
                             <span className="absolute top-1.5 left-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-destructive text-destructive-foreground leading-none tracking-wide">
                               Agotado
@@ -1609,18 +1658,10 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
                         </div>
                         <div className="flex-1 flex flex-col justify-between px-3 py-2.5">
                           <h3 className="text-sm font-semibold text-foreground line-clamp-2 leading-tight">{it.name}</h3>
-                          <div className="flex items-end justify-between mt-2">
-                            <span className="text-base font-bold text-foreground tabular-nums">
+                          <div className="mt-2">
+                            <span className="text-sm font-bold text-foreground tabular-nums sm:text-base">
                               {format(Math.round(parseFloat(String(it.price || 0)) * scale))}
                             </span>
-                            {!isDisabled && (
-                              <span
-                                aria-hidden="true"
-                                className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-primary/90 transition-all"
-                              >
-                                <Plus className="w-4 h-4" strokeWidth={2.5} />
-                              </span>
-                            )}
                           </div>
                         </div>
                       </button>
@@ -1638,15 +1679,15 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
                         title={is86 ? 'Restaurar en el menú' : 'Marcar como agotado'}
                         aria-label={is86 ? `Restaurar ${it.name} en el menú` : `Marcar ${it.name} como agotado`}
                         className={cn(
-                          'absolute top-1.5 right-1.5 z-10 inline-flex items-center justify-center rounded-full w-7 h-7 text-[10px] font-bold shadow-sm transition-all',
+                          'absolute top-1.5 right-1.5 z-10 inline-flex items-center justify-center rounded-xl w-11 h-11 text-[10px] font-bold shadow-sm transition-all',
                           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1',
                           is86
                             ? 'bg-success text-success-foreground hover:bg-success/90 focus-visible:ring-success'
-                            : 'bg-card/90 text-muted-foreground border border-border opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive focus-visible:ring-destructive',
+                            : 'bg-card/90 text-muted-foreground border border-border opacity-0 group-hover:opacity-100 focus-visible:opacity-100 [@media(pointer:coarse)]:opacity-100 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive focus-visible:ring-destructive',
                           busy86 && 'opacity-60 cursor-wait',
                         )}
                       >
-                        {is86 ? <RotateCcw className="w-3.5 h-3.5" strokeWidth={2.5} /> : '86'}
+                        {is86 ? <RotateCcw className="w-4 h-4" /> : <Ban className="w-4 h-4" />}
                       </button>
                     </div>
                   );
@@ -1658,6 +1699,8 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
 
         {/* Active ticket */}
         <ActiveTicketPanel
+          delivery={isDeliveryTicket ? { fee: deliveryQuote.fee, zoneName: deliveryQuote.zone?.name, error: deliveryError, address: activeTicket.deliveryAddress } : undefined}
+          className={cn('md:flex', mobileView === 'ticket' ? 'flex' : 'hidden')}
           ticket={activeTicket}
           newItems={activeTicket?.newItems || []}
           sentOrders={activeTicket?.sentOrders || []}
@@ -1665,8 +1708,8 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
           onRemoveItem={handleRemoveItem}
           onEditItemNotes={setEditingNoteItemId}
           onSend={handleSend}
-          onCharge={handleOpenCharge}
-			onEditDetails={() => setShowOrderDetails(true)}
+          onCharge={canRecordPayment ? handleOpenCharge : undefined}
+			onEditDetails={() => { if (isDeliveryTicket) void refreshDeliveryZones(); setShowOrderDetails(true); }}
           onAdjustSuccess={() => {
             // Inline adjustment succeeded — refresh sent orders for the active ticket.
             toast({ title: 'Ajuste aplicado' });
@@ -1677,6 +1720,12 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
           onSetCourse={handleSetCourse}
         />
       </main>
+      {mobileView === 'products' && activeTicket && <div className="shrink-0 border-t bg-card p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden">
+        <Button className="h-14 w-full justify-between rounded-xl px-4 text-sm sm:text-base" aria-label={newItemCount ? `Revisar pedido · ${newItemCount}` : 'Ver cuenta y cobrar'} onClick={() => setMobileView('ticket')}>
+          <span className="flex min-w-0 items-center gap-2"><Receipt /><span className="truncate">{newItemCount ? 'Ver pedido' : 'Ver cuenta'}</span>{newItemCount > 0 && <span className="rounded-full bg-white/20 px-1.5 text-xs">{newItemCount}</span>}</span>
+          <span className="flex shrink-0 items-center gap-2 tabular-nums">{format(newTotalCents || activeUnpaidCents)}<ArrowRight /></span>
+        </Button>
+      </div>}
 
       {/* ============================== MODALS ============================== */}
       <OpenRegisterModal
@@ -1699,13 +1748,11 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
 			open={showOrderDetails}
 			onOpenChange={setShowOrderDetails}
 			orderLabel={activeTicket?.label || (activeTicket?.kind === 'table' ? `Mesa ${activeTicket.table_number || ''}` : 'Pedido de mostrador')}
-			orderType={activeTicket?.kind === 'table' ? 'dine_in' : 'takeaway'}
-			value={{
-				customerId: activeTicket?.customerId,
-				customerName: activeTicket?.customerName,
-				customerPhone: activeTicket?.customerPhone,
-				notes: activeTicket?.notes,
-			}}
+			orderType={activeTicket?.kind === 'table' ? 'dine_in' : activeTicket?.fulfillment || 'takeaway'}
+			deliveryStore={deliveryStore}
+			subtotal={draftProductsCents}
+			deliveryLocked={Boolean(activeTicket?.sentOrders.length)}
+			value={orderDetailsValue}
 			onSave={handleSaveOrderDetails}
 		/>
 		<ItemNoteDialog

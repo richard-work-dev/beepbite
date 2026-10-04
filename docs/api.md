@@ -25,6 +25,15 @@ routes can validate capabilities and use DynamoDB conditional or transactional
 writes. Do not add generic write access for a table simply to bypass a missing
 domain route.
 
+Order, payment, order-line and KDS workflow records are read-only on `/data`.
+Use `GET /pos/orders/queue?location_id=...` for the operational queue;
+`POST /pos/orders/{id}/status` requires `status` and `expected_status` and is
+reserved for reception and physical handoff. Kitchen owns preparation through
+KDS actions; payments use `POST /pos/orders/{id}/charge`. A delivered/served
+order can still have an unpaid balance. PIN-overlay permissions are checked
+against the active staff record, and order/payment updates use conditional
+DynamoDB writes. See [workflow and responsibilities](order-workflow-ux.md).
+
 ## Privacy operations
 
 Organization owners can request an inline export of tenant-scoped records with

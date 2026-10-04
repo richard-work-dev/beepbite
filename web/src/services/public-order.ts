@@ -6,8 +6,19 @@ export const fulfillmentLabels: Record<Fulfillment, string> = {
   collection: 'Para llevar', dine_in: 'Comer en el local', delivery: 'Delivery',
 };
 export const paymentLabels: Record<string, string> = {
-  cash: 'Efectivo', card_machine: 'Tarjeta al recibir',
+  cash: 'Efectivo', card_machine: 'Tarjeta al recibir', eft: 'Transferencia bancaria',
 };
+export function paymentLabel(method: string, mode?: Fulfillment): string {
+  if (mode === 'dine_in') {
+    const dineInLabels: Record<string, string> = {
+      cash: 'Efectivo en caja',
+      card_machine: 'Tarjeta en caja',
+      eft: 'Transferencia bancaria',
+    };
+    return dineInLabels[method] || paymentLabels[method] || method;
+  }
+  return paymentLabels[method] || method;
+}
 export interface OrderLine extends CartItem {
   id: string;
   name: string;
@@ -50,13 +61,25 @@ export function reconcileCart(raw: CartItem[], store: StoreDetail): { items: Ord
   return { items, changed };
 }
 
-export function orderTotals(items: OrderLine[], store: StoreDetail, mode: Fulfillment) {
+export type DeliveryPricing = Pick<StoreDetail, 'delivery_zones' | 'delivery_zones_required' | 'delivery_fee_cents' | 'free_delivery_threshold_cents'>;
+
+export function deliveryPrice(store: DeliveryPricing, subtotal: number, mode: Fulfillment, zoneID = '') {
+  const zone = store.delivery_zones?.find(zone => zone.id === zoneID);
+  const required = store.delivery_zones_required || Boolean(store.delivery_zones?.length) || Boolean(zoneID);
+  const pending = mode === 'delivery' && required && !zone;
+  const minimum = mode === 'delivery' ? zone?.min_order_cents ?? 0 : 0;
+  const threshold = store.free_delivery_threshold_cents ?? 0;
+  const free = threshold > 0 && subtotal >= threshold;
+  const fee = mode === 'delivery' && !pending && !free ? zone?.delivery_fee_cents ?? store.delivery_fee_cents ?? 0 : 0;
+  return { fee, zone, minimum, pending, ready: !pending && subtotal >= minimum };
+}
+
+export function orderTotals(items: OrderLine[], store: StoreDetail, mode: Fulfillment, zoneID = '') {
   const scale = currencyScale(store.currency_code);
   const subtotal = items.reduce((sum, item) => sum + Math.round(item.price * scale) * item.quantity, 0);
   const tax = store.tax_inclusive === false ? Math.round(subtotal * (store.tax_rate ?? 0) / 100) : 0;
-  const threshold = store.free_delivery_threshold_cents ?? 0;
-  const delivery = mode === 'delivery' && !(threshold > 0 && subtotal >= threshold) ? store.delivery_fee_cents ?? 0 : 0;
-  return { subtotal, tax, delivery, total: subtotal + tax + delivery };
+  const quote = deliveryPrice(store, subtotal, mode, zoneID);
+  return { subtotal, tax, delivery: quote.fee, deliveryReady: quote.ready, deliveryPending: quote.pending, deliveryZone: quote.zone, minimum: quote.minimum, total: subtotal + tax + quote.fee };
 }
 
 export function publicMoney(cents: number, store: Pick<StoreDetail, 'currency_code' | 'locale'>) {
@@ -67,6 +90,7 @@ export interface CheckoutDraft {
   customer_name: string;
   customer_phone: string;
   delivery_address: string;
+  delivery_zone_id?: string;
   table_label: string;
   notes: string;
   fulfillment_type: Fulfillment;

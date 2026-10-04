@@ -11,6 +11,8 @@ func TestDataTableCapability(t *testing.T) {
 		{"items", "GET", "", false},
 		{"inventory_items", "GET", "can_manage_menu", true},
 		{"orders", "POST", "", false},
+		{"orders", "GET", "", false},
+		{"orders", "PATCH", "can_pos", true},
 	}
 	for _, tc := range cases {
 		got, restricted := dataTableCapability(tc.table, tc.method)

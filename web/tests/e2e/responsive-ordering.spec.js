@@ -30,7 +30,7 @@ const zones = [
 store.delivery_zones = zones;
 store.delivery_zones_required = true;
 
-async function mockApp(page, authenticated = false, onSubmit = () => {}) {
+async function mockApp(page, authenticated = false, onSubmit = () => {}, workflow = null) {
   const errors = [];
   const configuredZones = [...zones];
   page.on('pageerror', error => errors.push(error.message));
@@ -45,7 +45,23 @@ async function mockApp(page, authenticated = false, onSubmit = () => {}) {
     if (!['fetch', 'xhr'].includes(request.resourceType())) return route.continue();
     const path = new URL(request.url()).pathname;
     let data = [];
-    if (request.method() === 'POST' && (path.endsWith('/stores/rikopollo/orders') || path.endsWith('/pos/orders'))) {
+    const orderMatch = path.match(/\/pos\/orders\/([^/]+)\/(charge|status)$/);
+    const receiptMatch = path.match(/\/orders\/([^/]+)\/receipt$/);
+    if (workflow && orderMatch && request.method() === 'POST') {
+      const body = request.postDataJSON();
+      const order = workflow.orders.find(item => item.id === orderMatch[1]);
+      onSubmit(body);
+      if (orderMatch[2] === 'charge') {
+        order.payment_status = 'paid'; order.paid_cents = order.total_cents; order.payment_method = body.payment_method_code;
+        data = { order_id: order.id, status: order.status, paid_cents: order.total_cents, remaining_cents: 0, payment_status: 'paid', payment_ids: ['fake-payment'], session_closed: false };
+      } else {
+        order.status = body.status;
+        data = order;
+      }
+    } else if (workflow && receiptMatch) {
+      const order = workflow.orders.find(item => item.id === receiptMatch[1]);
+      data = { ...order, paid_cents: order.paid_cents || 0, line_items: [{ order_item_id: 'line', item_name: products[0].name, quantity: 1, total_price_cents: order.total_cents, notes: 'Sin cebolla', modifiers: [] }] };
+    } else if (request.method() === 'POST' && (path.endsWith('/stores/rikopollo/orders') || path.endsWith('/pos/orders'))) {
       const body = request.postDataJSON();
       onSubmit(body);
       const fee = zones.find(zone => zone.id === body.delivery_zone_id)?.delivery_fee_cents || 0;
@@ -59,8 +75,9 @@ async function mockApp(page, authenticated = false, onSubmit = () => {}) {
     } else if (path.endsWith('/delivery-zones')) data = configuredZones;
     else if (path.endsWith('/stores/rikopollo')) data = store;
     else if (path.endsWith('/me/preferences')) data = { last_view_pos: 'full', last_view_kds: 'station' };
+    else if (path.endsWith('/pos/orders/queue')) data = { orders: workflow?.orders || [{ id: 'ready-order', location_id: location.id, order_number: 'WEB-123', customer_name: 'María López', fulfillment_type: 'collection', status: 'ready', payment_status: 'pending', payment_method: 'eft', total_cents: 1250000, created_at: new Date().toISOString() }], has_more: false };
     else if (path.endsWith('/auth/me')) data = { id: 'test-user', email: 'ux@example.test' };
-    else if (path.endsWith('/data/organization_members')) data = [{ organization_id: org.id, profile_id: 'test-user', role: 'owner', capabilities: {} }];
+    else if (path.endsWith('/data/organization_members')) data = [{ organization_id: org.id, profile_id: 'test-user', role: workflow?.role || 'owner', capabilities: workflow?.capabilities || {} }];
     else if (path.endsWith('/data/organizations')) data = [org];
     else if (path.endsWith('/data/locations')) data = [location];
     else if (path.endsWith('/data/profiles')) data = [{ id: 'test-user', full_name: 'Equipo RikoPollo' }];
@@ -85,6 +102,79 @@ async function withinScreen(page, locator) {
     return box ? Math.max(-box.x, -box.y, box.x + box.width - viewport.width, box.y + box.height - viewport.height) : Infinity;
   }).toBeLessThanOrEqual(1);
 }
+
+for (const [name, viewport] of sizes.filter(([, size]) => [320, 390, 820, 1366].includes(size.width))) {
+  test(`flujo real: cobrar transferencia y confirmar retiro — ${name}`, async ({ page }, testInfo) => {
+    await page.setViewportSize(viewport);
+    const submitted = [];
+    const workflow = { orders: [{ id: 'pickup', order_number: 'WEB-PICKUP', customer_name: 'María López', fulfillment_type: 'collection', status: 'ready', payment_status: 'pending', payment_method: 'eft', total_cents: 1250000, currency_code: 'ARS', created_at: new Date().toISOString() }] };
+    const errors = await mockApp(page, true, body => submitted.push(body), workflow);
+    await page.goto('/work?tab=pos&view=orders', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('button', { name: 'Abrir pedido WEB-PICKUP', exact: true })).toBeVisible();
+    if (viewport.width < 640) {
+      const mobileNav = page.getByRole('navigation', { name: 'Navegación principal móvil' });
+      await expect(mobileNav.getByRole('link', { name: 'TPV', exact: true })).toHaveAttribute('aria-current', 'page');
+      const customer = page.getByRole('button', { name: 'Abrir pedido WEB-PICKUP', exact: true }).getByText('María López', { exact: true });
+      // Assert the first useful order information is above the fixed bottom bar,
+      // without scrolling; “visible” alone also accepts off-screen elements.
+      await expect.poll(async () => {
+        const customerBox = await customer.boundingBox();
+        const navBox = await mobileNav.boundingBox();
+        return customerBox && navBox ? customerBox.y + customerBox.height - navBox.y : Infinity;
+      }).toBeLessThanOrEqual(0);
+    }
+    await page.screenshot({ path: testInfo.outputPath('bandeja-pedidos.png'), animations: 'disabled' });
+    await page.getByRole('button', { name: 'Abrir pedido WEB-PICKUP', exact: true }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByText(products[0].name, { exact: false })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Marcar retirado', exact: true })).toBeDisabled();
+    await dialog.getByRole('button', { name: /Registrar cobro/ }).click();
+    await expect(dialog.getByRole('button', { name: 'Registrar pago', exact: true })).toBeDisabled();
+    await dialog.getByLabel('Verifiqué el ingreso de la transferencia en la cuenta del local.').check();
+    await withinScreen(page, dialog.getByRole('button', { name: 'Registrar pago', exact: true }));
+    await noHorizontalOverflow(page);
+    await page.screenshot({ path: testInfo.outputPath('cobro-pedido.png'), animations: 'disabled' });
+    await dialog.getByRole('button', { name: 'Registrar pago', exact: true }).click();
+    await expect(dialog.getByText('Pago registrado. La entrega se confirma por separado.')).toBeVisible();
+    await dialog.getByRole('button', { name: 'Marcar retirado', exact: true }).click();
+    await expect(dialog.getByRole('heading', { name: 'Confirmar entrega real' })).toBeVisible();
+    await dialog.getByRole('button', { name: 'Marcar retirado', exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    expect(submitted).toEqual([{ payment_method_code: 'eft', amount_paid_cents: 1250000, change_given_cents: 0 }, { status: 'completed', expected_status: 'ready' }]);
+    await page.getByRole('button', { name: /^Historial/ }).click();
+    await expect(page.getByRole('button', { name: 'Abrir pedido WEB-PICKUP' })).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+}
+
+test('servir una mesa no oculta el cobro y el repartidor conserva la responsabilidad', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const base = { total_cents: 1250000, currency_code: 'ARS', payment_status: 'pending', payment_method: 'cash', status: 'ready', created_at: new Date().toISOString() };
+  const workflow = { orders: [{ ...base, id: 'table', order_number: 'MESA-4', table_number: 4, fulfillment_type: 'dine_in' }, { ...base, id: 'delivery', order_number: 'ENVIO-1', customer_name: 'María', fulfillment_type: 'delivery', payment_status: 'paid', driver_assignment_status: 'accepted' }] };
+  const errors = await mockApp(page, true, () => {}, workflow);
+  await page.goto('/work?tab=pos&view=orders');
+  await page.getByRole('button', { name: 'Abrir pedido MESA-4' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('button', { name: 'Marcar servido' }).click();
+  await expect(dialog.getByText('El pago sigue pendiente. Caja deberá registrar el cobro.')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Marcar servido' }).click();
+  await page.getByRole('button', { name: /^Cobrar/ }).click();
+  await expect(page.getByRole('button', { name: 'Abrir pedido MESA-4' })).toBeVisible();
+  await page.getByRole('group', { name: 'Filtrar pedidos por tarea' }).getByRole('button', { name: /^En curso/ }).click();
+  await page.getByRole('button', { name: 'Abrir pedido ENVIO-1' }).click();
+  await expect(dialog.getByText('El repartidor asignado confirma el retiro y la entrega desde Reparto.')).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Iniciar reparto' })).toBeDisabled();
+  expect(errors).toEqual([]);
+});
+
+test('un operador sin permiso de cobro no puede registrar pagos desde el detalle', async ({ page }) => {
+  const workflow = { role: 'pos', capabilities: { can_pos: true, can_settle: false }, orders: [{ id: 'no-settle', order_number: 'WEB-LOCK', status: 'ready', fulfillment_type: 'collection', payment_status: 'pending', total_cents: 10000 }] };
+  await mockApp(page, true, () => {}, workflow);
+  await page.goto('/work?tab=pos&view=orders');
+  await page.getByRole('button', { name: 'Abrir pedido WEB-LOCK' }).click();
+  await expect(page.getByRole('dialog').getByRole('button', { name: /Registrar cobro/ })).toHaveCount(0);
+  await expect(page.getByRole('dialog').getByRole('button', { name: 'Marcar retirado' })).toBeDisabled();
+});
 
 for (const [name, viewport] of sizes) {
   test(`delivery por zona: total y confirmación — ${name}`, async ({ page }, testInfo) => {

@@ -34,6 +34,7 @@ import { MemoryRouter, Routes, Route, useSearchParams } from 'react-router-dom';
 import { ChefHat, Loader2, Monitor, RefreshCw, ShieldAlert } from 'lucide-react';
 
 import { useAuth } from '@/context/auth-context';
+import { useActor } from '@/context/actor-token-context';
 import { api } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 import { fetchPrefs, savePOSView, saveKDSView } from '@/services/userprefs';
@@ -75,8 +76,8 @@ const ExpoPage = lazy(() => import('@/pages/kds/expo').then((module) => ({ defau
 // ---------------------------------------------------------------------------
 
 const POS_VIEWS: { id: PosViewId; label: string }[] = [
-  { id: 'orders', label: 'Pedidos' },
-  { id: 'full', label: 'Pedido y comanda' },
+  { id: 'orders', label: 'En curso' },
+  { id: 'full', label: 'Nuevo pedido' },
   { id: 'quick', label: 'Venta rápida' },
   { id: 'floor', label: 'Mesas' },
 ];
@@ -443,10 +444,11 @@ function POSPanel({ posView }: { posView: PosViewId }) {
 export default function WorkspacePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { roles, caps, loading: memberLoading, error: membershipError } = useMembership();
+  const { actor } = useActor();
 
   const { showPOS, showKitchen } = useMemo(
-    () => resolveTabAccess(roles, caps),
-    [roles, caps],
+    () => actor ? resolveTabAccess([actor.role], Object.fromEntries(actor.capabilities.map(capability => [capability, true]))) : resolveTabAccess(roles, caps),
+    [roles, caps, actor],
   );
 
   // Top-level tab: 'pos' | 'kitchen'
@@ -479,6 +481,11 @@ export default function WorkspacePage() {
     if (showPOS) setActiveTab('pos');
     else if (showKitchen) setActiveTab('kitchen');
   }, [memberLoading, showPOS, showKitchen, activeTab]);
+
+  useEffect(() => {
+    if (activeTab === 'pos' && !showPOS && showKitchen) setActiveTab('kitchen');
+    if (activeTab === 'kitchen' && !showKitchen && showPOS) setActiveTab('pos');
+  }, [activeTab, showPOS, showKitchen]);
 
   // Explicit navigation links take precedence over a device's last saved view.
   // This also makes Back/Forward and shared links restore the visible screen.
@@ -569,9 +576,9 @@ export default function WorkspacePage() {
       {/* .dark tokens were tuned to match the KDS's literal grays/orange   */}
       {/* for exactly this reason.                                         */}
       {/* ----------------------------------------------------------------- */}
-      <div className="dark flex shrink-0 flex-col gap-0 border-b border-border bg-card shadow-sm sm:flex-row sm:items-center">
+      <div className="flex shrink-0 flex-col gap-0 border-b border-border bg-card sm:flex-row sm:items-center">
         {/* Tab buttons */}
-        <div role="group" aria-label="Área de trabajo" className="flex w-full items-center overflow-x-auto border-b border-border sm:w-auto sm:border-b-0 sm:border-r sm:pr-4">
+        <div role="group" aria-label="Área de trabajo" className={cn('hidden w-full items-center border-b border-border sm:w-auto sm:border-b-0 sm:border-r sm:pr-4', showPOS && showKitchen && 'sm:flex')}>
           <div className="hidden items-center gap-2.5 pl-4 pr-3 min-[420px]:flex" aria-hidden="true">
             <span className="h-6 w-1 rounded-full bg-primary" />
             <Monitor className="h-4 w-4 text-muted-foreground" />
@@ -595,9 +602,11 @@ export default function WorkspacePage() {
         </div>
 
         {/* View pills */}
-        <div role="group" aria-label="Vista del área de trabajo" className="flex w-full items-center gap-2 overflow-x-auto px-3 py-2 sm:w-auto sm:px-4 sm:py-1">
-          {activeTab === 'pos' &&
-            POS_VIEWS.map((v) => (
+        <div role="group" aria-label="Vista del área de trabajo" className="flex w-full items-center gap-1 p-2 sm:w-auto sm:flex-wrap sm:px-3 sm:py-2">
+          {activeTab === 'pos' && <>
+            <div className="flex min-w-0 flex-1 gap-1 sm:hidden">{POS_VIEWS.filter(v => v.id === 'orders' || v.id === 'full').map(v => <Button key={v.id} variant={posView === v.id ? 'default' : 'outline'} aria-pressed={posView === v.id} onClick={() => handlePosView(v.id)} className="h-11 min-w-0 flex-1 rounded-xl px-2 text-xs font-semibold">{v.id === 'full' ? 'Nuevo pedido' : v.label}</Button>)}</div>
+            <select aria-label="Otras vistas del punto de venta" value={posView === 'quick' || posView === 'floor' ? posView : ''} onChange={event => handlePosView(event.target.value as PosViewId)} className="h-11 min-w-0 max-w-24 rounded-xl border bg-background px-1.5 text-xs sm:hidden"><option value="" disabled>Más vistas</option><option value="quick">Venta rápida</option><option value="floor">Mesas</option></select>
+            <div className="hidden gap-2 sm:flex">{POS_VIEWS.map((v) => (
               <ViewPill
                 key={v.id}
                 active={posView === v.id}
@@ -605,7 +614,7 @@ export default function WorkspacePage() {
               >
                 {v.label}
               </ViewPill>
-            ))}
+            ))}</div></>}
           {activeTab === 'kitchen' &&
             KDS_VIEWS.map((v) => (
               <ViewPill

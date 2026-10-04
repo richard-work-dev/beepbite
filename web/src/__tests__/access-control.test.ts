@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { _actorRef } from '@/context/actor-token-context';
-import { hasAnyAccess, membershipHasAccess } from '@/lib/access-control';
+import { canRecordOrderPayment, hasAnyAccess, membershipHasAccess } from '@/lib/access-control';
 import { hasCapability } from '@/services/pos';
 
 afterEach(() => {
@@ -9,6 +9,14 @@ afterEach(() => {
 });
 
 describe('control de acceso administrativo', () => {
+  it('mantiene permisos de caja anteriores pero respeta una denegación explícita', () => {
+    expect(canRecordOrderPayment({ organization_id: 'org', role: 'pos', capabilities: { can_pos: true } })).toBe(true);
+    expect(canRecordOrderPayment({ organization_id: 'org', role: 'pos', capabilities: { can_pos: true, can_settle: false } })).toBe(false);
+    expect(canRecordOrderPayment({ organization_id: 'org', role: 'kitchen', capabilities: { can_kds: true } })).toBe(false);
+    expect(canRecordOrderPayment({ organization_id: 'org', role: 'owner' }, ['can_kds'], 'kitchen')).toBe(false);
+    expect(canRecordOrderPayment({ organization_id: 'org', role: 'owner' }, ['can_pos'], 'staff')).toBe(false);
+    expect(canRecordOrderPayment({ organization_id: 'org', role: 'owner' }, ['can_settle'], 'staff')).toBe(true);
+  });
   it.each(['owner', 'manager', 'admin', 'ADMIN'])(
     'otorga todas las capacidades al rol elevado %s',
     (role) => {

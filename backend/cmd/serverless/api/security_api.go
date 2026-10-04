@@ -200,6 +200,9 @@ func (a *application) verifyStaffPIN(ctx context.Context, request events.APIGate
 		return errorResponse(503, "runtime not ready")
 	}
 	caps := capabilityList(valueOr(staff, "capabilities", map[string]any{}))
+	if (workflowActor{role: displayString(staff["role"]), capabilities: staff["capabilities"]}).allows("can_settle") && !containsCapability(caps, "can_settle") {
+		caps = append(caps, "can_settle")
+	}
 	token, expires, err := tokens.IssueActorToken(userID, displayString(staff["id"]), displayString(staff["location_id"]), caps, []byte(secret), 15*time.Minute)
 	if err != nil {
 		return errorResponse(500, "could not issue actor token")

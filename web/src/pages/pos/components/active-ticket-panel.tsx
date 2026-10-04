@@ -546,7 +546,7 @@ function TicketFooter({
   const [reviewOpen, setReviewOpen] = useState(false);
   const editDetailsAfterClose = useRef(false);
   const canSend = newItemsCount > 0 && !sending && Boolean(ticket) && !delivery?.error;
-  const canCharge = hasUnpaidOrders && !sending && Boolean(ticket);
+  const canCharge = hasUnpaidOrders && !sending && Boolean(ticket) && Boolean(onCharge);
 
   return (
     <div className="shrink-0 border-t border-border bg-card px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] space-y-2 shadow-[0_-2px_8px_rgba(0,0,0,0.04)] sm:px-4">

@@ -34,7 +34,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { cn } from '@/lib/utils';
 import { emojiFor } from '@/lib/item-emoji';
 import { normalizeServiceStyle } from '@/lib/service-style';
-import { hasAnyAccess } from '@/lib/access-control';
+import { hasAnyAccess, canRecordOrderPayment } from '@/lib/access-control';
 
 import { useAuth } from '@/context/auth-context';
 import { useActor } from '@/context/actor-token-context';
@@ -369,6 +369,7 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
     return elevated(activeMembership?.role);
   }, [actor, staff, activeMembership?.role]);
   const canOpenModule = (capability: string) => hasAnyAccess(activeMembership, [capability], actor?.capabilities, actor?.role);
+  const canRecordPayment = canRecordOrderPayment(activeMembership, actor?.capabilities, actor?.role);
 
   // ----- register session ------------------------------------------------
   // Mirrors home/index.jsx: only staff PIN sessions need an open cash drawer.
@@ -1140,7 +1141,7 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
   }, [activeTicket, registerSession, activeLocation?.id, toast, scale, deliveryError, deliveryQuote.fee]);
 
   const handleOpenCharge = () => {
-    if (!activeTicket || activeTicket.sentOrders.length === 0) return;
+    if (!canRecordPayment || !activeTicket || activeTicket.sentOrders.length === 0) return;
     setTenderError('');
     setShowTenderModal(true);
   };
@@ -1152,7 +1153,7 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
 
   // Run charge for ALL unpaid orders using split-tender legs from TenderModal.
   const runCharge = async (legs: TenderLeg[]) => {
-    if (!activeTicket) return;
+    if (!canRecordPayment || !activeTicket) return;
     setChargeBusy(true);
     setTenderError('');
     try {
@@ -1707,7 +1708,7 @@ function PosWorkspaceContent({ embedded = false }: { embedded?: boolean }) {
           onRemoveItem={handleRemoveItem}
           onEditItemNotes={setEditingNoteItemId}
           onSend={handleSend}
-          onCharge={handleOpenCharge}
+          onCharge={canRecordPayment ? handleOpenCharge : undefined}
 			onEditDetails={() => { if (isDeliveryTicket) void refreshDeliveryZones(); setShowOrderDetails(true); }}
           onAdjustSuccess={() => {
             // Inline adjustment succeeded — refresh sent orders for the active ticket.

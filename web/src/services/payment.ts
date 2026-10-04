@@ -62,6 +62,7 @@ interface FetchError extends Error {
 }
 
 export interface ChargeOrderResult {
+  status?: string;
   order_id: string;
   payment_id: string;
   payment_ids: string[];

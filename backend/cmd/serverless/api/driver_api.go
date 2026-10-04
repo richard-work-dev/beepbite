@@ -242,8 +242,8 @@ func (a *application) managerOrganization(ctx context.Context, request events.AP
 	if err != nil {
 		return "", dataAccessError(err), false
 	}
-	membership, err := a.getMembership(ctx, userID, orgID)
-	if err != nil || !managerRole(displayString(membership["role"])) {
+	actor, err := a.workflowActor(ctx, request, userID, orgID)
+	if err != nil || !managerRole(actor.role) {
 		return "", errorResponse(403, "requires owner, administrator, or manager role"), false
 	}
 	return orgID, events.APIGatewayV2HTTPResponse{}, true
@@ -490,6 +490,28 @@ func (a *application) transitionDriverAssignment(ctx context.Context, userID, as
 		if !valid {
 			return errorResponse(409, "illegal status transition")
 		}
+		previousAssignment := cloneDataRow(assignment)
+		order, orderErr := a.dataRowByID(ctx, orgID, "orders", displayString(assignment["order_id"]))
+		if orderErr != nil {
+			return errorResponse(404, "Pedido no encontrado.")
+		}
+		if status := displayString(order["status"]); status == "cancelled" || status == "completed" || status == "delivered" {
+			return errorResponse(409, "El pedido ya no está disponible para reparto.")
+		}
+		previousOrder := cloneDataRow(order)
+		if action == "pickup" || action == "deliver" {
+			next := "out_for_delivery"
+			if action == "deliver" {
+				next = "delivered"
+			}
+			if !validOrderStatusTransition(displayString(order["status"]), next, displayString(valueOr(order, "fulfillment_type", order["order_type"]))) {
+				return errorResponse(409, "Esperá a que cocina termine antes de retirar; confirmá el retiro antes de entregar.")
+			}
+			if message := handoffPaymentError(order, next); message != "" {
+				return errorResponse(409, message)
+			}
+			recordOrderTransition(order, next, workflowActor{id: userID, name: displayString(membership["display_name"]), role: "driver"})
+		}
 		now := time.Now().UTC().Format(time.RFC3339Nano)
 		assignment["status"], assignment["updated_at"] = newStatus, now
 		timestamp := map[string]string{"accept": "accepted_at", "pickup": "picked_up_at", "deliver": "delivered_at"}[action]
@@ -500,22 +522,19 @@ func (a *application) transitionDriverAssignment(ctx context.Context, userID, as
 			_ = decodeDataObject(body, &input)
 			assignment["canceled_reason"] = nullableString(input["reason"])
 		}
-		if err := a.putDataRow(ctx, orgID, "driver_assignments", assignment, false); err != nil {
+		assignmentPut, err := conditionalRowPut(a.table, orgID, "driver_assignments", previousAssignment, assignment)
+		if err != nil {
 			return dataAccessError(err)
 		}
-		if action == "pickup" || action == "deliver" {
-			order, orderErr := a.dataRowByID(ctx, orgID, "orders", displayString(assignment["order_id"]))
-			if orderErr == nil {
-				if action == "pickup" {
-					order["status"] = "out_for_delivery"
-				} else {
-					order["status"] = "delivered"
-				}
-				order["updated_at"] = now
-				if putErr := a.putDataRow(ctx, orgID, "orders", order, false); putErr != nil {
-					return dataAccessError(putErr)
-				}
-			}
+		orderPut, err := conditionalRowPut(a.table, orgID, "orders", previousOrder, order)
+		if err != nil {
+			return dataAccessError(err)
+		}
+		// Both records advance together, or neither does. Even acceptance checks
+		// the order snapshot so a concurrent cancellation cannot be overwritten.
+		_, err = a.dynamo.TransactWriteItems(ctx, &dynamodb.TransactWriteItemsInput{TransactItems: []types.TransactWriteItem{{Put: assignmentPut}, {Put: orderPut}}})
+		if err != nil {
+			return errorResponse(409, "El pedido o la asignación cambió. Actualizá antes de continuar.")
 		}
 		enriched, enrichErr := a.enrichDriverAssignment(ctx, orgID, assignment)
 		if enrichErr != nil {

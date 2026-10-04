@@ -1,340 +1,134 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  Banknote, ChefHat, CheckCircle2, ClipboardList, Clock3, CreditCard,
-  LoaderCircle, MapPin, PackageCheck, RefreshCw, Search, ShoppingBag,
-  Truck, UserRound, Utensils,
-} from 'lucide-react';
+import { ArrowRight, ChefHat, ClipboardList, Clock3, MapPin, Plus, RefreshCw, Search, ShoppingBag, Truck, Utensils } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/context/auth-context';
+import { useActor } from '@/context/actor-token-context';
 import { useMoney } from '@/context/locale-context';
+import { hasAnyAccess, canRecordOrderPayment } from '@/lib/access-control';
 import { api } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
-import { fulfillmentLabel, nextPOSOrderAction, orderStatusGroup, orderStatusLabel } from '../order-status';
+import { fulfillmentLabel, needsPayment, nextOrderResponsibility, orderQueueGroup, orderStatusLabel } from '../order-status';
+import { customerOrTable, orderTotal, paymentLabel, type POSOrder } from '../order-types';
+import OrderDetailDialog from './order-detail-dialog';
 
-interface POSOrder {
-  id: string;
-  order_number?: string;
-  status: string;
-  fulfillment_type?: string | null;
-  order_type?: string | null;
-  customer_name?: string | null;
-  customer_phone?: string | null;
-  table_label?: string | null;
-  table_number?: string | number | null;
-  delivery_address?: string | null;
-  payment_status?: string | null;
-  payment_method?: string | null;
-  total_cents?: number | string | null;
-  total?: number | string | null;
-  currency_code?: string | null;
-  created_at?: string | null;
-}
-
-type OrderFilter = 'all' | 'new' | 'kitchen' | 'handoff' | 'closed';
-
+type OrderFilter = 'active' | 'new' | 'kitchen' | 'handoff' | 'payment' | 'closed';
 const FILTERS: { id: OrderFilter; label: string }[] = [
-  { id: 'all', label: 'Todos' },
-  { id: 'new', label: 'Nuevos' },
-  { id: 'kitchen', label: 'En cocina' },
-  { id: 'handoff', label: 'Entrega y retiro' },
-  { id: 'closed', label: 'Finalizados' },
+  { id: 'active', label: 'En curso' }, { id: 'new', label: 'Recibir' },
+  { id: 'kitchen', label: 'En cocina' }, { id: 'handoff', label: 'Entregar' },
+  { id: 'payment', label: 'Cobrar' }, { id: 'closed', label: 'Historial' },
 ];
+type ModeFilter = 'all' | 'collection' | 'delivery' | 'dine_in';
 
-function paymentLabel(order: POSOrder): string {
-  if (order.payment_status === 'paid') return 'Pagado';
-  if (order.payment_status === 'partial') return 'Pago parcial';
-  const methods: Record<string, string> = {
-    cash: 'Efectivo al recibir', cash_on_delivery: 'Efectivo al recibir',
-    card_machine: 'Tarjeta al recibir', card_on_delivery: 'Tarjeta al recibir',
-    eft: 'Transferencia pendiente', split: 'Pago dividido',
-  };
-  return methods[order.payment_method || ''] || (order.payment_status === 'unpaid' ? 'A pagar en el local' : 'Pago pendiente');
+function elapsed(value?: string | null): string {
+  const time = value ? new Date(value).getTime() : NaN;
+  if (!Number.isFinite(time)) return 'Hora no disponible';
+  const minutes = Math.max(0, Math.floor((Date.now() - time) / 60_000));
+  return minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)} h ${minutes % 60} min`;
 }
 
-function orderTotal(order: POSOrder, scale: number): number {
-  const cents = order.total_cents == null ? Number.NaN : Number(order.total_cents);
-  if (Number.isFinite(cents)) return cents;
-  const total = Number(order.total);
-  return Number.isFinite(total) ? Math.round(total * scale) : 0;
+function inFilter(order: POSOrder, filter: OrderFilter): boolean {
+  if (filter === 'active') return orderQueueGroup(order) !== 'closed';
+  if (filter === 'payment') return needsPayment(order);
+  return orderQueueGroup(order) === filter;
 }
 
-function createdTime(value?: string | null): string {
-  if (!value) return 'Hora no disponible';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? 'Hora no disponible'
-    : new Intl.DateTimeFormat('es-AR', { hour: '2-digit', minute: '2-digit' }).format(date);
-}
-
-function customerOrTable(order: POSOrder): string {
-  if (order.customer_name?.trim()) return order.customer_name.trim();
-  const table = order.table_label || order.table_number;
-  if (table !== undefined && table !== null && String(table).trim()) return `Mesa ${table}`;
-  return 'Cliente sin nombre';
-}
-
-function serviceIcon(order: POSOrder) {
-  const fulfillment = order.fulfillment_type || order.order_type;
-  if (fulfillment === 'delivery') return Truck;
-  if (fulfillment === 'dine_in') return Utensils;
-  return ShoppingBag;
-}
-
-function paymentIcon(order: POSOrder) {
-  return order.payment_method === 'cash' || order.payment_method === 'cash_on_delivery' ? Banknote : CreditCard;
-}
-
-function OrderCard({ order, busy, onAdvance }: {
-  order: POSOrder;
-  busy: boolean;
-  onAdvance: (order: POSOrder) => void;
-}) {
+function OrderCard({ order, onOpen }: { order: POSOrder; onOpen: (order: POSOrder) => void }) {
   const { format, scale } = useMoney(order.currency_code ? { currency: order.currency_code } : undefined);
-  const action = nextPOSOrderAction(order);
-  const ServiceIcon = serviceIcon(order);
-  const PaymentIcon = paymentIcon(order);
-  const statusTone = order.status === 'pending' || order.status === 'pending_on_delivery'
-    ? 'border-warning/30 bg-warning/10 text-warning'
-    : order.status === 'ready' || order.status === 'out_for_delivery'
-      ? 'border-success/30 bg-success/10 text-success'
-      : order.status === 'cancelled'
-        ? 'border-destructive/30 bg-destructive/10 text-destructive'
-        : 'border-primary/20 bg-primary/10 text-primary';
-
-  return (
-    <article className="min-w-0 rounded-2xl border bg-card p-4 shadow-sm sm:p-5" aria-label={`Pedido ${order.order_number || order.id}`}>
-      <div className="flex min-w-0 items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="truncate text-base font-bold">#{order.order_number || order.id.slice(-8)}</h2>
-            <Badge variant="outline" className={cn('max-w-full whitespace-normal text-center', statusTone)}>{orderStatusLabel(order.status, order)}</Badge>
-          </div>
-          <p className="mt-2 flex items-center gap-1.5 text-sm font-medium text-foreground">
-            <UserRound className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <span className="break-words">{customerOrTable(order)}</span>
-          </p>
-        </div>
-        <p className="shrink-0 text-right text-base font-bold tabular-nums">{format(orderTotal(order, scale))}</p>
-      </div>
-
-      <div className="mt-3 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
-        <p className="flex min-w-0 items-center gap-2"><ServiceIcon className="h-4 w-4 shrink-0" /><span>{fulfillmentLabel(order)}</span></p>
-        <p className="flex min-w-0 items-center gap-2"><PaymentIcon className="h-4 w-4 shrink-0" /><span className="truncate">{paymentLabel(order)}</span></p>
-        {(order.fulfillment_type || order.order_type) === 'delivery' && order.delivery_address && (
-          <p className="flex min-w-0 items-start gap-2 sm:col-span-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0" /><span className="break-words">{order.delivery_address}</span></p>
-        )}
-        <p className="flex items-center gap-2"><Clock3 className="h-4 w-4 shrink-0" />Ingresó {createdTime(order.created_at)}</p>
-      </div>
-
-      {action ? (
-        <Button type="button" disabled={busy} onClick={() => onAdvance(order)} className="mt-4 min-h-12 w-full rounded-xl text-sm font-semibold sm:w-auto sm:min-w-52">
-          {busy ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : order.status === 'pending' ? <CheckCircle2 className="mr-2 h-4 w-4" /> : order.status === 'ready' ? <PackageCheck className="mr-2 h-4 w-4" /> : <Truck className="mr-2 h-4 w-4" />}
-          {action.label}
-        </Button>
-      ) : (
-        <p className="mt-4 flex items-start gap-2 rounded-xl bg-muted/60 px-3 py-2.5 text-xs text-muted-foreground">
-          {orderStatusGroup(order.status) === 'kitchen' ? <ChefHat className="mt-0.5 h-4 w-4 shrink-0" /> : <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />}
-          {orderStatusGroup(order.status) === 'kitchen'
-            ? 'Cocina actualiza preparación y disponibilidad desde sus comandas.'
-            : order.status === 'pending_on_delivery'
-              ? <>Cobro pendiente al entregar. <Link to="/home" className="font-medium text-primary underline">Abrir pedidos en curso</Link>.</>
-              : order.status === 'cancelled' ? 'Este pedido fue cancelado.' : 'No hay acciones pendientes para este pedido.'}
-        </p>
-      )}
-    </article>
-  );
+  const responsibility = nextOrderResponsibility(order);
+  const mode = order.fulfillment_type || order.order_type;
+  const Icon = mode === 'delivery' ? Truck : mode === 'dine_in' ? Utensils : ShoppingBag;
+  const group = orderQueueGroup(order);
+  return <article aria-label={`Pedido ${order.order_number || order.id}`} className={cn('min-w-0 rounded-2xl border bg-card shadow-sm', group === 'handoff' && 'border-success/40', group === 'payment' && 'border-warning/40')}>
+    <button type="button" className="w-full rounded-2xl p-4 text-left outline-none transition-colors hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-primary sm:p-5" onClick={() => onOpen(order)} aria-label={`Abrir pedido ${order.order_number || order.id}`}>
+      <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="min-w-0 break-words text-base font-bold">#{order.order_number || order.id.slice(-8)}</h2><Badge variant="outline" className={cn('whitespace-normal', group === 'handoff' ? 'bg-success/10 text-success' : group === 'payment' || group === 'new' ? 'bg-warning/10 text-warning' : '')}>{orderStatusLabel(order.status, order)}</Badge></div>
+      <div className="mt-3 flex items-start justify-between gap-3"><p className="min-w-0 break-words font-semibold">{customerOrTable(order)}</p><p className="shrink-0 font-bold tabular-nums">{format(orderTotal(order, scale))}</p></div>
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground"><span className="flex items-center gap-1"><Icon className="h-3.5 w-3.5" />{fulfillmentLabel(order)}</span><span className="flex items-center gap-1"><Clock3 className="h-3.5 w-3.5" />Hace {elapsed(order.created_at)}</span></div>
+      <p className={cn('mt-3 text-sm', needsPayment(order) ? 'font-medium text-warning' : 'text-success')}>{paymentLabel(order)}</p>
+      {mode === 'delivery' && order.delivery_address && <p className="mt-2 flex items-start gap-1.5 break-words text-sm text-muted-foreground"><MapPin className="mt-0.5 h-4 w-4 shrink-0" />{order.delivery_address}</p>}
+      <div className="mt-4 flex items-center justify-between gap-3 border-t pt-3"><div className="min-w-0"><p className="text-xs font-semibold text-primary">{responsibility.owner}</p><p className="mt-1 text-sm text-muted-foreground">{responsibility.task}</p></div><ArrowRight className="h-5 w-5 shrink-0 text-primary" /></div>
+      <span className="mt-3 block text-xs font-medium text-primary">Ver productos y acciones</span>
+    </button>
+  </article>;
 }
 
 export default function OrderStatusBoard() {
-  const { activeLocation } = useAuth();
+  const { activeLocation, activeMembership } = useAuth();
+  const { actor } = useActor();
   const { format, scale } = useMoney();
+  const canOperate = hasAnyAccess(activeMembership, ['can_pos'], actor?.capabilities, actor?.role);
+  const canSettle = canRecordOrderPayment(activeMembership, actor?.capabilities, actor?.role);
   const [orders, setOrders] = useState<POSOrder[]>([]);
-  const [filter, setFilter] = useState<OrderFilter>('all');
+  const [selected, setSelected] = useState<POSOrder | null>(null);
+  const [filter, setFilter] = useState<OrderFilter>('active');
+  const [mode, setMode] = useState<ModeFilter>('all');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
-  const [feedback, setFeedback] = useState('');
-  const [savingIds, setSavingIds] = useState<Set<string>>(() => new Set());
+  const [hasMore, setHasMore] = useState(false);
   const hasLoaded = useRef(false);
   const requestSequence = useRef(0);
 
   const fetchOrders = useCallback(async () => {
-    const requestId = ++requestSequence.current;
-    if (!activeLocation?.id) {
-      setOrders([]);
-      setLoading(false);
-      setRefreshing(false);
-      hasLoaded.current = true;
-      return;
-    }
+    const sequence = ++requestSequence.current;
+    if (!activeLocation?.id) { setOrders([]); setLoading(false); setRefreshing(false); return; }
     setRefreshing(true);
     if (!hasLoaded.current) setLoading(true);
     try {
-      const [activeResult, closedResult] = await Promise.all([
-        api.from('orders')
-          .select('*')
-          .eq('location_id', activeLocation.id)
-          .in('status', ['pending', 'confirmed', 'preparing', 'ready', 'out_for_delivery', 'pending_on_delivery'])
-          .order('created_at', { ascending: false })
-          .limit(250),
-        api.from('orders')
-          .select('*')
-          .eq('location_id', activeLocation.id)
-          .in('status', ['delivered', 'completed', 'cancelled'])
-          .order('created_at', { ascending: false })
-          .limit(100),
-      ]);
-      if (requestId !== requestSequence.current) return;
-      if (activeResult.error || closedResult.error) {
-        throw new Error(activeResult.error?.message || closedResult.error?.message || 'No se pudieron cargar los pedidos.');
-      }
-      const activeOrders = (activeResult.data || []) as POSOrder[];
-      const closedOrders = (closedResult.data || []) as POSOrder[];
-      // An order can move between the two queries while they are in flight.
-      const uniqueOrders = new Map([...activeOrders, ...closedOrders].map(order => [order.id, order]));
-      setOrders([...uniqueOrders.values()].sort((left, right) =>
-        String(right.created_at || '').localeCompare(String(left.created_at || ''))));
+      // One role-guarded snapshot; financial debt is independent of delivery.
+      const { data, error: apiError } = await api.request<{ orders: POSOrder[]; has_more: boolean }>('GET', `/pos/orders/queue?location_id=${encodeURIComponent(activeLocation.id)}`);
+      if (sequence !== requestSequence.current) return;
+      if (apiError || !data) throw new Error(apiError?.message || 'No se pudieron cargar los pedidos.');
+      setOrders(data.orders || []); setHasMore(Boolean(data.has_more));
       setError('');
-    } catch (cause) {
-      if (requestId === requestSequence.current) {
-        setError(cause instanceof Error ? cause.message : 'No se pudieron cargar los pedidos.');
-      }
-    } finally {
-      if (requestId === requestSequence.current) {
-        hasLoaded.current = true;
-        setLoading(false);
-        setRefreshing(false);
-      }
-    }
+    } catch (cause) { if (sequence === requestSequence.current) setError(cause instanceof Error ? cause.message : 'No se pudieron cargar los pedidos.'); }
+    finally { if (sequence === requestSequence.current) { hasLoaded.current = true; setLoading(false); setRefreshing(false); } }
   }, [activeLocation?.id]);
 
   useEffect(() => {
-    requestSequence.current += 1;
-    hasLoaded.current = false;
-    setOrders([]);
-    setError('');
-    setLoading(Boolean(activeLocation?.id));
+    hasLoaded.current = false; setOrders([]); setSelected(null); setError(''); setLoading(Boolean(activeLocation?.id));
     void fetchOrders();
-    const timer = window.setInterval(() => void fetchOrders(), 15_000);
-    return () => {
-      window.clearInterval(timer);
-      requestSequence.current += 1;
-    };
+    const timer = window.setInterval(() => { if (!document.hidden) void fetchOrders(); }, 15_000);
+    return () => { window.clearInterval(timer); requestSequence.current += 1; };
   }, [activeLocation?.id, fetchOrders]);
+  useEffect(() => { setSelected(null); }, [actor?.staff_id]);
 
-  const counts = useMemo(() => {
-    const values: Record<OrderFilter, number> = { all: orders.length, new: 0, kitchen: 0, handoff: 0, closed: 0 };
-    for (const order of orders) values[orderStatusGroup(order.status)] += 1;
-    return values;
-  }, [orders]);
-
+  const counts = useMemo(() => Object.fromEntries(FILTERS.map(option => [option.id, orders.filter(order => inFilter(order, option.id)).length])) as Record<OrderFilter, number>, [orders]);
   const visibleOrders = useMemo(() => {
     const term = search.trim().toLocaleLowerCase();
+    const priority = (order: POSOrder) => order.status === 'pending' ? 0 : order.status === 'ready' ? 1 : orderQueueGroup(order) === 'payment' ? 2 : 3;
     return orders.filter(order => {
-      if (filter !== 'all' && orderStatusGroup(order.status) !== filter) return false;
-      if (!term) return true;
-      return [order.order_number, order.customer_name, order.customer_phone, order.table_label, order.table_number, order.delivery_address, order.status]
-        .some(value => String(value || '').toLocaleLowerCase().includes(term));
-    });
-  }, [filter, orders, search]);
+      if (!inFilter(order, filter)) return false;
+      const fulfillment = order.fulfillment_type || order.order_type;
+      if (mode !== 'all' && (mode === 'collection' ? !['collection', 'pickup', 'takeaway'].includes(fulfillment || '') : fulfillment !== mode)) return false;
+      return !term || [order.order_number, customerOrTable(order), order.customer_phone, order.delivery_address].some(value => String(value || '').toLocaleLowerCase().includes(term));
+    }).sort((left, right) => filter === 'closed'
+      ? String(right.created_at || '').localeCompare(String(left.created_at || ''))
+      : (filter === 'active' ? priority(left) - priority(right) : 0) || String(left.created_at || '').localeCompare(String(right.created_at || '')));
+  }, [orders, filter, mode, search]);
+  const outstanding = orders.filter(needsPayment).reduce((sum, order) => sum + Math.max(0, orderTotal(order, scale) - Number(order.paid_cents || 0)), 0);
 
-  async function advanceOrder(order: POSOrder) {
-    const action = nextPOSOrderAction(order);
-    if (!action || savingIds.has(order.id)) return;
-    setSavingIds(previous => new Set(previous).add(order.id));
-    setError('');
-    setFeedback('');
-    try {
-      const { error: apiError } = await api.from('orders')
-        .update({ status: action.nextStatus })
-        .eq('id', order.id)
-        .eq('location_id', activeLocation?.id);
-      if (apiError) throw new Error(apiError.message || 'No se pudo actualizar el estado. Revisá el pedido e intentá otra vez.');
-      requestSequence.current += 1;
-      setRefreshing(false);
-      setOrders(previous => previous.map(item => item.id === order.id
-        ? { ...item, status: action.nextStatus, updated_at: new Date().toISOString() }
-        : item));
-      setFeedback(`Pedido #${order.order_number || order.id.slice(-8)}: ${action.label.toLocaleLowerCase()}.`);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'No se pudo actualizar el estado. Revisá el pedido e intentá otra vez.');
-    } finally {
-      setSavingIds(previous => {
-        const next = new Set(previous);
-        next.delete(order.id);
-        return next;
-      });
-    }
+  function orderChanged(updated: POSOrder) {
+    requestSequence.current += 1; setRefreshing(false);
+    setOrders(previous => previous.map(order => order.id === updated.id ? { ...order, ...updated } : order));
+    // Refresh safely after mutations; do not retry a payment automatically.
+    void fetchOrders();
   }
 
-  const activeTotal = orders
-    .filter(order => orderStatusGroup(order.status) !== 'closed')
-    .reduce((sum, order) => sum + orderTotal(order, scale), 0);
-
-  return (
-    <main className="h-full min-h-0 overflow-y-auto bg-muted/20 p-3 pb-6 sm:p-5 lg:p-7">
-      <div className="mx-auto max-w-5xl space-y-5">
-        <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div className="min-w-0">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Punto de venta</p>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Seguimiento de pedidos</h1>
-            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Aceptá pedidos y gestioná su entrega. Cocina actualiza preparación y disponibilidad desde sus comandas.</p>
-          </div>
-          <Button type="button" variant="outline" onClick={() => void fetchOrders()} disabled={refreshing} className="min-h-11 w-full shrink-0 rounded-xl sm:w-auto">
-            <RefreshCw className={cn('mr-2 h-4 w-4', refreshing && 'animate-spin')} />Actualizar
-          </Button>
-        </header>
-
-        {!activeLocation?.id ? (
-          <section className="rounded-2xl border bg-card p-6 text-center">
-            <MapPin className="mx-auto h-8 w-8 text-muted-foreground" />
-            <h2 className="mt-3 font-semibold">Elegí un local</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Seleccioná una ubicación activa para ver sus pedidos.</p>
-          </section>
-        ) : <>
-          <section className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl border bg-card p-4"><p className="text-xs font-medium text-muted-foreground">Pedidos activos</p><p className="mt-1 text-2xl font-bold tabular-nums">{orders.length - counts.closed}</p></div>
-            <div className="rounded-2xl border bg-card p-4"><p className="text-xs font-medium text-muted-foreground">Requieren atención</p><p className="mt-1 text-2xl font-bold tabular-nums">{counts.new + counts.handoff}</p></div>
-            <div className="col-span-2 rounded-2xl border bg-card p-4 sm:col-span-1"><p className="text-xs font-medium text-muted-foreground">Importe activo</p><p className="mt-1 text-2xl font-bold tabular-nums">{format(activeTotal)}</p></div>
-          </section>
-
-          <section className="space-y-3 rounded-2xl border bg-card p-3 sm:p-4">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar por pedido, cliente o dirección" aria-label="Buscar pedidos" className="h-12 rounded-xl pl-10 text-base" />
-            </div>
-            <div role="group" aria-label="Filtrar pedidos por estado" className="flex gap-2 overflow-x-auto pb-1">
-              {FILTERS.map(option => (
-                <Button key={option.id} type="button" size="sm" variant={filter === option.id ? 'default' : 'outline'} aria-pressed={filter === option.id} onClick={() => setFilter(option.id)} className="min-h-10 shrink-0 rounded-full px-4">
-                  {option.label}<span className="ml-2 rounded-full bg-background/20 px-1.5 py-0.5 text-[11px] tabular-nums">{counts[option.id]}</span>
-                </Button>
-              ))}
-            </div>
-          </section>
-
-          {error && <div role="alert" className="flex flex-col gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive sm:flex-row sm:items-center sm:justify-between"><p>{error}</p><Button type="button" size="sm" variant="outline" onClick={() => void fetchOrders()} className="min-h-10 shrink-0">Reintentar</Button></div>}
-          {feedback && <p role="status" aria-live="polite" className="rounded-xl border border-success/30 bg-success/10 p-3 text-sm text-success">{feedback}</p>}
-
-          {loading ? (
-            <div className="grid gap-3 md:grid-cols-2" aria-label="Cargando pedidos"><div className="h-48 animate-pulse rounded-2xl bg-muted" /><div className="h-48 animate-pulse rounded-2xl bg-muted" /></div>
-          ) : visibleOrders.length ? (
-            <div className="grid min-w-0 gap-3 md:grid-cols-2">
-              {visibleOrders.map(order => <OrderCard key={order.id} order={order} busy={savingIds.has(order.id)} onAdvance={advanceOrder} />)}
-            </div>
-          ) : (
-            <section className="rounded-2xl border border-dashed bg-card px-5 py-12 text-center">
-              <ClipboardList className="mx-auto h-10 w-10 text-muted-foreground" />
-              <h2 className="mt-3 font-semibold">{search ? 'No encontramos ese pedido' : 'No hay pedidos en esta vista'}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">{search ? 'Probá con otro nombre, número o dirección.' : 'Cuando ingresen pedidos, vas a poder seguirlos y avanzar su entrega desde acá.'}</p>
-            </section>
-          )}
-          <p className="flex items-center justify-center gap-2 py-2 text-center text-xs text-muted-foreground"><RefreshCw className="h-3 w-3 shrink-0" />Actualiza cada 15 segundos · incluye los 100 últimos pedidos finalizados</p>
-        </>}
-      </div>
-    </main>
-  );
+  return <main className="h-full min-h-0 overflow-y-auto bg-muted/20 p-3 pb-6 sm:p-5 lg:p-7"><div className="mx-auto max-w-6xl space-y-4 sm:space-y-5">
+    <header className="flex items-center justify-between gap-2"><div className="min-w-0"><h1 className="text-xl font-bold tracking-tight sm:text-3xl">Pedidos en curso</h1><p className="mt-1 hidden text-sm text-muted-foreground md:block">Recibí, entregá y cobrá desde el mismo lugar. Abrí un pedido para ver sus productos y la próxima tarea.</p></div><div className="flex shrink-0 gap-2"><Button variant="outline" disabled={refreshing} aria-label="Actualizar pedidos" className="h-11 w-11 px-0 sm:w-auto sm:px-3" onClick={() => void fetchOrders()}><RefreshCw className={cn('h-4 w-4 sm:mr-2', refreshing && 'animate-spin')} /><span className="hidden sm:inline">Actualizar</span></Button>{canOperate && <Button asChild className="hidden min-h-11 sm:inline-flex"><Link to="/work?tab=pos&view=full"><Plus className="mr-2 h-4 w-4" />Nuevo pedido</Link></Button>}</div></header>
+    {!activeLocation?.id ? <section className="rounded-2xl border bg-card p-6 text-center"><MapPin className="mx-auto h-8 w-8 text-muted-foreground" /><h2 className="mt-3 font-semibold">Elegí un local</h2><p className="mt-1 text-sm text-muted-foreground">Seleccioná una ubicación activa para ver sus pedidos.</p></section> : <>
+      <section aria-label="Prioridades del turno" className="hidden grid-cols-3 gap-3 sm:grid">{[{ id: 'new' as const, label: 'Por recibir', value: String(counts.new) }, { id: 'handoff' as const, label: 'Por entregar', value: String(orders.filter(order => order.status === 'ready').length) }, { id: 'payment' as const, label: 'Por cobrar', value: format(outstanding) }].map(metric => <button key={metric.id} type="button" onClick={() => setFilter(metric.id)} className="min-w-0 rounded-xl border bg-card p-4 text-left focus-visible:outline-primary"><p className="text-xs text-muted-foreground">{metric.label}</p><p className="mt-1 text-xl font-bold tabular-nums lg:text-2xl">{metric.value}</p></button>)}</section>
+      <section className="space-y-2 rounded-2xl border bg-card p-2 sm:space-y-3 sm:p-4"><div className="flex gap-2"><div className="relative min-w-0 flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar pedido" aria-label="Buscar pedidos" className="h-11 rounded-xl pl-10 text-base sm:h-12" /></div><select aria-label="Modalidad del pedido" value={mode} onChange={event => setMode(event.target.value as ModeFilter)} className="h-11 w-24 min-w-0 rounded-xl border bg-background px-2 text-base sm:h-12 sm:w-44"><option value="all">Todas</option><option value="collection">Retiro</option><option value="delivery">Delivery</option><option value="dine_in">En mesa</option></select></div><div role="group" aria-label="Filtrar pedidos por tarea" className="grid grid-cols-3 gap-2 lg:flex lg:flex-wrap">{FILTERS.map(option => <Button key={option.id} type="button" variant={filter === option.id ? 'default' : 'outline'} aria-pressed={filter === option.id} onClick={() => setFilter(option.id)} className="min-h-11 min-w-0 gap-1 rounded-xl px-2 text-xs sm:gap-2 sm:px-3 sm:text-sm">{option.label}<span className="rounded-full bg-muted/30 px-1.5 text-[11px] tabular-nums">{counts[option.id]}</span></Button>)}</div></section>
+      {error && <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive"><p>{error}</p><Button variant="outline" onClick={() => void fetchOrders()} className="mt-2 min-h-11">Reintentar</Button></div>}
+      <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground"><p>{visibleOrders.length} pedidos · {filter === 'closed' ? 'Más recientes primero' : 'Pendientes y más antiguos primero'}</p>{filter === 'kitchen' && <ChefHat className="h-4 w-4" />}</div>
+      {loading ? <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3" aria-label="Cargando pedidos"><div className="h-48 animate-pulse rounded-2xl bg-muted" /><div className="h-48 animate-pulse rounded-2xl bg-muted" /></div> : visibleOrders.length ? <div className="grid min-w-0 items-start gap-3 md:grid-cols-2 xl:grid-cols-3">{visibleOrders.map(order => <OrderCard key={order.id} order={order} onOpen={setSelected} />)}</div> : <section className="rounded-2xl border border-dashed bg-card px-5 py-10 text-center"><ClipboardList className="mx-auto h-9 w-9 text-muted-foreground" /><h2 className="mt-3 font-semibold">{search ? 'No encontramos ese pedido' : 'No hay pendientes en esta vista'}</h2><p className="mt-1 text-sm text-muted-foreground">{search ? 'Probá con otro nombre, número o dirección.' : 'Podés elegir otra tarea o modalidad.'}</p><Button variant="outline" className="mt-4 min-h-11" onClick={() => { setFilter('active'); setMode('all'); setSearch(''); }}>Ver pedidos en curso</Button></section>}
+      {hasMore && <p role="status" className="rounded-xl bg-warning/10 p-3 text-sm">Hay más de 250 pendientes en una cola. Se muestran los más antiguos; resolvelos para ver los siguientes.</p>}
+      <p className="py-2 text-center text-xs text-muted-foreground">Actualiza cada 15 segundos · hasta 250 pedidos por cola y 100 en historial · entregar no equivale a cobrar</p>
+    </>}
+    {selected && <OrderDetailDialog key={selected.id} order={selected} canOperate={canOperate} canSettle={canSettle} onClose={() => setSelected(null)} onChanged={orderChanged} />}
+  </div></main>;
 }

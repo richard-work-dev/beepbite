@@ -236,7 +236,10 @@ const TopBar = () => {
     ...availablePrimaryItems,
     ...sideNavigationSections.flatMap((section) => section.items.filter((item) => canAccess(item.capability))),
   ];
-  const activeNavPath = availableNavItems
+  // The unified workspace belongs to the selected operational module, not “More”.
+  const workspaceTab = new URLSearchParams(location.search).get('tab');
+  const workspaceNavPath = workspaceTab === 'kitchen' || !canAccess('can_pos') ? '/kds/expo' : '/pos/workspace';
+  const activeNavPath = location.pathname === '/work' ? workspaceNavPath : availableNavItems
     .filter((item) => location.pathname === item.path || location.pathname.startsWith(`${item.path}/`))
     .sort((a, b) => b.path.length - a.path.length)[0]?.path;
   const isActivePath = (path: string) => activeNavPath === path;

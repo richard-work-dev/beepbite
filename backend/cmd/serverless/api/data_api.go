@@ -122,12 +122,11 @@ func (a *application) authorizeDataCapability(ctx context.Context, request event
 	if err != nil {
 		return dataAccessError(err), false
 	}
-	membership, err := a.getMembership(ctx, userID, orgID)
+	actor, err := a.workflowActor(ctx, request, userID, orgID)
 	if err != nil {
 		return dataAccessError(err), false
 	}
-	role := displayString(membership["role"])
-	if managerRole(role) || (required != "manager" && valueOr(membership, "capabilities", map[string]any{}) != nil && memberCapability(membership, required)) {
+	if actor.allows(required) {
 		return events.APIGatewayV2HTTPResponse{}, true
 	}
 	return errorResponse(403, "requires appropriate role"), false
@@ -241,6 +240,14 @@ func (a *application) updateData(ctx context.Context, request events.APIGatewayV
 	delete(changes, "id")
 	delete(changes, "organization_id")
 	delete(changes, "created_at")
+	if table == "orders" {
+		// Operational states and payments must use their guarded workflow APIs.
+		for _, key := range []string{"status", "payment_status", "payment_method", "paid_cents", "total_cents", "subtotal_cents", "delivery_fee_cents", "fulfillment_type", "order_type", "status_history", "handed_off_at", "status_updated_by", "status_updated_by_name"} {
+			if _, exists := changes[key]; exists {
+				return errorResponse(403, "Usá las acciones de pedidos para cambiar estados, importes o pagos."), nil
+			}
+		}
+	}
 
 	if table == "profiles" {
 		updated, err := a.updateProfile(ctx, userID, changes)

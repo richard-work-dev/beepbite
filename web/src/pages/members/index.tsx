@@ -20,6 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
+import { useActor } from '@/context/actor-token-context';
 import {
   changeMemberRole, inviteMember, listActiveMembers, listMemberInvites,
   removeMember, renewMemberInvite, revokeMemberInvite,
@@ -39,18 +40,18 @@ const ROLE_DEFINITIONS = [
   },
   {
     value: 'staff', label: 'Caja', icon: UserRound,
-    description: 'Crea pedidos, cobra y trabaja en el punto de venta.',
-    permissions: ['Caja y pedidos'],
+    description: 'Recibe pedidos, registra pagos y confirma retiros o servicio en mesa. No marca preparación ni anula pagos.',
+    permissions: ['Recibir pedidos', 'Cobrar', 'Entregar / servir'],
   },
   {
     value: 'pos', label: 'Punto de venta', icon: UserCog,
-    description: 'Acceso dedicado al punto de venta, sin administración.',
-    permissions: ['Caja y pedidos'],
+    description: 'Mismos permisos operativos que Caja: pedidos, cobros y entrega. Sin administración ni preparación de cocina.',
+    permissions: ['Recibir pedidos', 'Cobrar', 'Entregar / servir'],
   },
   {
     value: 'kitchen', label: 'Cocina', icon: ChefHat,
-    description: 'Ve las comandas y actualiza sus estados de preparación.',
-    permissions: ['Cocina y despacho'],
+    description: 'Prepara y marca listo en comandas. Finalizar cocina no confirma que el cliente retiró o recibió la comida.',
+    permissions: ['Preparar', 'Marcar listo', 'Consolidar comandas'],
   },
 ] as const;
 
@@ -98,7 +99,8 @@ interface PendingAction {
 export default function Members() {
   const { toast } = useToast();
   const { user, activeMembership } = useAuth();
-  const actorRole = String(activeMembership?.role || '');
+  const { actor } = useActor();
+  const actorRole = String(actor?.role ?? activeMembership?.role ?? '');
   const actorRank = ROLE_RANK[actorRole] ?? 0;
   const [members, setMembers] = useState<Member[]>([]);
   const [invites, setInvites] = useState<MemberInvite[]>([]);
@@ -336,6 +338,7 @@ export default function Members() {
         </TabsContent>
 
         <TabsContent value="roles">
+          <Card className="mb-3"><CardHeader><CardTitle className="text-base">¿Quién hace qué durante el turno?</CardTitle><CardDescription>Estado de preparación, entrega y pago se controlan por separado.</CardDescription></CardHeader><CardContent className="grid gap-3 text-sm sm:grid-cols-2"><div><p className="font-semibold">Caja / punto de venta</p><p className="text-muted-foreground">Recibe, cobra y confirma el retiro o el servicio en mesa. En consumo local se puede servir antes de cobrar.</p></div><div><p className="font-semibold">Cocina</p><p className="text-muted-foreground">Inicia preparación y marca listo. No cobra ni confirma entregas al cliente.</p></div><div><p className="font-semibold">Repartidor asignado</p><p className="text-muted-foreground">Acepta su reparto, retira solo cuando está listo y confirma la entrega. Caja registra el dinero recibido.</p></div><div><p className="font-semibold">Encargado / administrador</p><p className="text-muted-foreground">Asigna repartidores y resuelve anulaciones y devoluciones desde sus acciones autorizadas.</p></div></CardContent></Card>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             <Card className="border-primary/30"><CardHeader><CardTitle className="flex items-center gap-2 text-base"><ShieldCheck className="h-5 w-5 text-primary" />Propietario</CardTitle><CardDescription>Control total. Su cuenta no puede ser modificada desde esta pantalla.</CardDescription></CardHeader><CardContent><Badge>Todos los permisos</Badge></CardContent></Card>
             {ROLE_DEFINITIONS.map((item) => { const Icon = item.icon; return <Card key={item.value}><CardHeader><CardTitle className="flex items-center gap-2 text-base"><Icon className="h-5 w-5 text-primary" />{item.label}</CardTitle><CardDescription>{item.description}</CardDescription></CardHeader><CardContent className="flex flex-wrap gap-1.5">{item.permissions.map((permission) => <Badge key={permission} variant="secondary">{permission}</Badge>)}</CardContent></Card>; })}

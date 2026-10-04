@@ -44,7 +44,11 @@ Pushing to `develop` runs **Plan development deployment** only. Inspect the
 `development-plan` artifact (`plan.txt`) and confirm the resource actions before
 applying. To deploy that exact plan, manually run **Apply reviewed development
 plan**, providing the plan workflow's run ID and the exact commit SHA shown in
-its summary. Plans that destroy or replace resources are blocked unless the
+its summary. If that workflow is not yet registered on the default branch,
+dispatch the existing **Plan development deployment** workflow on `develop`
+with `plan_run_id` and `source_commit`; it calls the same reviewed apply workflow
+without generating a new plan. Leave `plan_run_id` empty for a plan-only run.
+Plans that destroy or replace resources are blocked unless the
 operator separately sets `allow_destroy` after reviewing those actions. The
 apply workflow rejects a commit mismatch and Terraform rejects a stale state
 plan. The saved plan and Lambda archives expire after two days;
@@ -83,9 +87,10 @@ deployed.
 Feature and fix pull requests target `develop`; promotion pull requests go from
 `develop` to `main`. Both targets build the Lambda archives and validate
 Terraform without AWS credentials. Every merged push to `develop` assumes the scoped
-`beepbite-github-development` role through GitHub OIDC, plans and applies the
-development state, builds the frontend with the deployed API URL, synchronizes
-it to S3, invalidates CloudFront and runs HTTP smoke checks.
+`beepbite-github-development` role through GitHub OIDC and generates a plan.
+After review, the apply workflow deploys that saved plan, builds the frontend
+with the deployed API URL, synchronizes it to S3, invalidates CloudFront and
+runs HTTP smoke checks.
 
 The OIDC provider and deployment role live in the separate `bootstrap/` root so
 the deployment role cannot change its own trust policy. GitHub stores only role,
